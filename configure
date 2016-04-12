@@ -878,6 +878,7 @@ Special configuration feature:
                                            caanoo for Caanoo
                                            dingux for Dingux
                                            raspberrypi for Raspberry Pi
+                                           playbook for BlackBerry PlayBook
                                            dreamcast for Sega Dreamcast
                                            ds for Nintendo DS
                                            gamecube for Nintendo GameCube
@@ -1334,6 +1335,11 @@ raspberrypi)
 	# This tuple is the one used by the official Rpi toolchain.
 	# It may change in the future.
 	_host_alias=arm-linux-gnueabihf
+	;;
+playbook)
+	_host_os=qnx
+	_host_cpu=arm
+	_host_alias=arm-unknown-nto-qnx6.5.0eabi
 	;;
 caanoo)
 	_host_os=gph-linux
@@ -1846,7 +1852,7 @@ if test "$have_gcc" = yes ; then
 			case $_host_os in
 			# newlib-based system include files suppress non-C89 function
 			# declarations under __STRICT_ANSI__
-			amigaos* | android | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince )
+			amigaos* | android | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince | qnx)
 				;;
 			*)
 				append_var CXXFLAGS "-ansi"
@@ -2098,6 +2104,8 @@ case $_host_cpu in
 			arm-apple-darwin10)
 				;;
 			arm-apple-darwin11)
+				;;
+			arm-unknown-nto-qnx*)
 				;;
 
 			*)
@@ -2670,6 +2678,23 @@ if test -n "$_host"; then
 			# The Raspberry Pi always supports OpenGL ES 2.0 contexts, thus we
 			# take advantage of those.
 			_opengl_mode=gles2
+			;;
+		playbook)
+			_backend=sdl
+			_sdlconfig=sdl-config
+			_savegame_timestamp=no
+			_eventrec=no
+			_build_scalers=no
+			_build_hq_scalers=no
+			_vkeybd=yes
+			_optimization_level=-O2
+			_mt32emu=no
+			_timidity=no
+			_zlib=yes
+			# append_var DEFINES "-D_XOPEN_SOURCE"
+			append_var DEFINES "-D_QNX_SOURCE"
+			append_var DEFINES "-DSYSTEM_NOT_SUPPORTING_D_TYPE"
+			append_var CFLAGS "-std=c99"
 			;;
 		dreamcast)
 			append_var DEFINES "-DDISABLE_DEFAULT_SAVEFILEMANAGER"
@@ -3309,7 +3334,7 @@ case $_host_os in
 	amigaos* | cygwin* | dreamcast | ds | gamecube | mingw* | n64 | ps2 | ps3 | psp | wii | wince)
 		_posix=no
 		;;
-	android | beos* | bsd* | darwin* | freebsd* | gnu* | gph-linux | haiku* | hpux* | iphone | ios7 | irix*| k*bsd*-gnu* | linux* | maemo | mint* | netbsd* | openbsd* | solaris* | sunos* | uclinux* | webos)
+	android | beos* | bsd* | darwin* | freebsd* | gnu* | gph-linux | haiku* | hpux* | iphone | ios7 | irix*| k*bsd*-gnu* | linux* | maemo | mint* | netbsd* | openbsd* | solaris* | sunos* | uclinux* | webos | qnx)
 		_posix=yes
 		;;
 	os2-emx*)
