@@ -55,7 +55,7 @@ _useInsetRect(false),
 _z(0),
 _celInfo(celInfo),
 _celObj(nullptr),
-_fixPriority(false),
+_fixedPriority(false),
 _position(0, 0),
 _object(make_reg(0, _nextObjectId++)),
 _pictureId(-1),
@@ -70,7 +70,7 @@ _useInsetRect(false),
 _z(0),
 _celInfo(celInfo),
 _celObj(nullptr),
-_fixPriority(false),
+_fixedPriority(false),
 _position(rect.left, rect.top),
 _object(make_reg(0, _nextObjectId++)),
 _pictureId(-1),
@@ -90,7 +90,7 @@ _useInsetRect(false),
 _z(0),
 _celInfo(celInfo),
 _celObj(nullptr),
-_fixPriority(false),
+_fixedPriority(false),
 _position(position),
 _object(make_reg(0, _nextObjectId++)),
 _pictureId(-1),
@@ -209,10 +209,10 @@ void ScreenItem::setFromObject(SegManager *segMan, const reg_t object, const boo
 	}
 
 	if (readSelectorValue(segMan, object, SELECTOR(fixPriority))) {
-		_fixPriority = true;
+		_fixedPriority = true;
 		_priority = readSelectorValue(segMan, object, SELECTOR(priority));
 	} else {
-		_fixPriority = false;
+		_fixedPriority = false;
 		writeSelectorValue(segMan, object, SELECTOR(priority), _position.y);
 	}
 
@@ -326,6 +326,9 @@ void ScreenItem::calcRects(const Plane &plane) {
 				mulinc(temp, celToScreenX, Ratio());
 
 				CelObjPic *celObjPic = dynamic_cast<CelObjPic *>(_celObj);
+				if (celObjPic == nullptr) {
+					error("Expected a CelObjPic");
+				}
 				temp.translate((celObjPic->_relativePosition.x * scriptToScreenX).toInt() - displaceX, 0);
 
 				// TODO: This is weird.
@@ -369,6 +372,9 @@ void ScreenItem::calcRects(const Plane &plane) {
 				}
 
 				CelObjPic *celObjPic = dynamic_cast<CelObjPic *>(_celObj);
+				if (celObjPic == nullptr) {
+					error("Expected a CelObjPic");
+				}
 				temp.translate(celObjPic->_relativePosition.x - (displaceX * scaleX).toInt(), celObjPic->_relativePosition.y - (celObj._displace.y * scaleY).toInt());
 
 				// TODO: This is weird.
@@ -402,7 +408,7 @@ void ScreenItem::calcRects(const Plane &plane) {
 			_screenRect.top = 0;
 		}
 
-		if (!_fixPriority) {
+		if (!_fixedPriority) {
 			_priority = _z + _position.y;
 		}
 	} else {

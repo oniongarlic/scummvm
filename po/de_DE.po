@@ -1,23 +1,22 @@
 # German translation for ScummVM.
 # Copyright (C) 2010-2016 The ScummVM Team
 # This file is distributed under the same license as the ScummVM package.
-# Simon Sawatzki <SimSaw@gmx.de>, Lothar Serra Mari <scummvm@rootfather.de>, 2016.
+# Simon Sawatzki <SimSaw@gmx.de>, Lothar Serra Mari <rootfather@scummvm.org>, 2016.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: ScummVM 1.8.0git\n"
+"Project-Id-Version: ScummVM 1.9.0git\n"
 "Report-Msgid-Bugs-To: scummvm-devel@lists.sf.net\n"
-"POT-Creation-Date: 2016-04-07 08:55+0100\n"
-"PO-Revision-Date: 2016-03-28 15:00+0100\n"
-"Last-Translator: Lothar Serra Mari <scummvm@rootfather.de>\n"
+"POT-Creation-Date: 2016-04-07 08:55+0200\n"
+"PO-Revision-Date: 2016-05-29 17:00+0200\n"
+"Last-Translator: Lothar Serra Mari <rootfather@scummvm.org>\n"
 "Language-Team: Simon Sawatzki <SimSaw@gmx.de>, Lothar Serra Mari "
-"<scummvm@rootfather.de>\n"
+"<rootfather@scummvm.org>\n"
 "Language: Deutsch\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Poedit 1.8.5\n"
 
 #: gui/about.cpp:94
 #, c-format
@@ -697,7 +696,7 @@ msgstr "Schneller Modus"
 
 #: gui/options.cpp:87 common/updates.cpp:56
 msgid "Never"
-msgstr "Niemals"
+msgstr "nie"
 
 #: gui/options.cpp:87
 msgid "every 5 mins"
@@ -979,7 +978,7 @@ msgstr "Musiklautstärke:"
 
 #: gui/options.cpp:970
 msgid "Mute All"
-msgstr "Alles aus"
+msgstr "Stumm"
 
 #: gui/options.cpp:973
 msgid "SFX volume:"
@@ -1063,7 +1062,7 @@ msgstr "Sprache der ScummVM-Oberfläche"
 
 #: gui/options.cpp:1235
 msgid "Update check:"
-msgstr "Suche nach Aktualisierungen:"
+msgstr "Updates suchen:"
 
 #: gui/options.cpp:1235
 msgid "How often to check ScummVM updates"
@@ -1284,7 +1283,7 @@ msgstr ""
 
 #: gui/updates-dialog.cpp:55
 msgid "(You can always enable it in the options dialog on the Misc tab)"
-msgstr "(Sie können diese auch jederzeit im Options-Dialog unter dem Reiter "Sonstiges" aktivieren)"
+msgstr "(Sie können diese auch jederzeit im Options-Dialog unter dem Reiter \"Sonstiges\" aktivieren)"
 
 #: gui/updates-dialog.cpp:92
 msgid "Check for updates automatically"
@@ -2964,11 +2963,11 @@ msgstr ""
 
 #: engines/scumm/detection.cpp:1335
 msgid "Show Object Line"
-msgstr "Objektzeile anzeigen"
+msgstr "Objektzeile zeigen"
 
 #: engines/scumm/detection.cpp:1336
 msgid "Show the names of objects at the bottom of the screen"
-msgstr "Zeige die Namen von Objekten im unteren Bereich des Bildschirms"
+msgstr "Objektnamen und Verben am unteren Bildrand anzeigen"
 
 #: engines/scumm/dialogs.cpp:176
 #, c-format

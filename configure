@@ -440,7 +440,7 @@ get_system_exe_extension() {
 	arm-riscos)
 		_exeext=",ff8"
 		;;
-	dreamcast | ds | gamecube | n64 | ps2 | psp | wii)
+	3ds | dreamcast | ds | gamecube | n64 | ps2 | psp | wii)
 		_exeext=".elf"
 		;;
 	gph-linux)
@@ -843,9 +843,9 @@ Usage: $0 [OPTIONS]...
 
 Configuration:
   -h, --help              display this help and exit
-  --backend=BACKEND       backend to build (android, tizen, dc, dingux, ds, gcw0,
+  --backend=BACKEND       backend to build (3ds, android, dc, dingux, ds, gcw0,
                           gph, iphone, ios7, linuxmoto, maemo, n64, null, openpandora,
-                          ps2, psp, samsungtv, sdl, webos, wii, wince) [sdl]
+                          ps2, psp, samsungtv, sdl, tizen, webos, wii, wince) [sdl]
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
@@ -871,10 +871,11 @@ Fine tuning of the installation directories:
 
 Special configuration feature:
   --host=HOST             cross-compile to target HOST (arm-linux, ...)
-                          special targets: android-arm for Android ARM
+                          special targets: 3ds for Nintendo 3DS
+                                           android-arm for Android ARM
                                            android-mips for Android MIPS
                                            android-x86 for Android x86
-                                           tizen for Samsung Tizen
+                                           androidsdl for Android with SDL backend
                                            caanoo for Caanoo
                                            dingux for Dingux
                                            raspberrypi for Raspberry Pi
@@ -899,6 +900,7 @@ Special configuration feature:
                                            ps3 for PlayStation 3
                                            psp for PlayStation Portable
                                            samsungtv for Samsung TV
+                                           tizen for Samsung Tizen
                                            webos for HP Palm WebOS
                                            wii for Nintendo Wii
                                            wince for Windows CE
@@ -992,8 +994,8 @@ Optional Libraries:
                            installed (optional)
   --disable-fluidsynth     disable fluidsynth MIDI driver [autodetect]
 
-  --with-sparkle-prefix=DIR   Prefix where sparkle is installed (Mac OS X only - optional)
-  --disable-sparkle        disable sparkle automatic update support [Mac OS X only - autodetect]
+  --with-sparkle-prefix=DIR   Prefix where sparkle is installed (OS X/Windows only - optional)
+  --disable-sparkle        disable sparkle automatic update support [OS X/Windows only - autodetect]
 
   --disable-osx-dock-plugin disable the NSDockTilePlugin support [Mac OS X only - autodetect]
 
@@ -1311,6 +1313,11 @@ get_system_exe_extension $guessed_host
 NATIVEEXEEXT=$_exeext
 
 case $_host in
+3ds)
+	_host_os=3ds
+	_host_cpu=arm
+	_host_alias=arm-none-eabi
+	;;
 android | android-arm | android-v7a | android-arm-v7a | ouya)
 	_host_os=android
 	_host_cpu=arm
@@ -1323,6 +1330,26 @@ android-mips)
 	;;
 android-x86)
 	_host_os=android
+	_host_cpu=i686
+	_host_alias=i686-linux-android
+	;;
+androidsdl-armeabi | androidsdl-armeabi-v7a)
+	_host_os=androidsdl
+	_host_cpu=arm
+	_host_alias=arm-linux-androideabi
+	;;
+androidsdl-arm64-v8a)
+	_host_os=androidsdl
+	_host_cpu=aarch64
+	_host_alias=aarch64-linux-android
+	;;
+androidsdl-mips)
+	_host_os=androidsdl
+	_host_cpu=mipsel
+	_host_alias=mipsel-linux-android
+	;;
+androidsdl-x86)
+	_host_os=androidsdl
 	_host_cpu=i686
 	_host_alias=i686-linux-android
 	;;
@@ -1602,7 +1629,7 @@ android)
 		exit 1
 	fi
 	;;
-ds | gamecube | wii)
+3ds | ds | gamecube | wii)
 	if test -z "$DEVKITPRO"; then
 		echo "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to devkitPRO>"
 		exit 1
@@ -1858,7 +1885,7 @@ if test "$have_gcc" = yes ; then
 			case $_host_os in
 			# newlib-based system include files suppress non-C89 function
 			# declarations under __STRICT_ANSI__
-			amigaos* | android | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince)
+			3ds | amigaos* | android | androidsdl | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince )
 				;;
 			qnx)
 				echo_n "Disabling -ansi on QNX"
@@ -1897,7 +1924,7 @@ echo $_use_cxx11
 # However, some platforms use GNU extensions in system header files, so
 # for these we must not use -pedantic.
 case $_host_os in
-android | gamecube | psp | tizen | wii | webos)
+android | androidsdl | gamecube | psp | tizen | wii | webos)
 	;;
 *)
 	# ICC does not support pedantic, while GCC and clang do.
@@ -2163,6 +2190,27 @@ esac
 echo_n "Checking hosttype... "
 echo $_host_os
 case $_host_os in
+	3ds)
+		_optimization_level=-O2
+		append_var DEFINES "-D__3DS__"
+		append_var DEFINES "-DARM"
+		append_var DEFINES "-DARM11"
+		append_var CXXFLAGS "-march=armv6k"
+		append_var CXXFLAGS "-mtune=mpcore"
+		append_var CXXFLAGS "-mword-relocations"
+		append_var CXXFLAGS "-mfloat-abi=hard"
+		append_var CXXFLAGS "-ffunction-sections"
+		append_var CXXFLAGS "-fomit-frame-pointer"
+		append_var CXXFLAGS "-I$DEVKITPRO/libctru/include"
+		append_var CXXFLAGS "-I$DEVKITPRO/portlibs/3ds/include"
+		if test "$_dynamic_modules" = no ; then
+			append_var LDFLAGS "-Wl,--gc-sections"
+		else
+			append_var LDFLAGS "-Wl,--no-gc-sections"
+		fi
+		append_var LDFLAGS "-L$DEVKITPRO/portlibs/3ds/lib"
+		append_var LIBS "-lcitro3d -lctru"
+		;;
 	amigaos*)
 		append_var LDFLAGS "-Wl,--export-dynamic"
 		append_var LDFLAGS "-L/sdk/local/newlib/lib"
@@ -2377,7 +2425,7 @@ case $_host_os in
 				echo "Could not determine prefix for static libraries"
 			fi
 		fi
-		
+
 		# If _xcodetoolspath is not set yet use xcode-select to get the path
 		if test -z "$_xcodetoolspath"; then
 			_xcodetoolspath=`xcode-select -print-path`/Tools
@@ -2600,6 +2648,18 @@ if test -n "$_host"; then
 	# Cross-compiling mode - add your target here if needed
 	echo "Cross-compiling to $_host"
 	case "$_host" in
+		3ds)
+			append_var DEFINES "-DDISABLE_FANCY_THEMES"
+			append_var DEFINES "-DDISABLE_SID"
+			append_var DEFINES "-DDISABLE_NES_APU"
+			_backend="3ds"
+			_build_scalers=no
+			_vkeybd=yes
+			_mt32emu=no
+			# Should use Tremor instead of Vorbis
+			_vorbis=no
+			_port_mk="backends/platform/3ds/3ds.mk"
+			;;
 		android | android-arm | android-v7a | android-arm-v7a | android-mips | android-x86 | ouya)
 			# we link a .so as default
 			append_var LDFLAGS "-shared"
@@ -2612,6 +2672,15 @@ if test -n "$_host"; then
 			_seq_midi=no
 			_mt32emu=no
 			_timidity=no
+			;;
+		androidsdl | androidsdl-armeabi | androidsdl-armeabi-v7a | androidsdl-mips | androidsdl-x86 | androidsdl-arm64-v8a)
+			DEFINES="$DEFINES -DANDROIDSDL"
+			_unix=yes
+			_seq_midi=no
+			_mt32emu=no
+			_timidity=no
+			_backend="androidsdl"
+			_port_mk="backends/platform/androidsdl/androidsdl.mk"
 			;;
 		arm-linux|arm*-linux-gnueabi|arm-*-linux)
 			;;
@@ -2786,21 +2855,19 @@ if test -n "$_host"; then
 		gcw0)
 			_sysroot=`$CXX --print-sysroot`
 			_sdlpath=$_sysroot/usr/bin
-			append_var DEFINES "-DDINGUX -DGCW0"
+			append_var DEFINES "-DDINGUX -DGCW0 -DGUI_ONLY_FULLSCREEN"
 			append_var DEFINES "-DREDUCE_MEMORY_USAGE"
 			append_var CXXFLAGS "-mips32"
 			_backend="dingux"
-			_mt32emu=no
-			_optimization_level=-O3
-			# Disable alsa midi to get the port build on OpenDingux toolchain
 			_alsa=no
-			_vkeybd=yes
-			_build_hq_scalers=no
-			_keymapper=yes
-			# Force disable vorbis on dingux, it has terrible performance compared to tremor
-			_vorbis=no
-			# Force disable seq on dingux, no way to use it and it would get enabled by default with configure
+			_mt32emu=no
 			_seq_midi=no
+			_timidity=no
+			_build_scalers=no
+			_optimization_level=-O3
+			_vkeybd=yes
+			_keymapper=yes
+			_vorbis=no
 			_port_mk="backends/platform/dingux/dingux.mk"
 			;;
 		gp2x)
@@ -3100,12 +3167,16 @@ fi
 # Backend related stuff
 #
 case $_backend in
+	3ds)
+		;;
 	android)
 		append_var DEFINES "-DREDUCE_MEMORY_USAGE"
 		append_var CXXFLAGS "-Wa,--noexecstack"
 		append_var LDFLAGS "-Wl,-z,noexecstack"
 		append_var INCLUDES "-I$ANDROID_NDK/sources/cxx-stl/system/include"
 		;;
+	androidsdl)
+		;;		
 	dc)
 		append_var INCLUDES '-I$(srcdir)/backends/platform/dc'
 		append_var INCLUDES '-isystem $(ronindir)/include'
@@ -3202,6 +3273,8 @@ case $_backend in
 		append_var LDFLAGS "-shared"
 		append_var LDFLAGS "-fpic"
 		;;
+	sdl)
+		;;
 	tizen)
 		# dirent.h not available. NONSTANDARD_PORT==ensure portdefs.h is included
 		append_var DEFINES "-DTIZEN -DDISABLE_STDIO_FILESTREAM -DNONSTANDARD_PORT"
@@ -3250,8 +3323,6 @@ case $_backend in
 		append_var DEFINES "-DSDL_BACKEND"
 		add_line_to_config_mk "SDL_BACKEND = 1"
 		;;
-	sdl)
-		;;
 	*)
 		echo "support for $_backend backend not implemented in configure script yet"
 		exit 1
@@ -3263,7 +3334,7 @@ append_var MODULES "backends/platform/$_backend"
 # Setup SDL specifics for SDL based backends
 #
 case $_backend in
-	dingux | gph | linuxmoto | maemo | openpandora | samsungtv | sdl)
+	androidsdl | dingux | gph | linuxmoto | maemo | openpandora | samsungtv | sdl)
 		find_sdlconfig
 		append_var INCLUDES "`$_sdlconfig --prefix="$_sdlpath" --cflags`"
 		append_var LIBS "`$_sdlconfig --prefix="$_sdlpath" --libs`"
@@ -3286,7 +3357,7 @@ esac
 # Enable 16bit support only for backends which support it
 #
 case $_backend in
-	android | dingux | dc | gph | iphone | ios7 | maemo | openpandora | psp | samsungtv | sdl | tizen | webos | wii)
+	3ds | android | androidsdl | dingux | dc | gph | iphone | ios7 | maemo | openpandora | psp | samsungtv | sdl | tizen | webos | wii)
 		if test "$_16bit" = auto ; then
 			_16bit=yes
 		else
@@ -3365,7 +3436,7 @@ case $_host_os in
 	amigaos* | cygwin* | dreamcast | ds | gamecube | mingw* | n64 | ps2 | ps3 | psp | wii | wince)
 		_posix=no
 		;;
-	android | beos* | bsd* | darwin* | freebsd* | gnu* | gph-linux | haiku* | hpux* | iphone | ios7 | irix*| k*bsd*-gnu* | linux* | maemo | mint* | netbsd* | openbsd* | solaris* | sunos* | uclinux* | webos | qnx)
+	3ds | android | androidsdl | beos* | bsd* | darwin* | freebsd* | gnu* | gph-linux | haiku* | hpux* | iphone | ios7 | irix*| k*bsd*-gnu* | linux* | maemo | mint* | netbsd* | openbsd* | qnx | solaris* | sunos* | uclinux* | webos )
 		_posix=yes
 		;;
 	os2-emx*)
@@ -4023,6 +4094,31 @@ EOF
 		fi
 		echo "$_sparkle"
 	;;
+	mingw*)
+		echocheck "Sparkle"
+		if test "$_updates" = no; then
+			_sparkle=no
+		else
+			if test ! -z $_sparklepath ; then
+				SPARKLE_CFLAGS="-I$_sparklepath/include"
+				SPARKLE_LIBS="-L$_sparklepath/Release -L$_sparklepath/x64/Release"
+			fi
+			if test "$_sparkle" = auto ; then
+				_sparkle=no
+				cat > $TMPC << EOF
+#include <winsparkle.h>
+int main(void) { win_sparkle_get_update_check_interval(); return 0; }
+EOF
+				cc_check $SPARKLE_CFLAGS $SPARKLE_LIBS -lWinSparkle && _sparkle=yes
+			fi
+			if test "$_sparkle" = yes ; then
+				append_var LIBS "$SPARKLE_LIBS -lWinSparkle"
+				append_var INCLUDES "$SPARKLE_CFLAGS"
+			fi
+			define_in_config_if_yes "$_sparkle" 'USE_SPARKLE'
+		fi
+		echo "$_sparkle"
+	;;
 	*)
 		_sparkle=no
 	;;
@@ -4626,6 +4722,14 @@ fi
 # after all of CXXFLAGS, LDFLAGS, LIBS etc. have been setup
 #
 case $_backend in
+	3ds)
+		if test "$_freetype2" = yes -a "$_png" = yes; then
+			append_var LIBS "-lpng"
+		fi
+		if test "$_tremor" = yes -o "$_flac" = yes; then
+			append_var LIBS "-logg"
+		fi
+		;;
 	android)
 		# ssp at this point so the cxxtests link
 		if test "$_debug_build" = yes; then

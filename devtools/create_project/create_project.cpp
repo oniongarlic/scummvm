@@ -347,6 +347,20 @@ int main(int argc, char *argv[]) {
 		setup.defines.push_back("MACOSX");
 		setup.defines.push_back("IPHONE");
 	}
+
+	bool updatesEnabled = false;
+	for (FeatureList::const_iterator i = setup.features.begin(); i != setup.features.end(); ++i) {
+		if (i->enable && !strcmp(i->name, "updates"))
+			updatesEnabled = true;
+	}
+	if (updatesEnabled) {
+		setup.defines.push_back("USE_SPARKLE");
+		if (projectType != kProjectXcode)
+			setup.libraries.push_back("winsparkle");
+		else
+			setup.libraries.push_back("sparkle");
+	}
+
 	setup.defines.push_back("SDL_BACKEND");
 	if (!setup.useSDL2) {
 		cout << "\nBuilding against SDL 1.2\n\n";
@@ -938,17 +952,17 @@ TokenList tokenize(const std::string &input, char separator) {
 namespace {
 const Feature s_features[] = {
 	// Libraries
-	{      "libz",        "USE_ZLIB", "zlib",             true, "zlib (compression) support" },
-	{       "mad",         "USE_MAD", "libmad",           true, "libmad (MP3) support" },
+	{      "libz",        "USE_ZLIB", "zlib",             true,  "zlib (compression) support" },
+	{       "mad",         "USE_MAD", "libmad",           true,  "libmad (MP3) support" },
 	{    "vorbis",      "USE_VORBIS", "libvorbisfile_static libvorbis_static libogg_static", true, "Ogg Vorbis support" },
 	{      "flac",        "USE_FLAC", "libFLAC_static win_utf8_io_static",   true, "FLAC support" },
-	{       "png",         "USE_PNG", "libpng16",         true, "libpng support" },
+	{       "png",         "USE_PNG", "libpng16",         true,  "libpng support" },
 	{      "faad",        "USE_FAAD", "libfaad",          false, "AAC support" },
 	{     "mpeg2",       "USE_MPEG2", "libmpeg2",         false, "MPEG-2 support" },
-	{    "theora",   "USE_THEORADEC", "libtheora_static", true, "Theora decoding support" },
-	{  "freetype",   "USE_FREETYPE2", "freetype",         true, "FreeType support" },
-	{      "jpeg",        "USE_JPEG", "jpeg-static",      true, "libjpeg support" },
-	{"fluidsynth",  "USE_FLUIDSYNTH", "libfluidsynth",    true, "FluidSynth support" },
+	{    "theora",   "USE_THEORADEC", "libtheora_static", true,  "Theora decoding support" },
+	{  "freetype",   "USE_FREETYPE2", "freetype",         true,  "FreeType support" },
+	{      "jpeg",        "USE_JPEG", "jpeg-static",      true,  "libjpeg support" },
+	{"fluidsynth",  "USE_FLUIDSYNTH", "libfluidsynth",    true,  "FluidSynth support" },
 
 	// Feature flags
 	{            "bink",             "USE_BINK",         "", true,  "Bink video support" },
@@ -964,6 +978,7 @@ const Feature s_features[] = {
 	{          "vkeybd",        "ENABLE_VKEYBD",         "", false, "Virtual keyboard support"},
 	{       "keymapper",     "ENABLE_KEYMAPPER",         "", false, "Keymapper support"},
 	{   "eventrecorder", "ENABLE_EVENTRECORDER",         "", false, "Event recorder support"},
+	{         "updates",          "USE_UPDATES",         "", false, "Updates support"},
 	{      "langdetect",       "USE_DETECTLANG",         "", true,  "System language detection support" } // This feature actually depends on "translation", there
 	                                                                                                      // is just no current way of properly detecting this...
 };

@@ -86,6 +86,7 @@ WageEngine::WageEngine(OSystem *syst, const ADGameDescription *desc) : Engine(sy
 	_offer = NULL;
 
 	_resManager = NULL;
+	_debugger = NULL;
 
 	debug("WageEngine::WageEngine()");
 }
@@ -148,23 +149,13 @@ void WageEngine::processEvents() {
 	Common::Event event;
 
 	while (_eventMan->pollEvent(event)) {
+		if (_gui->processEvent(event))
+			continue;
+
 		switch (event.type) {
 		case Common::EVENT_QUIT:
 			if (saveDialog())
 				_shouldQuit = true;
-			break;
-		case Common::EVENT_MOUSEMOVE:
-			_gui->mouseMove(event.mouse.x, event.mouse.y);
-			break;
-		case Common::EVENT_LBUTTONDOWN:
-			_gui->mouseDown(event.mouse.x, event.mouse.y);
-			break;
-		case Common::EVENT_LBUTTONUP:
-			{
-				Designed *obj = _gui->mouseUp(event.mouse.x, event.mouse.y);
-				if (obj != NULL)
-					processTurn(NULL, obj);
-			}
 			break;
 		case Common::EVENT_KEYDOWN:
 			switch (event.kbd.keycode) {
@@ -186,13 +177,6 @@ void WageEngine::processEvents() {
 			default:
 				if (event.kbd.ascii == '~') {
 					_debugger->attach();
-					break;
-				}
-
-				if (event.kbd.flags & (Common::KBD_ALT | Common::KBD_CTRL | Common::KBD_META)) {
-					if (event.kbd.ascii >= 0x20 && event.kbd.ascii <= 0x7f) {
-						_gui->processMenuShortCut(event.kbd.flags, event.kbd.ascii);
-					}
 					break;
 				}
 
@@ -236,7 +220,6 @@ void WageEngine::gameOver() {
 
 	_gui->disableAllMenus();
 	_gui->enableNewGameMenus();
-	_gui->_menuDirty = true;
 }
 
 bool WageEngine::saveDialog() {
@@ -388,6 +371,7 @@ void WageEngine::onMove(Designed *what, Designed *from, Designed *to) {
 	if (!_temporarilyHidden) {
 		if (to == currentScene || from == currentScene) {
 			redrawScene();
+			g_system->updateScreen();
 			g_system->delayMillis(100);
 		}
 	}
@@ -399,6 +383,7 @@ void WageEngine::redrawScene() {
 	if (currentScene != NULL) {
 		bool firstTime = (_lastScene != currentScene);
 
+		_gui->draw();
 		updateSoundTimerForScene(currentScene, firstTime);
 	}
 }

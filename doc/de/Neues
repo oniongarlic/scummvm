@@ -11,10 +11,21 @@ Programmcodes finden Sie auf Englisch unter:
      Diese Funktion war im originalen Interpreter nur im Hercules-Darstellungsmodus
      verfügbar.
 
-1.8.1 (DD.MM.YYYY)
+ SCI:
+   - Fehlende Dialogzeile in QfG3 hinzugefügt, die mit drei zusätzlichen Punkten
+     belohnt wird. Diese Dialogzeile fehlt im Originalspiel, weshalb
+     es bislang unmöglich war, die maximale Punktzahl im Spiel zu erreichen.
+
+1.8.1 (25.05.2016)
+ Neue Portierungen:
+   - Portierung für den Nintendo 3DS hinzugefügt.
+   - Portierung für Android SDL hinzugefügt.
+
  Allgemein:
    - "TESTING"-Markierung von mehreren unterstützten Spielen entfernt.
    - Chinesische Übersetzung (Pinyin) der Benutzeroberfläche hinzugefügt.
+   - Ruckeln des Mauszeigers im ScummVM-Programmfenster behoben, welches auf
+     einigen Systemen auftrat.
 
  BBVS:
    - Fehler beim erneuten Starten des Spiels behoben.
@@ -22,16 +33,50 @@ Programmcodes finden Sie auf Englisch unter:
  CinE:
    - Fehler beim Laden der Soundeffekte behoben.
 
+ Drascula:
+   - Text-Ausrichtung ist jetzt originalgetreu.
+   - Charakter tritt nicht mehr aus dem Bildschirmbereich heraus.
+   - Laden eines Spielstandes in der "Pendulum"-Szene repariert.
+   - Falscher Hintergrund für Inventar-Gegenstände im Kapitel 6 in der
+     spanischen Version korrigiert.
+   - Geschwindigkeit der Animationen korrigiert. Animationen wurden nur halb
+     so schnell wie im originalen Interpreter abgespielt.
+   - Rauschen am Beginn und/oder am Ende der Sprachausgabe behoben.
+     Dieser Fehler trat hauptsächlich in der spanischen Version auf.
+   - Verzögerung während der Interaktion mit dem Verben-Menü und dem Inventar behoben.
+   - Fehler behoben, durch den die Axt im Schloss mehrfach aufgehoben werden konnte.
+
  Gob:
    - Aufhängen während Sound-Initialisierung in mehreren Spielen behoben.
+
+ KYRA:
+   - Potentieller Absturz behoben, der in "Hand of Fate" auftritt, wenn der
+     Sumpfschlangentrank an der Ratte verwendet wird.
+     (HINWEIS: Dieser Fehler wurde bereits in Version 1.8.0 behoben,
+     jedoch nicht in der Neues-Datei erwähnt).
+   - Fehlende Stimm-Reaktionen korrigiert, wenn Gegner in der CD-Version von
+     Lands of Lore getroffen wurden.
 
  Lab:
    - Aufhängen während der End-Sequenz behoben.
    - Interne Spiel-Bedienelemente verbessert.
+   - Aufhängen bei einigen Animationen im Spiel behoben.
 
  SAGA:
    - Fehlerhafte Farben der Bedienelemente in der französischen und deutschen
-     Version von "I Have No Mouth and I Must Screm" korrigiert.
+     Version von "I Have No Mouth and I Must Scream" korrigiert.
+
+ SCI:
+   - Cursor-Hilfsroutinen funktionieren nun korrekt auf OpenPandora und anderen
+     Geräten, die einen Touchscreen und analoge Sticks/Mäuse zur gleichen Zeit
+     unterstützen.
+   - Skript-Fehlerbehebung, um den fehlerhaften Endkampf in der mehrsprachigen
+     Version von King's Quest 5 zu korrigieren. Betroffen sind die französische,
+     deutsche und spanische Version.
+   - Ungültiger Speicherzugriff beim Laden der defekten Audiospur im Abspann
+     von King's Quest 5 behoben.
+   - Probleme mit der Einstellung der Bildschirmauflösung beim Speichern in
+     King's Quest 6 behoben.
 
  SCUMM:
    - Erkennung von Maniac Mansion innerhalb von Day of the Tentacle in der
@@ -55,6 +100,9 @@ Programmcodes finden Sie auf Englisch unter:
      wenn ScummVM nicht läuft, und ermöglicht den direkten Start dieser Spiele.
    - Sparkle-Updater für vereinfachte Programmaktualisierungen hinzugefügt.
 
+ GCW0-Portierung:
+   - Verbesserte Unterstützung für die in ScummVM integrierte Dokumentation.
+
 1.8.0 (04.03.2016)
  Neue Spiele:
    - Unterstützung für Rex Nebular and the Cosmic Gender Bender hinzugefügt.
@@ -71,7 +119,7 @@ Programmcodes finden Sie auf Englisch unter:
      hinzugefügt.
    - Unterstützung für Labyrinth of Time hinzugefügt.
 
-Neue Portierungen:
+ Neue Portierungen:
    - Portierung für den Raspberry Pi hinzugefügt.
    - Portierung für den GCW Zero (GCW0) hinzugefügt.
 
@@ -81,7 +129,7 @@ Neue Portierungen:
  SDL:
    - Alt+x beendet ScummVM nicht mehr. Verwenden Sie stattdessen
      Cmd+q/Strg+q/Strg+z und beachten Sie die Hinweise in der Liesmich-Datei.
-  -  Auf POSIX-Systemen befolgen wir nun die Spezifikation XDG Base Directory
+   - Auf POSIX-Systemen befolgen wir nun die Spezifikation XDG Base Directory
      für die Speicherung von Benutzerdaten. Dies führt zu neuen
      Speicherorten für unsere Konfigurationsdatei, unsere Log-Datei sowie für
      den standardmäßig voreingestellten Speicherort für Spielstände. Wir

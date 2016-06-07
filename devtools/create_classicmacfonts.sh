@@ -4,7 +4,7 @@
 # from it. Mac only, unfortunately.
 #
 # On Windows you perhaps can perform the extraction manually with use of
-# HFV Explorer: https://web.archive.org/web/20011202005455/http://gamma.nic.fi/~lpesonen/HFVExplorer/
+# HFSxplorer: http://www.catacombae.org/hfsexplorer/
 #
 # More information could be found in the vMac documentation: http://www.gryphel.com/c/image/
 #
@@ -106,8 +106,8 @@ echo_n "Converting fonts..."
 fondu-060102/fondu -force *.bin
 echo done
 
-zip -9 wage *.bdf
-mv wage.zip wage.dat
+zip -9 classicmacfonts *.bdf
+mv classicmacfonts.zip classicmacfonts.dat
 
 echo_n "Cleaning up..."
 rm *.bdf
@@ -116,4 +116,4 @@ rm *.bin
 rm *.dmg
 echo done
 
-ls -l wage.dat
+ls -l classicmacfonts.dat

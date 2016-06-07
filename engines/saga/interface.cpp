@@ -1170,7 +1170,7 @@ void Interface::processStatusTextInput(Common::KeyState keystate) {
 		_statusTextInputPos--;
 		_statusTextInputString[_statusTextInputPos] = 0;
 	default:
-		if (_statusTextInputPos >= STATUS_TEXT_INPUT_MAX) {
+		if (_statusTextInputPos > STATUS_TEXT_INPUT_MAX - 1) { // -1 because of the null termination
 			break;
 		}
 		if (Common::isAlnum(keystate.ascii) || (keystate.ascii == ' ')) {
@@ -2299,6 +2299,9 @@ void Interface::drawPanelButtonText(InterfacePanel *panel, PanelButton *panelBut
 		break;
 	}
 	if (_vm->getGameId() == GID_ITE) {
+		if (textId > kTextEnterProtectAnswer)
+			error("This should not happen. Please report to ScummVM Team how you achieved this error.");
+
 		text = _vm->getTextString(textId);
 		textFont = kKnownFontMedium;
 		textShadowKnownColor = kKnownColorVerbTextShadow;

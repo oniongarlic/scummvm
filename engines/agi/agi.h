@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef AGI_H
-#define AGI_H
+#ifndef AGI_AGI_H
+#define AGI_AGI_H
 
 #include "common/scummsys.h"
 #include "common/error.h"
@@ -42,8 +42,6 @@
 #include "agi/picture.h"
 #include "agi/logic.h"
 #include "agi/sound.h"
-
-#include "gui/predictivedialog.h"
 
 namespace Common {
 class RandomSource;
@@ -993,4 +991,4 @@ private:
 
 } // End of namespace Agi
 
-#endif /* AGI_H */
+#endif /* AGI_AGI_H */

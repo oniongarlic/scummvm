@@ -41,8 +41,6 @@ namespace Adl {
 #define DISPLAY_PITCH (DISPLAY_WIDTH / 7)
 #define DISPLAY_SIZE (DISPLAY_PITCH * DISPLAY_HEIGHT)
 
-#define TEXT_WIDTH 40
-#define TEXT_HEIGHT 24
 #define TEXT_BUF_SIZE (TEXT_WIDTH * TEXT_HEIGHT)
 
 #define COLOR_PALETTE_ENTRIES 8
@@ -221,17 +219,35 @@ void Display::loadFrameBuffer(Common::ReadStream &stream) {
 
 void Display::putPixel(const Common::Point &p, byte color) {
 	byte offset = p.x / 7;
+	byte mask = 0x80 | (1 << (p.x % 7));
 
+	// Since white and black are in both palettes, we leave
+	// the palette bit alone
+	if ((color & 0x7f) == 0x7f || (color & 0x7f) == 0)
+		mask &= 0x7f;
+
+	// Adjust colors starting with bits '01' or '10' for
+	// odd offsets
 	if (offset & 1) {
 		byte c = color << 1;
 		if (c >= 0x40 && c < 0xc0)
 			color ^= 0x7f;
 	}
 
-	byte *b = _frameBuf + p.y * DISPLAY_PITCH + offset;
-	color ^= *b;
-	color &= 1 << (p.x % 7);
-	*b ^= color;
+	writeFrameBuffer(p, color, mask);
+}
+
+void Display::setPixelBit(const Common::Point &p, byte color) {
+	writeFrameBuffer(p, color, 1 << (p.x % 7));
+}
+
+void Display::setPixelPalette(const Common::Point &p, byte color) {
+	writeFrameBuffer(p, color, 0x80);
+}
+
+bool Display::getPixelBit(const Common::Point &p) const {
+	byte *b = _frameBuf + p.y * DISPLAY_PITCH + p.x / 7;
+	return *b & (1 << (p.x % 7));
 }
 
 void Display::clear(byte color) {
@@ -271,21 +287,23 @@ void Display::moveCursorTo(const Common::Point &pos) {
 		error("Cursor position (%i, %i) out of bounds", pos.x, pos.y);
 }
 
+// FIXME: This does not currently update the surfaces
+void Display::printChar(char c) {
+	if (c == APPLECHAR('\r'))
+		_cursorPos = (_cursorPos / TEXT_WIDTH + 1) * TEXT_WIDTH;
+	else if ((byte)c < 0x80 || (byte)c >= 0xa0) {
+		setCharAtCursor(c);
+		++_cursorPos;
+	}
+
+	if (_cursorPos == TEXT_BUF_SIZE)
+		scrollUp();
+}
+
 void Display::printString(const Common::String &str) {
 	Common::String::const_iterator c;
-	for (c = str.begin(); c != str.end(); ++c) {
-		byte b = *c;
-
-		if (*c == APPLECHAR('\r'))
-			_cursorPos = (_cursorPos / TEXT_WIDTH + 1) * TEXT_WIDTH;
-		else if (b < 0x80 || b >= 0xa0) {
-			setCharAtCursor(b);
-			++_cursorPos;
-		}
-
-		if (_cursorPos == TEXT_BUF_SIZE)
-			scrollUp();
-	}
+	for (c = str.begin(); c != str.end(); ++c)
+		printChar(*c);
 
 	updateTextScreen();
 }
@@ -306,6 +324,13 @@ void Display::setCharAtCursor(byte c) {
 
 void Display::showCursor(bool enable) {
 	_showCursor = enable;
+}
+
+void Display::writeFrameBuffer(const Common::Point &p, byte color, byte mask) {
+	byte *b = _frameBuf + p.y * DISPLAY_PITCH + p.x / 7;
+	color ^= *b;
+	color &= mask;
+	*b ^= color;
 }
 
 void Display::showScanlines(bool enable) {

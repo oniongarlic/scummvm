@@ -142,6 +142,9 @@ PredictiveDialog::PredictiveDialog() : Dialog("Predictive") {
 	_numMemory = 0;
 
 	_navigationWithKeys = false;
+
+	_curPressedButton = kNoAct;
+	_needRefresh = true;
 }
 
 PredictiveDialog::~PredictiveDialog() {
@@ -190,7 +193,7 @@ void PredictiveDialog::saveUserDictToFile() {
 
 void PredictiveDialog::handleKeyUp(Common::KeyState state) {
 	if (_curPressedButton != kNoAct && !_needRefresh) {
-		_button[_curPressedButton]->startAnimatePressedState();
+		_button[_curPressedButton]->setUnpressedState();
 		processButton(_curPressedButton);
 	}
 }
@@ -352,7 +355,7 @@ void PredictiveDialog::handleKeyDown(Common::KeyState state) {
 	}
 
 	if (_lastButton != _curPressedButton)
-		_button[_lastButton]->stopAnimatePressedState();
+		_button[_lastButton]->setUnpressedState();
 
 	if (_curPressedButton != kNoAct && !_needRefresh)
 		_button[_curPressedButton]->setPressedState();
@@ -601,18 +604,6 @@ void PredictiveDialog::processButton(ButtonId button) {
 	if (button == kCancelAct) {
 		saveUserDictToFile();
 		close();
-	}
-}
-
-void PredictiveDialog::handleTickle() {
-	if (_lastTime) {
-		if ((_curTime - _lastTime) > kRepeatDelay) {
-			_lastTime = 0;
-		}
-	}
-
-	if (getTickleWidget()) {
-		getTickleWidget()->handleTickle();
 	}
 }
 

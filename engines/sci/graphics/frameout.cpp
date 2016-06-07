@@ -667,6 +667,10 @@ void GfxFrameout::calcLists(ScreenItemListList &drawLists, EraseListList &eraseL
 			--outerPlane->_priorityChanged;
 
 			Plane *visibleOuterPlane = _visiblePlanes.findByObject(outerPlane->_object);
+			if (visibleOuterPlane == nullptr) {
+				warning("calcLists could not find visible plane for %04x:%04x", PRINT_REG(outerPlane->_object));
+				continue;
+			}
 
 			rectlist.add(outerPlane->_screenRect.findIntersectingRect(visibleOuterPlane->_screenRect));
 
@@ -987,7 +991,7 @@ void GfxFrameout::alterVmap(const Palette &palette1, const Palette &palette2, co
 
 		if (styleRanges[paletteIndex] == style) {
 			int minDiff = 262140;
-			int minDiffIndex;
+			int minDiffIndex = paletteIndex;
 
 			for (int i = 0; i < 236; ++i) {
 				if (styleRanges[i] != style) {
@@ -1007,7 +1011,7 @@ void GfxFrameout::alterVmap(const Palette &palette1, const Palette &palette2, co
 
 		if (style == 1 && styleRanges[paletteIndex] == 0) {
 			int minDiff = 262140;
-			int minDiffIndex;
+			int minDiffIndex = paletteIndex;
 
 			for (int i = 0; i < 236; ++i) {
 				int r = palette2.colors[i].r;

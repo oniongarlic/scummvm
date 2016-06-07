@@ -132,7 +132,7 @@ public:
 	 * in place. Otherwise, the priority of the screen item
 	 * is calculated from its y-position + z-index.
 	 */
-	bool _fixPriority;
+	bool _fixedPriority;
 
 	/**
 	 * The rendering priority of the screen item, relative
@@ -273,7 +273,7 @@ public:
 
 typedef StablePointerArray<ScreenItem, 250> ScreenItemListBase;
 class ScreenItemList : public ScreenItemListBase {
-	static bool inline sortHelper(const ScreenItem *a, const ScreenItem *b) {
+	inline static bool sortHelper(const ScreenItem *a, const ScreenItem *b) {
 		return *a < *b;
 	}
 public:

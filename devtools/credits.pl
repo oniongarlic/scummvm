@@ -536,7 +536,7 @@ begin_credits("Credits");
 
 			begin_section("AGI");
 				add_person("Stuart George", "darkfiber", "");
-				add_person("Matthew Hoops", "clone2727", "");
+				add_person("Matthew Hoops", "clone2727", "(retired)");
 				add_person("Filippos Karapetis", "[md5]", "");
 				add_person("Martin Kiewitz", "m_kiewitz", "");
 				add_person("Pawe&#322; Ko&#322;odziejski", "aquadran", "");
@@ -614,6 +614,11 @@ begin_credits("Credits");
 				add_person("Willem Jan Palenstijn", "wjp", "");
 			end_section();
 
+			begin_section("Gnap");
+				add_person("Arnaud Boutonn&eacute;", "Strangerke", "");
+				add_person("Benjamin Haisch", "john_doe", "");
+			end_section();
+
 			begin_section("Gob");
 				add_person("Torbj&ouml;rn Andersson", "eriktorbjorn", "");
 				add_person("Arnaud Boutonn&eacute;", "Strangerke", "");
@@ -647,7 +652,7 @@ begin_credits("Credits");
 			end_section();
 
 			begin_section("Lastexpress");
-				add_person("Matthew Hoops", "clone2727", "");
+				add_person("Matthew Hoops", "clone2727", "(retired)");
 				add_person("Jordi Vilalta Prat", "jvprat", "");
 				add_person("Julien Templier", "littleboy", "");
 			end_section();
@@ -669,7 +674,7 @@ begin_credits("Credits");
 
 			begin_section("Mohawk");
 				add_person("Bastien Bouclet", "bgk", "");
-				add_person("Matthew Hoops", "clone2727", "");
+				add_person("Matthew Hoops", "clone2727", "(retired)");
 				add_person("Filippos Karapetis", "[md5]", "");
 				add_person("Alyssa Milburn", "fuzzie", "");
 				add_person("Eugene Sandulenko", "sev", "");
@@ -691,7 +696,7 @@ begin_credits("Credits");
 			end_section();
 
 			begin_section("Pegasus");
-				add_person("Matthew Hoops", "clone2727", "");
+				add_person("Matthew Hoops", "clone2727", "(retired)");
 			end_section();
 
 			begin_section("Queen");
@@ -817,6 +822,7 @@ begin_credits("Credits");
 			begin_section("Android");
 				add_person("Andre Heider", "dhewg", "");
 				add_person("Angus Lees", "Gus", "");
+				add_person("Lubomyr Lisen", "", "");
 			end_section();
 
 			begin_section("Dreamcast");
@@ -843,6 +849,10 @@ begin_credits("Credits");
 			begin_section("Maemo");
 				add_person("Frantisek Dufka", "fanoush", "(retired)");
 				add_person("Tarek Soliman", "tsoliman", "");
+			end_section();
+
+			begin_section("Nintendo 3DS");
+				add_person("Thomas Edvalson", "Cruel", "");
 			end_section();
 
 			begin_section("Nintendo 64");
@@ -953,7 +963,7 @@ begin_credits("Credits");
 			begin_persons();
 				add_person("Thierry Crozat", "criezy", "Numerous contributions to documentation");
 				add_person("Joachim Eberhard", "joachimeberhard", "Numerous contributions to documentation (retired)");
-				add_person("Matthew Hoops", "clone2727", "Wiki editor");
+				add_person("Matthew Hoops", "clone2727", "Numerous contributions to documentation (retired)");
 			end_persons();
 		end_section();
 

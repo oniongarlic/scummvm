@@ -120,6 +120,7 @@ struct SCALER_NoScale {
 	const int16 _sourceY;
 
 	SCALER_NoScale(const CelObj &celObj, const int16 maxWidth, const Common::Point &scaledPosition) :
+	_row(nullptr),
 	_reader(celObj, FLIP ? celObj._width : maxWidth),
 	_lastIndex(celObj._width - 1),
 	_sourceX(scaledPosition.x),
@@ -166,6 +167,7 @@ struct SCALER_Scale {
 	static int16 _valuesY[1024];
 
 	SCALER_Scale(const CelObj &celObj, const Common::Rect &targetRect, const Common::Point &scaledPosition, const Ratio scaleX, const Ratio scaleY) :
+	_row(nullptr),
 #ifndef NDEBUG
 	_maxX(targetRect.right - 1),
 #endif
@@ -525,30 +527,30 @@ int CelObj::_nextCacheId = 1;
 CelCache *CelObj::_cache = nullptr;
 
 int CelObj::searchCache(const CelInfo32 &celInfo, int *nextInsertIndex) const {
+	*nextInsertIndex = -1;
 	int oldestId = _nextCacheId + 1;
-	int oldestIndex = -1;
+	int oldestIndex = 0;
 
 	for (int i = 0, len = _cache->size(); i < len; ++i) {
 		CelCacheEntry &entry = (*_cache)[i];
 
-		if (entry.celObj != nullptr) {
-			if (entry.celObj->_info == celInfo) {
-				entry.id = ++_nextCacheId;
-				return i;
+		if (entry.celObj == nullptr) {
+			if (*nextInsertIndex == -1) {
+				*nextInsertIndex = i;
 			}
-
-			if (oldestId > entry.id) {
-				oldestId = entry.id;
-				oldestIndex = i;
-			}
-		} else if (oldestIndex == -1) {
+		} else if (entry.celObj->_info == celInfo) {
+			entry.id = ++_nextCacheId;
+			return i;
+		} else if (oldestId > entry.id) {
+			oldestId = entry.id;
 			oldestIndex = i;
 		}
 	}
 
-	// NOTE: Unlike the original SCI engine code, the out-param
-	// here is only updated if there was not a cache hit.
-	*nextInsertIndex = oldestIndex;
+	if (*nextInsertIndex == -1) {
+		*nextInsertIndex = oldestIndex;
+	}
+
 	return -1;
 }
 
@@ -734,7 +736,11 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 	int cacheIndex = searchCache(_info, &cacheInsertIndex);
 	if (cacheIndex != -1) {
 		CelCacheEntry &entry = (*_cache)[cacheIndex];
-		*this = *dynamic_cast<CelObjView *>(entry.celObj);
+		const CelObjView *const cachedCelObj = dynamic_cast<CelObjView *>(entry.celObj);
+		if (cachedCelObj == nullptr) {
+			error("Expected a CelObjView in cache slot %d", cacheIndex);
+		}
+		*this = *cachedCelObj;
 		entry.id = ++_nextCacheId;
 		return;
 	}
@@ -866,7 +872,11 @@ CelObjView *CelObjView::duplicate() const {
 }
 
 byte *CelObjView::getResPointer() const {
-	return g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, _info.resourceId), false)->data;
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, _info.resourceId), false);
+	if (resource == nullptr) {
+		error("Failed to load view %d from resource manager", _info.resourceId);
+	}
+	return resource->data;
 }
 
 #pragma mark -
@@ -885,7 +895,11 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	int cacheIndex = searchCache(_info, &cacheInsertIndex);
 	if (cacheIndex != -1) {
 		CelCacheEntry &entry = (*_cache)[cacheIndex];
-		*this = *dynamic_cast<CelObjPic *>(entry.celObj);
+		const CelObjPic *const cachedCelObj = dynamic_cast<CelObjPic *>(entry.celObj);
+		if (cachedCelObj == nullptr) {
+			error("Expected a CelObjPic in cache slot %d", cacheIndex);
+		}
+		*this = *cachedCelObj;
 		entry.id = ++_nextCacheId;
 		return;
 	}
@@ -979,7 +993,11 @@ CelObjPic *CelObjPic::duplicate() const {
 }
 
 byte *CelObjPic::getResPointer() const {
-	return g_sci->getResMan()->findResource(ResourceId(kResourceTypePic, _info.resourceId), false)->data;
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypePic, _info.resourceId), false);
+	if (resource == nullptr) {
+		error("Failed to load pic %d from resource manager", _info.resourceId);
+	}
+	return resource->data;
 }
 
 #pragma mark -

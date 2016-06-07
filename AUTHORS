@@ -47,7 +47,7 @@ ScummVM Team
 
     AGI:
        Stuart George
-       Matthew Hoops
+       Matthew Hoops                - (retired)
        Filippos Karapetis
        Martin Kiewitz
        Pawel Kolodziejski
@@ -112,6 +112,10 @@ ScummVM Team
        Vladimir Menshakov           - (retired)
        Willem Jan Palenstijn
 
+    Gnap:
+       Arnaud Boutonne
+       Benjamin Haisch
+
     Gob:
        Torbjorn Andersson
        Arnaud Boutonne
@@ -140,7 +144,7 @@ ScummVM Team
        Johannes Schickel
 
     Lastexpress:
-       Matthew Hoops
+       Matthew Hoops                - (retired)
        Jordi Vilalta Prat
        Julien Templier
 
@@ -158,7 +162,7 @@ ScummVM Team
 
     Mohawk:
        Bastien Bouclet
-       Matthew Hoops
+       Matthew Hoops                - (retired)
        Filippos Karapetis
        Alyssa Milburn
        Eugene Sandulenko
@@ -176,7 +180,7 @@ ScummVM Team
        peres
 
     Pegasus:
-       Matthew Hoops
+       Matthew Hoops                - (retired)
 
     Queen:
        David Eriksson               - (retired)
@@ -281,6 +285,7 @@ ScummVM Team
     Android:
        Andre Heider
        Angus Lees
+       Lubomyr Lisen
 
     Dreamcast:
        Marcus Comstedt
@@ -301,6 +306,9 @@ ScummVM Team
     Maemo:
        Frantisek Dufka              - (retired)
        Tarek Soliman
+
+    Nintendo 3DS:
+       Thomas Edvalson
 
     Nintendo 64:
        Fabio Battaglia
@@ -401,7 +409,8 @@ ScummVM Team
      Thierry Crozat               - Numerous contributions to documentation
      Joachim Eberhard             - Numerous contributions to documentation
                                     (retired)
-     Matthew Hoops                - Wiki editor
+     Matthew Hoops                - Numerous contributions to documentation
+                                    (retired)
 
   Retired Team Members
   --------------------

@@ -2,9 +2,19 @@ MODULE := engines/adl
 
 MODULE_OBJS := \
 	adl.o \
+	adl_v2.o \
+	adl_v3.o \
+	console.o \
 	detection.o \
+	disk.o \
 	display.o \
-	hires1.o
+	graphics.o \
+	graphics_v1.o \
+	graphics_v2.o \
+	hires1.o \
+	hires2.o \
+	hires6.o \
+	speaker.o
 
 MODULE_DIRS += \
 	engines/adl

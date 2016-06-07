@@ -361,6 +361,87 @@ protected:
 
 };
 
+/**
+ * Double linked list with sorted nodes.
+ */
+template<class T>
+class SortedArray : public Array<T> {
+public:
+	typedef T *iterator;
+	typedef uint size_type;
+
+	SortedArray(int (*comparator)(const void *, const void *)) {
+		_comparator = comparator;
+	}
+
+	/**
+	 * Inserts element at the sorted position.
+	 */
+	void insert(const T &element) {
+		if (!this->_size) {
+			this->insert_aux(this->_storage, &element, &element + 1);
+			return;
+		}
+
+		T *where = bsearchMin(element);
+
+		if (where > this->_storage + this->_size)
+			Array<T>::push_back(element);
+		else
+			Array<T>::insert(where, element);
+	}
+
+	T &operator[](size_type idx) {
+		error("Operation []= not allowed with SortedArray");
+	}
+
+	void insert_at(size_type idx, const T &element) {
+		error("Operation insert_at(idx, element) not allowed with SortedArray");
+	}
+
+	void insert_at(size_type idx, const Array<T> &array) {
+		error("Operation insert_at(idx, array) not allowed with SortedArray");
+	}
+
+	void insert(iterator pos, const T &element) {
+		error("Operation insert(pos, elemnet) not allowed with SortedArray");
+	}
+
+	void push_back(const T &element) {
+		error("Operation push_back(element) not allowed with SortedArray");
+	}
+
+	void push_back(const Array<T> &array) {
+		error("Operation push_back(array) not allowed with SortedArray");
+	}
+
+private:
+	// Based on code Copyright (C) 2008-2009 Ksplice, Inc.
+	// Author: Tim Abbott <tabbott@ksplice.com>
+	// Licensed under GPLv2+
+	T *bsearchMin(void *key) {
+		uint start_ = 0, end_ = this->_size;
+		int result;
+
+		while (start_ < end_) {
+			uint mid = start_ + (end_ - start_) / 2;
+
+			result = this->_comparator(key, this->_storage[mid]);
+			if (result < 0)
+				end_ = mid;
+			else if (result > 0)
+				start_ = mid + 1;
+			else
+				return &this->_storage[mid];
+		}
+
+		return &this->_storage[start_];
+	}
+
+private:
+	int (*_comparator)(const void *, const void *);
+};
+
 } // End of namespace Common
 
 #endif

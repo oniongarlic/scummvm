@@ -37,7 +37,6 @@
 #include "graphics/cursorman.h"
 
 #include "audio/mididrv.h"
-#include "audio/mixer.h"
 
 #include "agi/agi.h"
 #include "agi/font.h"
@@ -404,6 +403,11 @@ AgiEngine::AgiEngine(OSystem *syst, const AGIGameDescription *gameDesc) : AgiBas
 
 	_lastSaveTime = 0;
 
+	_playTimeInSecondsAdjust = 0;
+	_lastUsedPlayTimeInCycles = 0;
+	_lastUsedPlayTimeInSeconds = 0;
+	_passedPlayTimeCycles = 0;
+
 	memset(_keyQueue, 0, sizeof(_keyQueue));
 
 	_console = nullptr;
@@ -419,6 +423,9 @@ AgiEngine::AgiEngine(OSystem *syst, const AGIGameDescription *gameDesc) : AgiBas
 	_inventory = nullptr;
 
 	_keyHoldMode = false;
+
+	_artificialDelayCurrentRoom = 0;
+	_artificialDelayCurrentPicture = 0;
 }
 
 void AgiEngine::initialize() {

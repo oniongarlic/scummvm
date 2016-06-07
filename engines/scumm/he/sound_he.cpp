@@ -34,14 +34,10 @@
 #include "common/timer.h"
 #include "common/util.h"
 
+#include "audio/audiostream.h"
 #include "audio/decoders/adpcm.h"
-#include "audio/decoders/flac.h"
-#include "audio/mididrv.h"
 #include "audio/mixer.h"
-#include "audio/decoders/mp3.h"
 #include "audio/decoders/raw.h"
-#include "audio/decoders/voc.h"
-#include "audio/decoders/vorbis.h"
 #include "audio/decoders/wave.h"
 
 namespace Scumm {
@@ -55,10 +51,12 @@ SoundHE::SoundHE(ScummEngine *parent, Audio::Mixer *mixer)
 	_heMusicTracks(0) {
 
 	memset(_heChannel, 0, sizeof(_heChannel));
+	_heSoundChannels = new Audio::SoundHandle[8]();
 }
 
 SoundHE::~SoundHE() {
 	free(_heMusic);
+	delete[] _heSoundChannels;
 }
 
 void SoundHE::addSoundToQueue(int sound, int heOffset, int heChannel, int heFlags) {
@@ -473,6 +471,10 @@ void SoundHE::processSoundOpcodes(int sound, byte *codePtr, int *soundVars) {
 			val = READ_LE_UINT16(codePtr); codePtr += 2;
 			if (arg == 2) {
 				val = getSoundVar(sound, val);
+			}
+			if (!val) {
+				val = 1; // Safeguard for division by zero
+				warning("Incorrect value 0 for processSoundOpcodes() kludge DIV");
 			}
 			val = getSoundVar(sound, var) / val;
 			setSoundVar(sound, var, val);

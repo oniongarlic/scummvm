@@ -20,33 +20,23 @@
  *
  */
 
-#include "scumm/he/intern_he.h"
-#include "scumm/he/logic_he.h"
+#include "gnap/debugger.h"
+#include "gnap/gnap.h"
 
-namespace Scumm {
+namespace Gnap {
 
-/**
- * Logic code for:
- *     Moonbase Commander
- */
-class LogicHEmoonbase : public LogicHE {
-public:
-	LogicHEmoonbase(ScummEngine_v90he *vm) : LogicHE(vm) {}
+Debugger::Debugger(GnapEngine *vm) : GUI::Debugger(), _vm(vm) {
+	// Register methods
+	registerCmd("hotspots", WRAP_METHOD(Debugger, Cmd_Hotspots));
 
-	int versionID();
-};
-
-int LogicHEmoonbase::versionID() {
-	if (_vm->_game.features & GF_DEMO)
-		return -100;
-	else if (strcmp(_vm->_game.variant, "1.1") == 0)
-		return 110;
-	else
-		return 100;
+	// Set fields
+	_showHotspotNumber = false;
 }
 
-LogicHE *makeLogicHEmoonbase(ScummEngine_v90he *vm) {
-	return new LogicHEmoonbase(vm);
+bool Debugger::Cmd_Hotspots(int argc, const char **argv) {
+	_showHotspotNumber ^= 1;
+
+	return true;
 }
 
-} // End of namespace Scumm
+} // End of namespace Gnap

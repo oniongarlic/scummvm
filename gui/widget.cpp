@@ -265,9 +265,17 @@ void StaticTextWidget::setLabel(const Common::String &label) {
 }
 
 void StaticTextWidget::setAlign(Graphics::TextAlign align) {
-	_align = align;
-	// TODO: We should automatically redraw when the alignment is changed.
-	// See setLabel() for more insights.
+	if (_align != align){
+		_align = align;
+
+		// same as setLabel() actually, the text
+		// would be redrawn on top of the old one so
+		// we add the CLEARBG flag
+		setFlags(WIDGET_CLEARBG);
+		draw();
+		clearFlags(WIDGET_CLEARBG);
+	}
+
 }
 
 
@@ -299,7 +307,7 @@ ButtonWidget::ButtonWidget(GuiObject *boss, const Common::String &name, const Co
 
 void ButtonWidget::handleMouseUp(int x, int y, int button, int clickCount) {
 	if (isEnabled() && _duringPress && x >= 0 && x < _w && y >= 0 && y < _h) {
-		startAnimatePressedState();
+		setUnpressedState();
 		sendCommand(_cmd, 0);
 	}
 	_duringPress = false;
@@ -344,37 +352,15 @@ void ButtonWidget::setHighLighted(bool enable) {
 	draw();
 }
 
-void ButtonWidget::handleTickle() {
-	if (_lastTime) {
-		uint32 curTime = g_system->getMillis();
-		if (curTime - _lastTime > kPressedButtonTime) {
-			stopAnimatePressedState();
-		}
-	}
-}
-
 void ButtonWidget::setPressedState() {
-	wantTickle(true);
 	setFlags(WIDGET_PRESSED);
+	clearFlags(WIDGET_HILITED);
 	draw();
 }
 
-void ButtonWidget::stopAnimatePressedState() {
-	wantTickle(false);
-	_lastTime = 0;
+void ButtonWidget::setUnpressedState() {
 	clearFlags(WIDGET_PRESSED);
 	draw();
-}
-
-void ButtonWidget::startAnimatePressedState() {
-	_lastTime = g_system->getMillis();
-}
-
-void ButtonWidget::wantTickle(bool tickled) {
-	if (tickled)
-		((GUI::Dialog *)_boss)->setTickleWidget(this);
-	else
-		((GUI::Dialog *)_boss)->unSetTickleWidget();
 }
 
 #pragma mark -
@@ -556,14 +542,14 @@ void RadiobuttonWidget::drawWidget() {
 
 SliderWidget::SliderWidget(GuiObject *boss, int x, int y, int w, int h, const char *tooltip, uint32 cmd)
 	: Widget(boss, x, y, w, h, tooltip), CommandSender(boss),
-	  _cmd(cmd), _value(0), _oldValue(0), _valueMin(0), _valueMax(100), _isDragging(false) {
+	  _cmd(cmd), _value(0), _oldValue(0), _valueMin(0), _valueMax(100), _isDragging(false), _labelWidth(0) {
 	setFlags(WIDGET_ENABLED | WIDGET_TRACK_MOUSE | WIDGET_CLEARBG);
 	_type = kSliderWidget;
 }
 
 SliderWidget::SliderWidget(GuiObject *boss, const Common::String &name, const char *tooltip, uint32 cmd)
 	: Widget(boss, name, tooltip), CommandSender(boss),
-	  _cmd(cmd), _value(0), _oldValue(0), _valueMin(0), _valueMax(100), _isDragging(false) {
+	  _cmd(cmd), _value(0), _oldValue(0), _valueMin(0), _valueMax(100), _isDragging(false), _labelWidth(0) {
 	setFlags(WIDGET_ENABLED | WIDGET_TRACK_MOUSE | WIDGET_CLEARBG);
 	_type = kSliderWidget;
 }
