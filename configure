@@ -1858,8 +1858,11 @@ if test "$have_gcc" = yes ; then
 			case $_host_os in
 			# newlib-based system include files suppress non-C89 function
 			# declarations under __STRICT_ANSI__
-			amigaos* | android | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince | qnx)
+			amigaos* | android | dreamcast | ds | gamecube | mingw* | n64 | psp | ps2 | ps3 | tizen | wii | wince)
 				;;
+			qnx)
+				echo_n "Disabling -ansi on QNX"
+			;;
 			*)
 				append_var CXXFLAGS "-ansi"
 				;;
@@ -2688,6 +2691,7 @@ if test -n "$_host"; then
 		playbook)
 			_backend=sdl
 			_sdlconfig=sdl-config
+			# XXX: missing in SDK _freetypeconfig=freetype-config
 			_savegame_timestamp=no
 			_eventrec=no
 			_build_scalers=no
@@ -2696,11 +2700,14 @@ if test -n "$_host"; then
 			_optimization_level=-O2
 			_mt32emu=no
 			_timidity=no
+			_seq_midi=no
 			_zlib=yes
 			# append_var DEFINES "-D_XOPEN_SOURCE"
+			append_var CFLAGS "-std=c99"
 			append_var DEFINES "-D_QNX_SOURCE"
 			append_var DEFINES "-DSYSTEM_NOT_SUPPORTING_D_TYPE"
-			append_var CFLAGS "-std=c99"
+			append_var DEFINES "-DPLUGIN_DIRECTORY=\\\"lib\\\""
+			append_var DEFINES "-DDATA_PATH=\\\"\\\""
 			;;
 		bb10)
 			_backend=sdl
@@ -2713,6 +2720,7 @@ if test -n "$_host"; then
 			_optimization_level=-O2
 			_mt32emu=no
 			_timidity=no
+			_seq_midi=no
 			_zlib=yes
 			# append_var DEFINES "-D_XOPEN_SOURCE"
 			append_var DEFINES "-D_QNX_SOURCE"
@@ -4516,6 +4524,9 @@ test "x$prefix" = xNONE && prefix=/usr/local
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 
 case $_host_os in
+	qnx)
+		# Ignore
+		;;
 	mingw*)
 		# Windows stores all the external data files in executable file.
 		;;
@@ -4537,6 +4548,10 @@ case $_backend in
 	ps2)
 		# PS2 bogus dir: it actually depends on launch medium
 		append_var DEFINES "-DPLUGIN_DIRECTORY=\\\"host:plugins\\\""
+		;;
+	playbook | bb10)
+		append_var DEFINES "-DPLUGIN_DIRECTORY=\\\"lib\\\""
+		append_var DEFINES "-DDATA_PATH=\\\"\\\""
 		;;
 	*)
 		append_var DEFINES "-DPLUGIN_DIRECTORY=\\\"$libdir/scummvm\\\""
