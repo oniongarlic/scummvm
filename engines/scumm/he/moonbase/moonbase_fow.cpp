@@ -114,8 +114,14 @@ bool Moonbase::setFOWImage(int image) {
 			delete stream;
 		}
 
-		if (!_fowImage && image > 0)
-			_fowImage = _vm->getResourceAddress(rtImage, image);
+		if (!_fowImage && image > 0) {
+			int sz = _vm->getResourceSize(rtImage, image);
+			_fowImage = (uint8 *)malloc(sz);
+
+			// We have to copy it, otherwise the resource manager
+			// will kill it earlier or later. Matches original.
+			memcpy(_fowImage, _vm->getResourceAddress(rtImage, image), sz);
+		}
 
 		if (!_fowImage)
 			return false;
@@ -168,19 +174,6 @@ void Moonbase::setFOWInfo(int fowInfoArray, int downDim, int acrossDim, int view
 				int clipY1, int clipX2, int clipY2, int technique, int nFrame) {
 	if (!_fowImage)
 		return;
-
-	for (int y = 0; y < downDim; y++) {
-		Common::String s;
-
-		for (int x = 0; x < acrossDim; x++)
-			if (readFOWVisibilityArray(fowInfoArray, x, y))
-				s += "@";
-			else
-				s+= " ";
-
-		debug(5, "%s", s.c_str());
-	}
-	debug(5, "");
 
 	memset(_fowRenderTable, 0, sizeof(_fowRenderTable));
 

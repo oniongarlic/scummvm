@@ -298,6 +298,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_KQ6,            -1,   907,  0,             "tomato", "doVerb",                          NULL,     2, { WORKAROUND_FAKE,   0 } }, // when looking at the rotten tomato in the inventory - bug #5331
 	{ GID_KQ6,            -1,   928,  0,                 NULL, "startText",                       NULL,     0, { WORKAROUND_FAKE,   0 } }, // gets caused by Text+Audio support (see script patcher)
 	{ GID_KQ7,            -1, 64996,  0,               "User", "handleEvent",                     NULL,     1, { WORKAROUND_FAKE,   0 } }, // called when pushing a keyboard key
+	{ GID_KQ7,          2450,  2450,  0,           "exBridge", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // called when walking up to the throne in the cave in chapter 2
 	{ GID_LAURABOW,       37,     0,  0,                "CB1", "doit",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // when going up the stairs - bug #5084
 	{ GID_LAURABOW,       -1,   967,  0,             "myIcon", "cycle",                           NULL,     1, { WORKAROUND_FAKE,   0 } }, // having any portrait conversation coming up - initial bug #4971
 	{ GID_LAURABOW2,      -1,    24,  0,              "gcWin", "open",                            NULL,     5, { WORKAROUND_FAKE, 0xf } }, // is used as priority for game menu
@@ -510,6 +511,14 @@ const SciWorkaroundEntry kDisposeScript_workarounds[] = {
 	{ GID_SQ4,           150,   151,  0,        "fightScript", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // during fight with Vohaul, parameter 0 is an object
 	{ GID_SQ4,           150,   152,  0,       "driveCloseUp", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when choosing "beam download", parameter 0 is an object
 	{ GID_SQ4,           150,   152,  0,                   "", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when choosing "beam download"... in Russian version - bug #5573
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kDoSoundPlay_workarounds[] = {
+	{ GID_LSL6HIRES,    -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
+	{ GID_QFG4,         -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
+	{ GID_PQ4,          -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -745,6 +754,12 @@ const SciWorkaroundEntry kUnLoad_workarounds[] = {
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
+//    gameID,           room,script,lvl,          object-name, method-name,  local-call-signature, index,                workaround
+const SciWorkaroundEntry kScrollWindowAdd_workarounds[] = {
+	{ GID_PHANTASMAGORIA, 45, 64907,  0,   "ScrollableWindow", "addString",                  NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // ScrollWindow interface passes the last two parameters twice
+};
+
+
 SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroundEntry *workaroundList, SciTrackOriginReply *trackOrigin) {
 	// HACK for SCI3: Temporarily ignore this
 	if (getSciVersion() == SCI_VERSION_3) {
@@ -766,7 +781,7 @@ SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroun
 		Common::List<ExecStack>::const_iterator callIterator = state->_executionStack.end();
 		while (callIterator != state->_executionStack.begin()) {
 			callIterator--;
-			ExecStack loopCall = *callIterator;
+			const ExecStack &loopCall = *callIterator;
 			if ((loopCall.debugSelector != -1) || (loopCall.debugExportId != -1)) {
 				lastCall->debugSelector = loopCall.debugSelector;
 				lastCall->debugExportId = loopCall.debugExportId;

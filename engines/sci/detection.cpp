@@ -89,6 +89,7 @@ static const PlainGameDescriptor s_sciGameTitles[] = {
 	{"ecoquest2",       "EcoQuest II: Lost Secret of the Rainforest"},
 	{"freddypharkas",   "Freddy Pharkas: Frontier Pharmacist"},
 	{"hoyle4",          "Hoyle Classic Card Games"},
+	{"inndemo",         "ImagiNation Network (INN) Demo"},
 	{"kq6",             "King's Quest VI: Heir Today, Gone Tomorrow"},
 	{"laurabow2",       "Laura Bow 2: The Dagger of Amon Ra"},
 	{"qfg1vga",         "Quest for Glory I: So You Want to Be a Hero"},	// Note: There was also a SCI0 version of this (further up)
@@ -106,6 +107,10 @@ static const PlainGameDescriptor s_sciGameTitles[] = {
 	{"pq4",             "Police Quest IV: Open Season"}, // floppy is SCI2, CD SCI2.1
 	{"qfg4",            "Quest for Glory IV: Shadows of Darkness"},	// floppy is SCI2, CD SCI2.1
 	// === SCI2.1 games ========================================================
+	{"hoyle5",          "Hoyle Classic Games"},
+	{"hoyle5bridge",    "Hoyle Bridge"},
+	{"hoyle5children",  "Hoyle Children's Collection"},
+	{"hoyle5solitaire", "Hoyle Solitaire"},
 	{"chest",           "Inside the Chest"},	// aka Behind the Developer's Shield
 	{"gk2",             "The Beast Within: A Gabriel Knight Mystery"},
 	{"kq7",             "King's Quest VII: The Princeless Bride"},
@@ -156,7 +161,12 @@ static const GameIdStrToEnum s_gameIdStrToEnum[] = {
 	{ "hoyle2",          GID_HOYLE2 },
 	{ "hoyle3",          GID_HOYLE3 },
 	{ "hoyle4",          GID_HOYLE4 },
+	{ "hoyle5",          GID_HOYLE5 },
+	{ "hoyle5bridge",    GID_HOYLE5 },
+	{ "hoyle5children",  GID_HOYLE5 },
+	{ "hoyle5solitaire", GID_HOYLE5 },
 	{ "iceman",          GID_ICEMAN },
+	{ "inndemo",         GID_INNDEMO },
 	{ "islandbrain",     GID_ISLANDBRAIN },
 	{ "jones",           GID_JONES },
 	{ "kq1sci",          GID_KQ1 },
@@ -391,6 +401,16 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 			_s("Enable high resolution graphics/content"),
 			"enable_high_resolution_graphics",
 			true
+		}
+	},
+
+	{
+		GAMEOPTION_ENABLE_BLACK_LINED_VIDEO,
+		{
+			_s("Enable black-lined video"),
+			_s("Draw black lines over videos to increase their apparent sharpness"),
+			"enable_black_lined_video",
+			false
 		}
 	},
 

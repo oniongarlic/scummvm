@@ -26,6 +26,9 @@
 #include "common/fs.h"
 #include "common/macresman.h"
 #include "common/textconsole.h"
+#ifdef ENABLE_SCI32
+#include "common/memstream.h"
+#endif
 
 #include "sci/resource.h"
 #include "sci/resource_intern.h"
@@ -221,6 +224,12 @@ void Resource::writeToStream(Common::WriteStream *stream) const {
 	stream->write(data, size);
 }
 
+#ifdef ENABLE_SCI32
+Common::SeekableReadStream *Resource::makeStream() const {
+	return new Common::MemoryReadStream(data, size, DisposeAfterUse::NO);
+}
+#endif
+
 uint32 Resource::getAudioCompressionType() const {
 	return _source->getAudioCompressionType();
 }
@@ -228,7 +237,6 @@ uint32 Resource::getAudioCompressionType() const {
 uint32 AudioVolumeResourceSource::getAudioCompressionType() const {
 	return _audioCompressionType;
 }
-
 
 ResourceSource::ResourceSource(ResSourceType type, const Common::String &name, int volNum, const Common::FSNode *resFile)
  : _sourceType(type), _name(name), _volumeNumber(volNum), _resourceFile(resFile) {
@@ -1043,7 +1051,13 @@ Resource *ResourceManager::findResource(ResourceId id, bool lock) {
 	if (retval->_status == kResStatusNoMalloc)
 		loadResource(retval);
 	else if (retval->_status == kResStatusEnqueued)
+		// The resource is removed from its current position
+		// in the LRU list because it has been requested
+		// again. Below, it will either be locked, or it
+		// will be added back to the LRU list at the 'most
+		// recent' position.
 		removeFromLRU(retval);
+
 	// Unless an error occurred, the resource is now either
 	// locked or allocated, but never queued or freed.
 
@@ -1352,6 +1366,8 @@ void ResourceManager::processPatch(ResourceSource *source, ResourceType resource
 		Common::File *file = new Common::File();
 		if (!file->open(source->getLocationName())) {
 			warning("ResourceManager::processPatch(): failed to open %s", source->getLocationName().c_str());
+			delete source;
+			delete file;
 			return;
 		}
 		fileStream = file;
@@ -1360,6 +1376,8 @@ void ResourceManager::processPatch(ResourceSource *source, ResourceType resource
 	int fsize = fileStream->size();
 	if (fsize < 3) {
 		debug("Patching %s failed - file too small", source->getLocationName().c_str());
+		delete source;
+		delete fileStream;
 		return;
 	}
 
@@ -1370,6 +1388,7 @@ void ResourceManager::processPatch(ResourceSource *source, ResourceType resource
 
 	if (patchType != checkForType) {
 		debug("Patching %s failed - resource type mismatch", source->getLocationName().c_str());
+		delete source;
 		return;
 	}
 
@@ -1394,6 +1413,7 @@ void ResourceManager::processPatch(ResourceSource *source, ResourceType resource
 	if (patchDataOffset + 2 >= fsize) {
 		debug("Patching %s failed - patch starting at offset %d can't be in file of size %d",
 		      source->getLocationName().c_str(), patchDataOffset + 2, fsize);
+		delete source;
 		return;
 	}
 
@@ -1441,13 +1461,18 @@ void ResourceManager::readResourcePatchesBase36() {
 		files.clear();
 
 		// audio36 resources start with a @, A, or B
-		// sync36 resources start with a #
+		// sync36 resources start with a #, S, or T
 		if (i == kResourceTypeAudio36) {
 			SearchMan.listMatchingMembers(files, "@???????.???");
 			SearchMan.listMatchingMembers(files, "A???????.???");
 			SearchMan.listMatchingMembers(files, "B???????.???");
-		} else
+		} else {
 			SearchMan.listMatchingMembers(files, "#???????.???");
+#ifdef ENABLE_SCI32
+			SearchMan.listMatchingMembers(files, "S???????.???");
+			SearchMan.listMatchingMembers(files, "T???????.???");
+#endif
+		}
 
 		for (Common::ArchiveMemberList::const_iterator x = files.begin(); x != files.end(); ++x) {
 			name = (*x)->getName();

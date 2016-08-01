@@ -31,6 +31,20 @@
 namespace Sci {
 typedef Common::Rational Ratio;
 
+// SCI32 has four different coordinate systems:
+// 1. low resolution, 2. game/script resolution,
+// 3. text/bitmap resolution, 4. screen resolution
+//
+// In CelObj, these values are used when there is
+// no baked in resolution of cels.
+//
+// In ScreenItem, it is used when deciding which
+// path to take to calculate dimensions.
+enum {
+	kLowResX = 320,
+	kLowResY = 200
+};
+
 enum CelType {
 	kCelTypeView  = 0,
 	kCelTypePic   = 1,
@@ -213,6 +227,18 @@ class ScreenItem;
  */
 class CelObj {
 protected:
+	/**
+	 * When true, every second line of the cel will be
+	 * rendered as a black line.
+	 *
+	 * @see ScreenItem::_drawBlackLines
+	 * @note Using a static member because otherwise this
+	 * would otherwise need to be copied down through
+	 * several calls. (SSCI did similar, using a global
+	 * variable.)
+	 */
+	static bool _drawBlackLines;
+
 	/**
 	 * When true, this cel will be horizontally mirrored
 	 * when it is drawn. This is an internal flag that is

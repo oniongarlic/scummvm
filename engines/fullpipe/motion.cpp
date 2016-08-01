@@ -32,7 +32,7 @@ namespace Fullpipe {
 bool MotionController::load(MfcArchive &file) {
 	// Is originally empty	file.readClass();
 
-	debug(5, "MotionController::load()");
+	debugC(5, kDebugLoading, "MotionController::load()");
 
 	return true;
 }
@@ -42,6 +42,8 @@ void MotionController::enableLinks(const char *linkName, bool enable) {
 }
 
 MovGraphLink *MotionController::getLinkByName(const char *name) {
+	debugC(4, kDebugPathfinding, "MotionController::getLinkByName(%s)", name);
+
 	if (_objtype == kObjTypeMctlCompound) {
 		MctlCompound *obj = (MctlCompound *)this;
 
@@ -80,23 +82,23 @@ MovGraphLink *MotionController::getLinkByName(const char *name) {
 }
 
 bool MctlCompound::load(MfcArchive &file) {
-	debug(5, "MctlCompound::load()");
+	debugC(5, kDebugLoading, "MctlCompound::load()");
 
 	int count = file.readUint32LE();
 
-	debug(6, "MctlCompound::count = %d", count);
+	debugC(6, kDebugLoading, "MctlCompound::count = %d", count);
 
 	for (int i = 0; i < count; i++) {
-		debug(6, "CompoundArray[%d]", i);
+		debugC(6, kDebugLoading, "CompoundArray[%d]", i);
 		MctlItem *obj = new MctlItem();
 
 		obj->_motionControllerObj = (MotionController *)file.readClass();
 
 		int count1 = file.readUint32LE();
 
-		debug(6, "ConnectionPoint::count: %d", count1);
+		debugC(6, kDebugLoading, "ConnectionPoint::count: %d", count1);
 		for (int j = 0; j < count1; j++) {
-			debug(6, "ConnectionPoint[%d]", j);
+			debugC(6, kDebugLoading, "ConnectionPoint[%d]", j);
 			MctlConnectionPoint *obj1 = (MctlConnectionPoint *)file.readClass();
 
 			obj->_connectionPoints.push_back(obj1);
@@ -105,7 +107,7 @@ bool MctlCompound::load(MfcArchive &file) {
 		obj->_field_20 = file.readUint32LE();
 		obj->_field_24 = file.readUint32LE();
 
-		debug(6, "graphReact");
+		debugC(6, kDebugLoading, "graphReact");
 		obj->_movGraphReactObj = (MovGraphReact *)file.readClass();
 
 		_motionControllers.push_back(obj);
@@ -115,11 +117,15 @@ bool MctlCompound::load(MfcArchive &file) {
 }
 
 void MctlCompound::attachObject(StaticANIObject *obj) {
+	debugC(4, kDebugPathfinding, "MctlCompound::attachObject(*%d)", obj->_id);
+
 	for (uint i = 0; i < _motionControllers.size(); i++)
 		_motionControllers[i]->_motionControllerObj->attachObject(obj);
 }
 
 int MctlCompound::detachObject(StaticANIObject *obj) {
+	debugC(4, kDebugPathfinding, "MctlCompound::detachObject(*%d)", obj->_id);
+
 	for (uint i = 0; i < _motionControllers.size(); i++)
 		_motionControllers[i]->_motionControllerObj->detachObject(obj);
 
@@ -129,6 +135,8 @@ int MctlCompound::detachObject(StaticANIObject *obj) {
 void MctlCompound::initMovGraph2() {
 	if (_objtype != kObjTypeMctlCompound)
 		return;
+
+	debugC(4, kDebugPathfinding, "MctlCompound::initMovGraph2()");
 
 	for (uint i = 0; i < _motionControllers.size(); i++) {
 		if (_motionControllers[i]->_motionControllerObj->_objtype != kObjTypeMovGraph)
@@ -151,6 +159,8 @@ void MctlCompound::initMovGraph2() {
 }
 
 void MctlCompound::detachAllObjects() {
+	debugC(4, kDebugPathfinding, "MctlCompound::detachAllObjects()");
+
 	for (uint i = 0; i < _motionControllers.size(); i++)
 		_motionControllers[i]->_motionControllerObj->detachAllObjects();
 }
@@ -158,6 +168,8 @@ void MctlCompound::detachAllObjects() {
 MessageQueue *MctlCompound::startMove(StaticANIObject *ani, int sourceX, int sourceY, int fuzzyMatch, int staticsId) {
 	int idx = -1;
 	int sourceIdx = -1;
+
+	debugC(4, kDebugPathfinding, "MctlCompound::startMove(*%d, %d, %d, %d, %d)", (ani ? ani->_id : -1), sourceX, sourceY, fuzzyMatch, staticsId);
 
 	if (!ani)
 		return 0;
@@ -186,6 +198,7 @@ MessageQueue *MctlCompound::startMove(StaticANIObject *ani, int sourceX, int sou
 	if (sourceIdx == -1)
 		return 0;
 
+	debugC(1, kDebugPathfinding, "WWW 2");
 	if (idx == sourceIdx)
 		return _motionControllers[idx]->_motionControllerObj->startMove(ani, sourceX, sourceY, fuzzyMatch, staticsId);
 
@@ -227,6 +240,8 @@ MessageQueue *MctlCompound::startMove(StaticANIObject *ani, int sourceX, int sou
 MessageQueue *MctlCompound::doWalkTo(StaticANIObject *subj, int xpos, int ypos, int fuzzyMatch, int staticsId) {
 	int match1 = -1;
 	int match2 = -1;
+
+	debugC(1, kDebugPathfinding, "MctlCompound::doWalkTo(*%d, %d, %d, %d, %d)", (subj ? subj->_id : -1), xpos, ypos, fuzzyMatch, staticsId);
 
 	if (!subj)
 		return 0;
@@ -327,6 +342,8 @@ int MctlLadder::collisionDetection(StaticANIObject *man) {
 }
 
 void MctlLadder::attachObject(StaticANIObject *obj) {
+	debugC(4, kDebugPathfinding, "MctlLadder::attachObject(*%d)", obj->_id);
+
 	if (findObjectPos(obj) < 0) {
 		MctlLadderMovement *movement = new MctlLadderMovement;
 
@@ -348,6 +365,8 @@ int MctlLadder::findObjectPos(StaticANIObject *obj) {
 }
 
 bool MctlLadder::initMovement(StaticANIObject *ani, MctlLadderMovement *movement) {
+	debugC(4, kDebugPathfinding, "MctlLadder::initMovement(*%d, ...)", ani->_id);
+
 	GameVar *v = g_fp->getGameLoaderGameVar()->getSubVarByName(ani->getName());
 
 	if (!v)
@@ -392,6 +411,8 @@ bool MctlLadder::initMovement(StaticANIObject *ani, MctlLadderMovement *movement
 }
 
 void MctlLadder::detachAllObjects() {
+	debugC(4, kDebugPathfinding, "MctlLadder::detachAllObjects()");
+
 	_mgm.clear();
 
 	for (uint i = 0; i < _ladmovements.size(); i++) {
@@ -403,6 +424,8 @@ void MctlLadder::detachAllObjects() {
 }
 
 MessageQueue *MctlLadder::startMove(StaticANIObject *subj, int xpos, int ypos, int fuzzyMatch, int staticsId) {
+	debugC(4, kDebugPathfinding, "MctlLadder::startMove(*%d, %d, %d, %d, %d)", (subj ? subj->_id : -1), xpos, ypos, fuzzyMatch, staticsId);
+
 	MessageQueue *mq = doWalkTo(subj, xpos, ypos, fuzzyMatch, staticsId);
 
 	if (mq) {
@@ -414,6 +437,8 @@ MessageQueue *MctlLadder::startMove(StaticANIObject *subj, int xpos, int ypos, i
 }
 
 MessageQueue *MctlLadder::doWalkTo(StaticANIObject *ani, int xpos, int ypos, int fuzzyMatch, int staticsId) {
+	debugC(1, kDebugPathfinding, "MctlLadder::doWalkTo(*%d, %d, %d, %d, %d)", (ani ? ani->_id : -1), xpos, ypos, fuzzyMatch, staticsId);
+
 	int pos = findObjectPos(ani);
 
 	if (pos < 0)
@@ -707,11 +732,11 @@ void MovInfo1::clear() {
 }
 
 bool MctlCompoundArray::load(MfcArchive &file) {
-	debug(5, "MctlCompoundArray::load()");
+	debugC(5, kDebugLoading, "MctlCompoundArray::load()");
 
 	int count = file.readUint32LE();
 
-	debug(0, "MctlCompoundArray::count = %d", count);
+	debugC(0, kDebugLoading, "MctlCompoundArray::count = %d", count);
 
 	assert(0);
 
@@ -770,7 +795,7 @@ MovGraph::~MovGraph() {
 }
 
 bool MovGraph::load(MfcArchive &file) {
-	debug(5, "MovGraph::load()");
+	debugC(5, kDebugLoading, "MovGraph::load()");
 
 	_links.load(file);
 	_nodes.load(file);
@@ -779,6 +804,8 @@ bool MovGraph::load(MfcArchive &file) {
 }
 
 void MovGraph::attachObject(StaticANIObject *obj) {
+	debugC(4, kDebugPathfinding, "MovGraph::attachObject(*%d)", obj->_id);
+
 	_mgm.clear();
 	_mgm.addItem(obj->_id);
 
@@ -802,6 +829,8 @@ int MovGraph::detachObject(StaticANIObject *obj) {
 }
 
 void MovGraph::detachAllObjects() {
+	debugC(4, kDebugPathfinding, "MovGraph::detachAllObjects()");
+
 	for (uint i = 0; i < _items.size(); i++) {
 		_items[i]->free();
 
@@ -812,6 +841,8 @@ void MovGraph::detachAllObjects() {
 }
 
 Common::Array<MovItem *> *MovGraph::getPaths(StaticANIObject *ani, int x, int y, int flag1, int *rescount) {
+	debugC(4, kDebugPathfinding, "MovGraph::getPaths(*%d, %d, %d, %d, &rescount)", (ani ? ani->_id : -1), x, y, flag1);
+
 	*rescount = 0;
 
 	if (_items.size() <= 0)
@@ -836,7 +867,7 @@ Common::Array<MovItem *> *MovGraph::getPaths(StaticANIObject *ani, int x, int y,
 	point.x = ani->_ox;
 	point.y = ani->_oy;
 
-	if (!calcChunk(idx, ani->_ox, ani->_oy, &_items[idx]->movarr, 0))
+	if (!getHitPoint(idx, ani->_ox, ani->_oy, &_items[idx]->movarr, 0))
 		getNearestPoint(idx, &point, &_items[idx]->movarr);
 
 	_items[idx]->count = 0;
@@ -845,12 +876,12 @@ Common::Array<MovItem *> *MovGraph::getPaths(StaticANIObject *ani, int x, int y,
 	_items[idx]->movitems = 0;
 
 	int arrSize;
-	Common::Array<MovArr *> *movarr = genMovArr(x, y, &arrSize, flag1, 0);
+	Common::Array<MovArr *> *movarr = getHitPoints(x, y, &arrSize, flag1, 0);
 
 	if (movarr) {
 		for (int i = 0; i < arrSize; i++) {
 			int sz;
-			Common::Array<MovItem *> *movitems = calcMovItems(&_items[idx]->movarr, (*movarr)[i], &sz);
+			Common::Array<MovItem *> *movitems = getPaths(&_items[idx]->movarr, (*movarr)[i], &sz);
 
 			if (sz > 0) {
 				for (int j = 0; j < sz; j++)
@@ -878,6 +909,8 @@ bool MovGraph::setPosImmediate(StaticANIObject *obj, int x, int y) {
 }
 
 MessageQueue *MovGraph::startMove(StaticANIObject *ani, int xpos, int ypos, int fuzzyMatch, int staticsId) {
+	debugC(4, kDebugPathfinding, "MovGraph::startMove(*%d, %d, %d, %d, %d)", (ani ? ani->_id : -1), xpos, ypos, fuzzyMatch, staticsId);
+
 	if (!ani) {
 		if (!_items.size())
 			return 0;
@@ -955,6 +988,8 @@ void MovGraph::setSelFunc(MovArr *(*callback1)(StaticANIObject *ani, Common::Arr
 }
 
 bool MovGraph::resetPosition(StaticANIObject *ani, int flag) {
+	debugC(4, kDebugPathfinding, "MovGraph::resetPosition(*%d, %d)", (ani ? ani->_id : -1), flag);
+
 	int idx = getObjectIndex(ani);
 
 	if (idx == -1)
@@ -1008,7 +1043,7 @@ bool MovGraph::canDropInventory(StaticANIObject *ani, int x, int y) {
 						return true;
 				}
 			}
-		} else if (calcChunk(idx, ani->_ox, ani->_oy, &m, 0) && m._link && (m._link->_flags & 0x4000000)) {
+		} else if (getHitPoint(idx, ani->_ox, ani->_oy, &m, 0) && m._link && (m._link->_flags & 0x4000000)) {
 			return true;
 		}
 	}
@@ -1017,6 +1052,8 @@ bool MovGraph::canDropInventory(StaticANIObject *ani, int x, int y) {
 }
 
 MessageQueue *MovGraph::doWalkTo(StaticANIObject *subj, int xpos, int ypos, int fuzzyMatch, int staticsId) {
+	debugC(1, kDebugPathfinding, "MovGraph::doWalkTo(*%d, %d, %d, %d, %d)", (subj ? subj->_id : -1), xpos, ypos, fuzzyMatch, staticsId);
+
 	PicAniInfo picAniInfo;
 	int ss;
 
@@ -1074,7 +1111,7 @@ MessageQueue *MovGraph::doWalkTo(StaticANIObject *subj, int xpos, int ypos, int 
 			_items[idx]->movarr._afield_8 = -1;
 			_items[idx]->movarr._link = 0;
 
-			MessageQueue *mq = fillMGMinfo(_items[idx]->ani, &_items[idx]->movarr, staticsId);
+			MessageQueue *mq = makeWholeQueue(_items[idx]->ani, &_items[idx]->movarr, staticsId);
 			if (mq) {
 				ExCommand *ex = new ExCommand();
 				ex->_messageKind = 17;
@@ -1095,6 +1132,8 @@ MessageQueue *MovGraph::doWalkTo(StaticANIObject *subj, int xpos, int ypos, int 
 }
 
 MessageQueue *MovGraph::sub1(StaticANIObject *ani, int x, int y, int stid, int x1, int y1, int stid2, int flag1) {
+	debugC(4, kDebugPathfinding, "MovGraph::sub1(*%d, %d, %d, %d, %d, %d, %d, %d)", (ani ? ani->_id : -1), x, y, stid, x1, y1, stid2, flag1);
+
 	PicAniInfo picinfo;
 
 	ani->getPicAniInfo(&picinfo);
@@ -1129,7 +1168,7 @@ MessageQueue *MovGraph::sub1(StaticANIObject *ani, int x, int y, int stid, int x
 			_items[idx]->movarr._afield_8 = -1;
 			_items[idx]->movarr._link = 0;
 
-			res = fillMGMinfo(_items[idx]->ani, &_items[idx]->movarr, stid2);
+			res = makeWholeQueue(_items[idx]->ani, &_items[idx]->movarr, stid2);
 
 			break;
 		}
@@ -1140,7 +1179,9 @@ MessageQueue *MovGraph::sub1(StaticANIObject *ani, int x, int y, int stid, int x
 	return res;
 }
 
-MessageQueue *MovGraph::fillMGMinfo(StaticANIObject *ani, MovArr *movarr, int staticsId) {
+MessageQueue *MovGraph::makeWholeQueue(StaticANIObject *ani, MovArr *movarr, int staticsId) {
+	debugC(4, kDebugPathfinding, "MovGraph::makeWholeQueue(*%d, *, %d)", (ani ? ani->_id : -1), staticsId);
+
 	if (!movarr->_movStepCount)
 		return 0;
 
@@ -1176,16 +1217,16 @@ MessageQueue *MovGraph::fillMGMinfo(StaticANIObject *ani, MovArr *movarr, int st
 		if (i == movarr->_movStepCount - 1) {
 			nx = movarr->_point.x;
 			ny = movarr->_point.y;
-			nd = st->link->_movGraphNode1->_z;
+			nd = st->link->_graphSrc->_z;
 		} else {
 			if (st->sfield_0) {
-				nx = st->link->_movGraphNode1->_x;
-				ny = st->link->_movGraphNode1->_y;
-				nd = st->link->_movGraphNode1->_z;
+				nx = st->link->_graphSrc->_x;
+				ny = st->link->_graphSrc->_y;
+				nd = st->link->_graphSrc->_z;
 			} else {
-				nx = st->link->_movGraphNode2->_x;
-				ny = st->link->_movGraphNode2->_y;
-				nd = st->link->_movGraphNode2->_z;
+				nx = st->link->_graphDst->_x;
+				ny = st->link->_graphDst->_y;
+				nd = st->link->_graphDst->_z;
 			}
 		}
 
@@ -1227,6 +1268,8 @@ MessageQueue *MovGraph::fillMGMinfo(StaticANIObject *ani, MovArr *movarr, int st
 }
 
 MessageQueue *MovGraph::method50(StaticANIObject *ani, MovArr *movarr, int staticsId) {
+	debugC(4, kDebugPathfinding, "MovGraph::method50(*%d, *, %d)", (ani ? ani->_id : -1), staticsId);
+
 	if (_items.size() == 0)
 		return 0;
 
@@ -1261,7 +1304,7 @@ MessageQueue *MovGraph::method50(StaticANIObject *ani, MovArr *movarr, int stati
 	_items[idx]->movarr._afield_8 = -1;
 	_items[idx]->movarr._link = 0;
 
-	MessageQueue *mq = fillMGMinfo(_items[idx]->ani, &_items[idx]->movarr, 0);
+	MessageQueue *mq = makeWholeQueue(_items[idx]->ani, &_items[idx]->movarr, 0);
 
 	if (!mq)
 		return 0;
@@ -1283,24 +1326,24 @@ MessageQueue *MovGraph::method50(StaticANIObject *ani, MovArr *movarr, int stati
 	return mq;
 }
 
-double MovGraph::calcDistance(Common::Point *point, MovGraphLink *link, int fuzzyMatch) {
-	int n1x = link->_movGraphNode1->_x;
-	int n1y = link->_movGraphNode1->_y;
-	int n2x = link->_movGraphNode2->_x;
-	int n2y = link->_movGraphNode2->_y;
+double MovGraph::putToLink(Common::Point *point, MovGraphLink *link, int fuzzyMatch) {
+	int n1x = link->_graphSrc->_x;
+	int n1y = link->_graphSrc->_y;
+	int n2x = link->_graphDst->_x;
+	int n2y = link->_graphDst->_y;
 	double dist1x = (double)(point->x - n1x);
-	double dist1y = (double)(n1y - point->y);
+	double dist1y = (double)(point->y - n1y);
 	double dist2x = (double)(n2x - n1x);
 	double dist2y = (double)(n2y - n1y);
-	double dist1 = sqrt(dist1y * dist1y + dist1x * dist1x);
-	double dist2 = ((double)(n1y - n2y) * dist1y + dist2x * dist1x) / link->_z / dist1;
+	double dist1 = sqrt(dist1x * dist1x + dist1y * dist1y);
+	double dist2 = (dist2y * dist1y + dist2x * dist1x) / link->_length / dist1;
 	double distm = dist2 * dist1;
 	double res = sqrt(1.0 - dist2 * dist2) * dist1;
 
-	if (dist2 <= 0.0 || distm >= link->_z) {
+	if (dist2 <= 0.0 || distm >= link->_length) {
 		if (fuzzyMatch) {
 			if (dist2 > 0.0) {
-				if (distm >= link->_z) {
+				if (distm >= link->_length) {
 					point->x = n2x;
 					point->y = n2y;
 				}
@@ -1312,14 +1355,16 @@ double MovGraph::calcDistance(Common::Point *point, MovGraphLink *link, int fuzz
 			return -1.0;
 		}
 	} else {
-		point->x = (int)(n1x + (dist2x * distm / link->_z));
-		point->y = (int)(n1y + (dist2y * distm / link->_z));
+		point->x = (int)(n1x + (dist2x * distm / link->_length));
+		point->y = (int)(n1y + (dist2y * distm / link->_length));
 	}
 
 	return res;
 }
 
 void MovGraph::recalcLinkParams() {
+	debugC(4, kDebugPathfinding, "MovGraph::recalcLinkParams()");
+
 	for (ObList::iterator i = _links.begin(); i != _links.end(); ++i) {
 		assert(((CObject *)*i)->_objtype == kObjTypeMovGraphLink);
 
@@ -1332,6 +1377,8 @@ void MovGraph::recalcLinkParams() {
 }
 
 bool MovGraph::getNearestPoint(int unusedArg, Common::Point *p, MovArr *movarr) {
+	debugC(4, kDebugPathfinding, "MovGraph::getNearestPoint(...)");
+
 	MovGraphLink *link = 0;
 	double mindist = 1.0e20;
 	int resx = 0, resy = 0;
@@ -1340,14 +1387,14 @@ bool MovGraph::getNearestPoint(int unusedArg, Common::Point *p, MovArr *movarr) 
 		MovGraphLink *lnk = (MovGraphLink *)*i;
 
 		if ((lnk->_flags & 0x10000000) && !(lnk->_flags & 0x20000000) ) {
-			double dx1 = lnk->_movGraphNode1->_x - p->x;
-			double dy1 = lnk->_movGraphNode1->_y - p->y;
-			double dx2 = lnk->_movGraphNode2->_x - p->x;
-			double dy2 = lnk->_movGraphNode2->_y - p->y;
-			double dx3 = lnk->_movGraphNode2->_x - lnk->_movGraphNode1->_x;
-			double dy3 = lnk->_movGraphNode2->_y - lnk->_movGraphNode1->_y;
+			double dx1 = lnk->_graphSrc->_x - p->x;
+			double dy1 = lnk->_graphSrc->_y - p->y;
+			double dx2 = lnk->_graphDst->_x - p->x;
+			double dy2 = lnk->_graphDst->_y - p->y;
+			double dx3 = lnk->_graphDst->_x - lnk->_graphSrc->_x;
+			double dy3 = lnk->_graphDst->_y - lnk->_graphSrc->_y;
 			double sq1 = sqrt(dy1 * dy1 + dx1 * dx1);
-			double sdist = (dy3 * dy1 + dx3 * dx1) / lnk->_z / sq1;
+			double sdist = (dy3 * dy1 + dx3 * dx1) / lnk->_length / sq1;
 			double ldist = sdist * sq1;
 			double dist = sqrt(1.0 - sdist * sdist) * sq1;
 
@@ -1356,14 +1403,14 @@ bool MovGraph::getNearestPoint(int unusedArg, Common::Point *p, MovArr *movarr) 
 				dist = sqrt(dx1 * dx1 + dy1 * dy1);
 			}
 
-			if (ldist > lnk->_z) {
-				ldist = lnk->_z;
+			if (ldist > lnk->_length) {
+				ldist = lnk->_length;
 				dist = sqrt(dx2 * dx2 + dy2 * dy2);
 			}
 
-			if (ldist >= 0.0 && ldist <= lnk->_z && dist < mindist) {
-				resx = lnk->_movGraphNode1->_x + (int)(dx3 * ldist / lnk->_z);
-				resy = lnk->_movGraphNode1->_y + (int)(dy3 * ldist / lnk->_z);
+			if (ldist >= 0.0 && ldist <= lnk->_length && dist < mindist) {
+				resx = lnk->_graphSrc->_x + (int)(dx3 * ldist / lnk->_length);
+				resy = lnk->_graphSrc->_y + (int)(dy3 * ldist / lnk->_length);
 
 				mindist = dist;
 				link = lnk;
@@ -1394,7 +1441,9 @@ int MovGraph::getObjectIndex(StaticANIObject *ani) {
 	return -1;
 }
 
-Common::Array<MovArr *> *MovGraph::genMovArr(int x, int y, int *arrSize, int flag1, int flag2) {
+Common::Array<MovArr *> *MovGraph::getHitPoints(int x, int y, int *arrSize, int flag1, int flag2) {
+	debugC(4, kDebugPathfinding, "MovGraph::getHitPoints(...)");
+
 	if (!_links.size()) {
 		*arrSize = 0;
 
@@ -1409,15 +1458,15 @@ Common::Array<MovArr *> *MovGraph::genMovArr(int x, int y, int *arrSize, int fla
 
 		if (flag1) {
 			Common::Point point(x, y);
-			double dist = calcDistance(&point, lnk, 0);
+			double dist = putToLink(&point, lnk, 0);
 
 			if (dist >= 0.0 && dist < 2.0) {
 				movarr = new MovArr;
 
 				movarr->_link = lnk;
-				movarr->_dist = ((double)(lnk->_movGraphNode1->_y - lnk->_movGraphNode2->_y) * (double)(lnk->_movGraphNode1->_y - point.y) +
-								 (double)(lnk->_movGraphNode2->_x - lnk->_movGraphNode1->_x) * (double)(point.x - lnk->_movGraphNode1->_x)) /
-					lnk->_z / lnk->_z;
+				movarr->_dist = ((double)(lnk->_graphSrc->_y - lnk->_graphDst->_y) * (double)(lnk->_graphSrc->_y - point.y) +
+								 (double)(lnk->_graphDst->_x - lnk->_graphSrc->_x) * (double)(point.x - lnk->_graphSrc->_x)) /
+					lnk->_length / lnk->_length;
 				movarr->_point = point;
 
 				arr->push_back(movarr);
@@ -1430,27 +1479,27 @@ Common::Array<MovArr *> *MovGraph::genMovArr(int x, int y, int *arrSize, int fla
 							movarr = new MovArr;
 							movarr->_link = lnk;
 							movarr->_dist = 0.0;
-							movarr->_point.x = lnk->_movGraphNode1->_x;
-							movarr->_point.y = lnk->_movGraphNode1->_y;
+							movarr->_point.x = lnk->_graphSrc->_x;
+							movarr->_point.y = lnk->_graphSrc->_y;
 							arr->push_back(movarr);
 
 							movarr = new MovArr;
 							movarr->_link = lnk;
 							movarr->_dist = 1.0;
-							movarr->_point.x = lnk->_movGraphNode1->_x;
-							movarr->_point.y = lnk->_movGraphNode1->_y;
+							movarr->_point.x = lnk->_graphSrc->_x;
+							movarr->_point.y = lnk->_graphSrc->_y;
 							arr->push_back(movarr);
 						}
 					} else {
 						movarr = new MovArr;
 						movarr->_link = lnk;
-						movarr->_dist = ((double)(lnk->_movGraphNode1->_y - lnk->_movGraphNode2->_y) * (double)(lnk->_movGraphNode1->_y - y) +
-										 (double)(lnk->_movGraphNode2->_x - lnk->_movGraphNode1->_x) * (double)(x - lnk->_movGraphNode1->_x)) /
-							lnk->_z / lnk->_z;
+						movarr->_dist = ((double)(lnk->_graphSrc->_y - lnk->_graphDst->_y) * (double)(lnk->_graphSrc->_y - y) +
+										 (double)(lnk->_graphDst->_x - lnk->_graphSrc->_x) * (double)(x - lnk->_graphSrc->_x)) /
+							lnk->_length / lnk->_length;
 						movarr->_point.x = x;
 						movarr->_point.y = y;
 
-						calcDistance(&movarr->_point, lnk, 0);
+						putToLink(&movarr->_point, lnk, 0);
 
 						arr->push_back(movarr);
 					}
@@ -1465,6 +1514,8 @@ Common::Array<MovArr *> *MovGraph::genMovArr(int x, int y, int *arrSize, int fla
 }
 
 void MovGraph::findAllPaths(MovGraphLink *lnk, MovGraphLink *lnk2, Common::Array<MovGraphLink *> &tempObList1, Common::Array<MovGraphLink *> &allPaths) {
+	debugC(4, kDebugPathfinding, "MovGraph::findAllPaths(...)");
+
 	if (lnk == lnk2) {
 		for (uint i = 0; i < tempObList1.size(); i++)
 			allPaths.push_back(tempObList1[i]);
@@ -1478,9 +1529,9 @@ void MovGraph::findAllPaths(MovGraphLink *lnk, MovGraphLink *lnk2, Common::Array
 		for (ObList::iterator i = _links.begin(); i != _links.end(); ++i) {
 			MovGraphLink *l = (MovGraphLink *)*i;
 
-			if (l->_movGraphNode1 != lnk->_movGraphNode1) {
-				if (l->_movGraphNode2 != lnk->_movGraphNode1) {
-					if (l->_movGraphNode1 != lnk->_movGraphNode2 && l->_movGraphNode2 != lnk->_movGraphNode2)
+			if (l->_graphSrc != lnk->_graphSrc) {
+				if (l->_graphDst != lnk->_graphSrc) {
+					if (l->_graphSrc != lnk->_graphDst && l->_graphDst != lnk->_graphDst)
 						continue;
 				}
 			}
@@ -1494,7 +1545,9 @@ void MovGraph::findAllPaths(MovGraphLink *lnk, MovGraphLink *lnk2, Common::Array
 }
 
 // Returns a list of possible paths two points in graph space
-Common::Array<MovItem *> *MovGraph::calcMovItems(MovArr *currPos, MovArr *destPos, int *pathCount) {
+Common::Array<MovItem *> *MovGraph::getPaths(MovArr *currPos, MovArr *destPos, int *pathCount) {
+	debugC(4, kDebugPathfinding, "MovGraph::getPaths(...)");
+
 	Common::Array<MovGraphLink *> tempObList1;
 	Common::Array<MovGraphLink *> allPaths;
 
@@ -1530,7 +1583,7 @@ void MovGraph::genMovItem(MovItem *movitem, MovGraphLink *grlink, MovArr *movarr
 	warning("STUB: MovGraph::genMovItem()");
 }
 
-bool MovGraph::calcChunk(int idx, int x, int y, MovArr *arr, int a6) {
+bool MovGraph::getHitPoint(int idx, int x, int y, MovArr *arr, int a6) {
 	int staticsId;
 
 	if (_items[idx]->ani->_statics) {
@@ -1544,7 +1597,7 @@ bool MovGraph::calcChunk(int idx, int x, int y, MovArr *arr, int a6) {
 
 	int arrSize;
 
-	Common::Array<MovArr *> *movarr = genMovArr(x, y, &arrSize, 0, 1);
+	Common::Array<MovArr *> *movarr = getHitPoints(x, y, &arrSize, 0, 1);
 
 	if (!movarr)
 		return getNearestPoint(idx, 0, arr);
@@ -1581,20 +1634,22 @@ bool MovGraph::calcChunk(int idx, int x, int y, MovArr *arr, int a6) {
 }
 
 void MovGraph::setEnds(MovStep *step1, MovStep *step2) {
-	if (step1->link->_movGraphNode1 == step2->link->_movGraphNode2) {
+	debugC(4, kDebugPathfinding, "MovGraph::setEnds(...)");
+
+	if (step1->link->_graphSrc == step2->link->_graphDst) {
 		step1->sfield_0 = 1;
 		step2->sfield_0 = 1;
 
 		return;
 	}
 
-	if (step1->link->_movGraphNode1 == step2->link->_movGraphNode1) {
+	if (step1->link->_graphSrc == step2->link->_graphSrc) {
 		step1->sfield_0 = 1;
 		step2->sfield_0 = 0;
 	} else {
 		step1->sfield_0 = 0;
 
-		if (step1->link->_movGraphNode2 != step2->link->_movGraphNode1) {
+		if (step1->link->_graphDst != step2->link->_graphSrc) {
 			step2->sfield_0 = 1;
 		} else {
 			step2->sfield_0 = 0;
@@ -1633,6 +1688,7 @@ int MovGraph2::getItemSubIndexByMGM(int index, StaticANIObject *ani) {
 		int min = 0;
 
 		for (int i = 0; i < 4; i++) {
+			debugC(1, kDebugPathfinding, "WWW 5");
 			int tmp = _mgm.refreshOffsets(ani->_id, ani->_statics->_staticsId, _items2[index]->_subItems[i]._staticsId1);
 
 			if (tmp >= 0 && (minidx == -1 || tmp < min)) {
@@ -1648,6 +1704,8 @@ int MovGraph2::getItemSubIndexByMGM(int index, StaticANIObject *ani) {
 }
 
 bool MovGraph2::initDirections(StaticANIObject *obj, MovGraph2Item *item) {
+	debugC(4, kDebugPathfinding, "MovGraph::initDirections(%d, ...)", obj->_id);
+
 	item->_obj = obj;
 	item->_objectId = obj->_id;
 
@@ -1777,6 +1835,8 @@ bool MovGraph2::initDirections(StaticANIObject *obj, MovGraph2Item *item) {
 }
 
 void MovGraph2::attachObject(StaticANIObject *obj) {
+	debugC(4, kDebugPathfinding, "MovGraph2::attachObject(*%d)", obj->_id);
+
 	MovGraph::attachObject(obj);
 
 	int id = getItemIndexByGameObjectId(obj->_id);
@@ -1795,6 +1855,8 @@ void MovGraph2::attachObject(StaticANIObject *obj) {
 }
 
 void MovGraph2::buildMovInfo1SubItems(MovInfo1 *movinfo, Common::Array<MovGraphLink *> *linkList, LinkInfo *lnkSrc, LinkInfo *lnkDst) {
+	debugC(4, kDebugPathfinding, "MovGraph2::buildMovInfo1SubItems(...)");
+
 	MovInfo1Sub *elem;
 	Common::Point point;
 	Common::Rect rect;
@@ -1904,6 +1966,8 @@ void MovGraph2::buildMovInfo1SubItems(MovInfo1 *movinfo, Common::Array<MovGraphL
 }
 
 MessageQueue *MovGraph2::buildMovInfo1MessageQueue(MovInfo1 *movInfo) {
+	debugC(4, kDebugPathfinding, "MovGraph2::buildMovInfo1MessageQueue(...)");
+
 	MovInfo1 movinfo(movInfo);
 
 	int curX = movInfo->pt1.x;
@@ -2037,6 +2101,8 @@ int MovGraph2::detachObject(StaticANIObject *obj) {
 }
 
 void MovGraph2::detachAllObjects() {
+	debugC(4, kDebugPathfinding, "MovGraph2::detachAllObjects()");
+
 	for (uint i = 0; i < _items2.size(); i++)
 		delete _items2[i];
 
@@ -2044,12 +2110,15 @@ void MovGraph2::detachAllObjects() {
 }
 
 MessageQueue *MovGraph2::startMove(StaticANIObject *ani, int xpos, int ypos, int fuzzyMatch, int staticsId) {
+	debugC(4, kDebugPathfinding, "MovGraph2::startMove(*%d, %d, %d, %d, %d)", ani->_id, xpos, ypos, fuzzyMatch, staticsId);
+
 	if (!ani->isIdle())
 		return 0;
 
 	if (ani->_flags & 0x100)
 		return 0;
 
+	debugC(1, kDebugPathfinding, "WWW 3");
 	MessageQueue *mq = doWalkTo(ani, xpos, ypos, fuzzyMatch, staticsId);
 
 	if (!mq)
@@ -2091,7 +2160,7 @@ MessageQueue *MovGraph2::doWalkTo(StaticANIObject *obj, int xpos, int ypos, int 
 	PicAniInfo picAniInfo;
 	Common::Point point;
 
-	debug(0, "MovGraph2::doWalkTo(%d, %d, %d, %d, %d)", obj->_id, xpos, ypos, fuzzyMatch, staticsId);
+	debugC(1, kDebugPathfinding, "MovGraph2::doWalkTo(%d, %d, %d, %d, %d)", obj->_id, xpos, ypos, fuzzyMatch, staticsId);
 
 	int idx = getItemIndexByGameObjectId(obj->_id);
 
@@ -2118,6 +2187,7 @@ MessageQueue *MovGraph2::doWalkTo(StaticANIObject *obj, int xpos, int ypos, int 
 	bool subMgm = false;
 
 	if (idxsub == -1) {
+		debugC(1, kDebugPathfinding, "WWW 4");
 		idxsub = getItemSubIndexByMGM(idx, obj);
 		subMgm = true;
 
@@ -2223,7 +2293,7 @@ MessageQueue *MovGraph2::doWalkTo(StaticANIObject *obj, int xpos, int ypos, int 
 	Common::Array<MovGraphLink *> tempLinkList;
 	double minPath = findMinPath(&linkInfoSource, &linkInfoDest, &tempLinkList);
 
-	debug(0, "MovGraph2::doWalkTo(): path: %g  parts: %d", minPath, tempLinkList.size());
+	debugC(0, kDebugPathfinding, "MovGraph2::doWalkTo(): path: %g  parts: %d", minPath, tempLinkList.size());
 
 	if (minPath < 0.0 || ((linkInfoSource.node != linkInfoDest.node || !linkInfoSource.node) && !tempLinkList.size()))
 		return 0;
@@ -2241,7 +2311,7 @@ MessageQueue *MovGraph2::doWalkTo(StaticANIObject *obj, int xpos, int ypos, int 
 	if (linkInfoSource.node)
 		movInfo1.distance1 = linkInfoSource.node->_z;
 	else
-		movInfo1.distance1 = linkInfoSource.link->_movGraphNode1->_z;
+		movInfo1.distance1 = linkInfoSource.link->_graphSrc->_z;
 
 	if (linkInfoDest.node) {
 		dx2 = linkInfoDest.node->_x;
@@ -2255,13 +2325,13 @@ MessageQueue *MovGraph2::doWalkTo(StaticANIObject *obj, int xpos, int ypos, int 
 		movInfo1.pt2.x = xpos;
 		movInfo1.pt2.y = ypos;
 
-		MovGraphNode *nod = linkInfoDest.link->_movGraphNode1;
+		MovGraphNode *nod = linkInfoDest.link->_graphSrc;
 		double dst1 = sqrt((double)((ypos - nod->_y) * (ypos - nod->_y) + (xpos - nod->_x) * (xpos - nod->_x)));
-		int dst = linkInfoDest.link->_movGraphNode2->_z - nod->_z;
+		int dst = linkInfoDest.link->_graphDst->_z - nod->_z;
 
-		movInfo1.distance2 = (int)(nod->_z + (dst1 * (double)dst / linkInfoDest.link->_z));
+		movInfo1.distance2 = (int)(nod->_z + (dst1 * (double)dst / linkInfoDest.link->_length));
 
-		calcDistance(&movInfo1.pt2, linkInfoDest.link, 1);
+		putToLink(&movInfo1.pt2, linkInfoDest.link, 1);
 
 		dx1 = movInfo1.pt1.x;
 		dy1 = movInfo1.pt1.y;
@@ -2349,7 +2419,7 @@ int MovGraph2::getShortSide(MovGraphLink *lnk, int x, int y) {
 	bool cond;
 
 	if (lnk)
-		cond = abs(lnk->_movGraphNode2->_x - lnk->_movGraphNode1->_x) > abs(lnk->_movGraphNode2->_y - lnk->_movGraphNode1->_y);
+		cond = abs(lnk->_graphDst->_x - lnk->_graphSrc->_x) > abs(lnk->_graphDst->_y - lnk->_graphSrc->_y);
 	else
 		cond = abs(x) > abs(y);
 
@@ -2360,16 +2430,18 @@ int MovGraph2::getShortSide(MovGraphLink *lnk, int x, int y) {
 }
 
 int MovGraph2::findLink(Common::Array<MovGraphLink *> *linkList, int idx, Common::Rect *rect, Common::Point *point) {
-	MovGraphNode *node1 = (*linkList)[idx]->_movGraphNode1;
-	MovGraphNode *node2 = (*linkList)[idx]->_movGraphNode2;
+	debugC(4, kDebugPathfinding, "MovGraph2::findLink(...)");
+
+	MovGraphNode *node1 = (*linkList)[idx]->_graphSrc;
+	MovGraphNode *node2 = (*linkList)[idx]->_graphDst;
 	MovGraphNode *node3 = node1;
 
 	if (idx != 0) {
 		MovGraphLink *lnk = (*linkList)[idx - 1];
 
-		if (lnk->_movGraphNode2 != node1) {
-			if (lnk->_movGraphNode1 != node1) {
-				if (lnk->_movGraphNode2 == node2 || lnk->_movGraphNode1 == node2) {
+		if (lnk->_graphDst != node1) {
+			if (lnk->_graphSrc != node1) {
+				if (lnk->_graphDst == node2 || lnk->_graphSrc == node2) {
 					node3 = node2;
 					node2 = node1;
 				}
@@ -2380,10 +2452,10 @@ int MovGraph2::findLink(Common::Array<MovGraphLink *> *linkList, int idx, Common
 	} else if (idx != (int)(linkList->size() - 1)) {
 		MovGraphLink *lnk = (*linkList)[idx + 1];
 
-		if (lnk->_movGraphNode2 == node1 || lnk->_movGraphNode1 == node1) {
+		if (lnk->_graphDst == node1 || lnk->_graphSrc == node1) {
 			node3 = node2;
 			node2 = node1;
-		} else if (lnk->_movGraphNode2 == node2 || lnk->_movGraphNode1 == node2) {
+		} else if (lnk->_graphDst == node2 || lnk->_graphSrc == node2) {
 			node3 = node1;
 		}
 	}
@@ -2407,6 +2479,8 @@ int MovGraph2::findLink(Common::Array<MovGraphLink *> *linkList, int idx, Common
 }
 
 MessageQueue *MovGraph2::genMovement(MovInfo1 *info) {
+	debugC(4, kDebugPathfinding, "MovGraph2::genMovement(...)");
+
 	int mx1 = 0;
 	int my1 = 0;
 
@@ -2608,6 +2682,8 @@ MessageQueue *MovGraph2::genMovement(MovInfo1 *info) {
 }
 
 MovGraphLink *MovGraph2::findLink1(int x, int y, int idx, int fuzzyMatch) {
+	debugC(4, kDebugPathfinding, "MovGraph2::findLink1(...)");
+
 	Common::Point point;
 	MovGraphLink *res = 0;
 
@@ -2619,13 +2695,13 @@ MovGraphLink *MovGraph2::findLink1(int x, int y, int idx, int fuzzyMatch) {
 		if (fuzzyMatch) {
 			point.x = x;
 			point.y = y;
-			double dst = calcDistance(&point, lnk, 0);
+			double dst = putToLink(&point, lnk, 0);
 
 			if (dst >= 0.0 && dst < 2.0)
 				return lnk;
 		} else if (!(lnk->_flags & 0x20000000)) {
 			if (lnk->_movGraphReact->pointInRegion(x, y)) {
-				if (abs(lnk->_movGraphNode1->_x - lnk->_movGraphNode2->_x) <= abs(lnk->_movGraphNode1->_y - lnk->_movGraphNode2->_y)) {
+				if (abs(lnk->_graphSrc->_x - lnk->_graphDst->_x) <= abs(lnk->_graphSrc->_y - lnk->_graphDst->_y)) {
 					if (idx == 2 || idx == 3)
 						return lnk;
 					res = lnk;
@@ -2642,6 +2718,8 @@ MovGraphLink *MovGraph2::findLink1(int x, int y, int idx, int fuzzyMatch) {
 }
 
 MovGraphLink *MovGraph2::findLink2(int x, int y) {
+	debugC(4, kDebugPathfinding, "MovGraph2::findLink2(...)");
+
 	double mindist = 1.0e20;
 	MovGraphLink *res = 0;
 
@@ -2651,14 +2729,14 @@ MovGraphLink *MovGraph2::findLink2(int x, int y) {
 		MovGraphLink *lnk = (MovGraphLink *)*i;
 
 		if (!(lnk->_flags & 0x20000000)) {
-			double n1x = lnk->_movGraphNode1->_x;
-			double n1y = lnk->_movGraphNode1->_y;
-			double n2x = lnk->_movGraphNode2->_x;
-			double n2y = lnk->_movGraphNode2->_y;
+			double n1x = lnk->_graphSrc->_x;
+			double n1y = lnk->_graphSrc->_y;
+			double n2x = lnk->_graphDst->_x;
+			double n2y = lnk->_graphDst->_y;
 			double n1dx = n1x - x;
 			double n1dy = n1y - y;
 			double dst1 = sqrt(n1dy * n1dy + n1dx * n1dx);
-			double coeff1 = ((n1y - n2y) * n1dy + (n2x - n1x) * n1dx) / lnk->_z / dst1;
+			double coeff1 = ((n1y - n2y) * n1dy + (n2x - n1x) * n1dx) / lnk->_length / dst1;
 			double dst3 = coeff1 * dst1;
 			double dst2 = sqrt(1.0 - coeff1 * coeff1) * dst1;
 
@@ -2666,11 +2744,11 @@ MovGraphLink *MovGraph2::findLink2(int x, int y) {
 				dst3 = 0.0;
 				dst2 = sqrt(n1dy * n1dy + n1dx * n1dx);
 			}
-			if (dst3 > lnk->_z) {
-				dst3 = lnk->_z;
+			if (dst3 > lnk->_length) {
+				dst3 = lnk->_length;
 				dst2 = sqrt((n2x - x) * (n2x - x) + (n2y - y) * (n2y - y));
 			}
-			if (dst3 >= 0.0 && dst3 <= lnk->_z && dst2 < mindist) {
+			if (dst3 >= 0.0 && dst3 <= lnk->_length && dst2 < mindist) {
 				mindist = dst2;
 				res = lnk;
 			}
@@ -2684,6 +2762,8 @@ MovGraphLink *MovGraph2::findLink2(int x, int y) {
 }
 
 double MovGraph2::findMinPath(LinkInfo *linkInfoSource, LinkInfo *linkInfoDest, Common::Array<MovGraphLink *> *listObj) {
+	debugC(4, kDebugPathfinding, "MovGraph2::findMinPath(...)");
+
 	LinkInfo linkInfoWorkSource;
 
 	if (linkInfoSource->link != linkInfoDest->link || linkInfoSource->node != linkInfoDest->node) {
@@ -2693,7 +2773,7 @@ double MovGraph2::findMinPath(LinkInfo *linkInfoSource, LinkInfo *linkInfoDest, 
 			for (ObList::iterator i = _links.begin(); i != _links.end(); ++i) {
 				MovGraphLink *lnk = (MovGraphLink *)*i;
 
-				if ((lnk->_movGraphNode1 == linkInfoSource->node || lnk->_movGraphNode2 == linkInfoSource->node) && !(lnk->_flags & 0xA0000000)) {
+				if ((lnk->_graphSrc == linkInfoSource->node || lnk->_graphDst == linkInfoSource->node) && !(lnk->_flags & 0xA0000000)) {
 					linkInfoWorkSource.node = 0;
 					linkInfoWorkSource.link = lnk;
 
@@ -2703,18 +2783,18 @@ double MovGraph2::findMinPath(LinkInfo *linkInfoSource, LinkInfo *linkInfoDest, 
 
 					double newDistance = findMinPath(&linkInfoWorkSource, linkInfoDest, &tmpList);
 
-					if (newDistance >= 0.0 && (minDistance < 0.0 || newDistance + lnk->_z < minDistance)) {
+					if (newDistance >= 0.0 && (minDistance < 0.0 || newDistance + lnk->_length < minDistance)) {
 						listObj->clear();
 						listObj->push_back(tmpList);
 
-						minDistance = newDistance + lnk->_z;
+						minDistance = newDistance + lnk->_length;
 					}
 
 					lnk->_flags &= 0x7FFFFFFF;
 				}
 			}
 		} else if (linkInfoSource->link) {
-			linkInfoWorkSource.node = linkInfoSource->link->_movGraphNode1;
+			linkInfoWorkSource.node = linkInfoSource->link->_graphSrc;
 			linkInfoWorkSource.link = 0;
 
 			Common::Array<MovGraphLink *> tmpList;
@@ -2731,7 +2811,7 @@ double MovGraph2::findMinPath(LinkInfo *linkInfoSource, LinkInfo *linkInfoDest, 
 			}
 
 			linkInfoWorkSource.link = 0;
-			linkInfoWorkSource.node = linkInfoSource->link->_movGraphNode2;
+			linkInfoWorkSource.node = linkInfoSource->link->_graphDst;
 
 			tmpList.clear();
 
@@ -2774,11 +2854,11 @@ MovGraphNode *MovGraph::calcOffset(int ox, int oy) {
 }
 
 MovGraphLink::MovGraphLink() {
-	_z = 0;
+	_length = 0;
 	_angle = 0;
 	_flags = 0x10000000;
-	_movGraphNode2 = 0;
-	_movGraphNode1 = 0;
+	_graphDst = 0;
+	_graphSrc = 0;
 	_field_3C = 0;
 	_field_38 = 0;
 	_movGraphReact = 0;
@@ -2796,22 +2876,22 @@ MovGraphLink::~MovGraphLink() {
 
 
 bool MovGraphLink::load(MfcArchive &file) {
-	debug(5, "MovGraphLink::load()");
+	debugC(5, kDebugLoading, "MovGraphLink::load()");
 
 	_dwordArray1.load(file);
 	_dwordArray2.load(file);
 
 	_flags = file.readUint32LE();
 
-	debug(8, "GraphNode1");
-	_movGraphNode1 = (MovGraphNode *)file.readClass();
-	debug(8, "GraphNode2");
-	_movGraphNode2 = (MovGraphNode *)file.readClass();
+	debugC(8, kDebugLoading, "GraphNode1");
+	_graphSrc = (MovGraphNode *)file.readClass();
+	debugC(8, kDebugLoading, "GraphNode2");
+	_graphDst = (MovGraphNode *)file.readClass();
 
-	_z = file.readDouble();
+	_length = file.readDouble();
 	_angle = file.readDouble();
 
-	debug(8, "distance: %g, angle: %g", _z, _angle);
+	debugC(8, kDebugLoading, "length: %g, angle: %g", _length, _angle);
 
 	_movGraphReact = (MovGraphReact *)file.readClass();
 	_name = file.readPascalString();
@@ -2820,17 +2900,17 @@ bool MovGraphLink::load(MfcArchive &file) {
 }
 
 void MovGraphLink::recalcLength() {
-	if (_movGraphNode1) {
-		double dx = _movGraphNode2->_x - _movGraphNode1->_x;
-		double dy = _movGraphNode2->_y - _movGraphNode1->_y;
+	if (_graphSrc) {
+		double dx = _graphDst->_x - _graphSrc->_x;
+		double dy = _graphDst->_y - _graphSrc->_y;
 
-		_z = sqrt(dy * dy + dx * dx);
+		_length = sqrt(dy * dy + dx * dx);
 		_angle = atan2(dx, dy);
 	}
 }
 
 bool MovGraphNode::load(MfcArchive &file) {
-	debug(5, "MovGraphNode::load()");
+	debugC(5, kDebugLoading, "MovGraphNode::load()");
 
 	_field_14 = file.readUint32LE();
 	_x = file.readUint32LE();
@@ -2850,7 +2930,7 @@ ReactParallel::ReactParallel() {
 }
 
 bool ReactParallel::load(MfcArchive &file) {
-	debug(5, "ReactParallel::load()");
+	debugC(5, kDebugLoading, "ReactParallel::load()");
 
 	_x1 = file.readUint32LE();
 	_y1 = file.readUint32LE();
@@ -2908,7 +2988,7 @@ ReactPolygonal::~ReactPolygonal() {
 }
 
 bool ReactPolygonal::load(MfcArchive &file) {
-	debug(5, "ReactPolygonal::load()");
+	debugC(5, kDebugLoading, "ReactPolygonal::load()");
 
 	_centerX = file.readUint32LE();
 	_centerY = file.readUint32LE();

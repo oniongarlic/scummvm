@@ -91,8 +91,9 @@ static const char *kSceneNames[] = {
 GnapEngine::GnapEngine(OSystem *syst, const ADGameDescription *gd) :
 	Engine(syst), _gameDescription(gd) {
 
-	_random = new Common::RandomSource("gnap");
 	DebugMan.addDebugChannel(kDebugBasic, "basic", "Basic debug level");
+
+	_random = new Common::RandomSource("gnap");
 
 	Engine::syncSoundSettings();
 
@@ -525,9 +526,11 @@ void GnapEngine::updateMouseCursor() {
 	}
 	if (_isWaiting && ((_gnap->_actionStatus < 0 && _plat->_actionStatus < 0) || _sceneWaiting)) {
 		setCursor(kDisabledCursors[_verbCursor]);
+		showCursor();
 		_isWaiting = false;
 	} else if (!_isWaiting && (_gnap->_actionStatus >= 0 || _plat->_actionStatus >= 0) && !_sceneWaiting) {
 		setCursor(WAIT_CURSOR);
+		hideCursor();
 		_isWaiting = true;
 	}
 }

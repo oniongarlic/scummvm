@@ -48,8 +48,9 @@
 #include "sci/sound/music.h"
 
 #ifdef ENABLE_SCI32
-#include "sci/graphics/palette32.h"
 #include "sci/graphics/frameout.h"
+#include "sci/graphics/palette32.h"
+#include "sci/graphics/remap32.h"
 #endif
 
 namespace Sci {
@@ -155,6 +156,24 @@ void syncWithSerializer(Common::Serializer &s, SciString &obj) {
 
 		if (s.isLoading())
 			obj.setValue(i, value);
+	}
+}
+
+void syncWithSerializer(Common::Serializer &s, SciBitmap *&obj) {
+	bool hasEntry;
+	if (s.isSaving()) {
+		hasEntry = obj != nullptr;
+	}
+	s.syncAsByte(hasEntry);
+
+	if (hasEntry) {
+		if (s.isLoading()) {
+			obj = new SciBitmap;
+		}
+
+		obj->saveLoadWithSerializer(s);
+	} else {
+		obj = nullptr;
 	}
 }
 #endif
@@ -272,6 +291,8 @@ void SegManager::saveLoadWithSerializer(Common::Serializer &s) {
 		} else if (type == SEG_TYPE_STRING) {
 			// Set the correct segment for SCI32 strings
 			_stringSegId = i;
+		} else if (s.getVersion() >= 36 && type == SEG_TYPE_BITMAP) {
+			_bitmapSegId = i;
 #endif
 		}
 
@@ -397,8 +418,13 @@ void EngineState::saveLoadWithSerializer(Common::Serializer &s) {
 	_segMan->saveLoadWithSerializer(s);
 
 	g_sci->_soundCmd->syncPlayList(s);
-	// NOTE: This will be GfxPalette32 for SCI32 engine games
-	g_sci->_gfxPalette16->saveLoadWithSerializer(s);
+
+#ifdef ENABLE_SCI32
+	if (getSciVersion() >= SCI_VERSION_2) {
+		g_sci->_gfxPalette32->saveLoadWithSerializer(s);
+	} else
+#endif
+		g_sci->_gfxPalette16->saveLoadWithSerializer(s);
 }
 
 void Vocabulary::saveLoadWithSerializer(Common::Serializer &s) {
@@ -681,6 +707,31 @@ void StringTable::saveLoadWithSerializer(Common::Serializer &ser) {
 
 	sync_Table<StringTable>(ser, *this);
 }
+
+void BitmapTable::saveLoadWithSerializer(Common::Serializer &ser) {
+	if (ser.getVersion() < 36) {
+		return;
+	}
+
+	sync_Table(ser, *this);
+}
+
+void SciBitmap::saveLoadWithSerializer(Common::Serializer &s) {
+	if (s.getVersion() < 36) {
+		return;
+	}
+
+	s.syncAsByte(_gc);
+	s.syncAsUint32LE(_dataSize);
+	if (s.isLoading()) {
+		_data = (byte *)malloc(_dataSize);
+	}
+	s.syncBytes(_data, _dataSize);
+
+	if (s.isLoading()) {
+		_buffer = Buffer(getWidth(), getHeight(), getPixels());
+	}
+}
 #endif
 
 void GfxPalette::palVarySaveLoadPalette(Common::Serializer &s, Palette *palette) {
@@ -766,7 +817,7 @@ void GfxPalette32::saveLoadWithSerializer(Common::Serializer &s) {
 	s.syncAsSint16LE(_varyFromColor);
 	s.syncAsSint16LE(_varyToColor);
 	s.syncAsUint16LE(_varyNumTimesPaused);
-	s.syncAsByte(_versionUpdated);
+	s.syncAsByte(_needsUpdate);
 	s.syncAsSint32LE(_varyTime);
 	s.syncAsUint32LE(_varyLastTick);
 
@@ -805,6 +856,33 @@ void GfxPalette32::saveLoadWithSerializer(Common::Serializer &s) {
 			s.syncAsSint16LE(cycler->delay);
 			s.syncAsUint16LE(cycler->numTimesPaused);
 		}
+	}
+}
+
+void GfxRemap32::saveLoadWithSerializer(Common::Serializer &s) {
+	if (s.getVersion() < 35) {
+		return;
+	}
+
+	s.syncAsByte(_numActiveRemaps);
+	s.syncAsByte(_blockedRangeStart);
+	s.syncAsSint16LE(_blockedRangeCount);
+
+	for (uint i = 0; i < _remaps.size(); ++i) {
+		SingleRemap &singleRemap = _remaps[i];
+		s.syncAsByte(singleRemap._type);
+		if (s.isLoading() && singleRemap._type != kRemapNone) {
+			singleRemap.reset();
+		}
+		s.syncAsByte(singleRemap._from);
+		s.syncAsByte(singleRemap._to);
+		s.syncAsByte(singleRemap._delta);
+		s.syncAsByte(singleRemap._percent);
+		s.syncAsByte(singleRemap._gray);
+	}
+
+	if (s.isLoading()) {
+		_needsUpdate = true;
 	}
 }
 #endif

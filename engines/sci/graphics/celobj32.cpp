@@ -26,13 +26,12 @@
 #include "sci/graphics/celobj32.h"
 #include "sci/graphics/frameout.h"
 #include "sci/graphics/palette32.h"
-#include "sci/graphics/picture.h"
-#include "sci/graphics/remap.h"
+#include "sci/graphics/remap32.h"
 #include "sci/graphics/text32.h"
-#include "sci/graphics/view.h"
 
 namespace Sci {
 #pragma mark CelScaler
+
 CelScaler *CelObj::_scaler = nullptr;
 
 void CelScaler::activateScaleTables(const Ratio &scaleX, const Ratio &scaleY) {
@@ -84,9 +83,11 @@ const CelScalerTable *CelScaler::getScalerTable(const Ratio &scaleX, const Ratio
 
 #pragma mark -
 #pragma mark CelObj
+bool CelObj::_drawBlackLines = false;
 
 void CelObj::init() {
 	CelObj::deinit();
+	_drawBlackLines = false;
 	_nextCacheId = 1;
 	_scaler = new CelScaler();
 	_cache = new CelCache;
@@ -177,34 +178,61 @@ struct SCALER_Scale {
 	// line of source data when scaling
 	_reader(celObj, celObj._width) {
 		// In order for scaling ratios to apply equally across objects that
-		// start at different positions on the screen, the pixels that are
-		// read from the source bitmap must all use the same pattern of
-		// division. In other words, cels must follow the same scaling pattern
-		// as if they were drawn starting at an even multiple of the scaling
-		// ratio, even if they were not.
+		// start at different positions on the screen (like the cels of a
+		// picture), the pixels that are read from the source bitmap must all
+		// use the same pattern of division. In other words, cels must follow
+		// a global scaling pattern as if they were always drawn starting at an
+		// even multiple of the scaling ratio, even if they are not.
 		//
 		// To get the correct source pixel when reading out through the scaler,
 		// the engine creates a lookup table for each axis that translates
 		// directly from target positions to the indexes of source pixels using
 		// the global cadence for the given scaling ratio.
+		//
+		// Note, however, that not all games use the global scaling mode.
+		//
+		// SQ6 definitely uses the global scaling mode (an easy visual
+		// comparison is to leave Implants N' Stuff and then look at Roger);
+		// Torin definitely does not (scaling subtitle backgrounds will cause it
+		// to attempt a read out of bounds and crash). They are both SCI
+		// "2.1mid" games, so currently the common denominator looks to be that
+		// games which use global scaling are the ones that use low-resolution
+		// script coordinates too.
 
 		const CelScalerTable *table = CelObj::_scaler->getScalerTable(scaleX, scaleY);
 
-		const int16 unscaledX = (scaledPosition.x / scaleX).toInt();
-		if (FLIP) {
-			int lastIndex = celObj._width - 1;
-			for (int16 x = targetRect.left; x < targetRect.right; ++x) {
-				_valuesX[x] = lastIndex - (table->valuesX[x] - unscaledX);
+		if (g_sci->_gfxFrameout->getCurrentBuffer().scriptWidth == kLowResX) {
+			const int16 unscaledX = (scaledPosition.x / scaleX).toInt();
+			if (FLIP) {
+				int lastIndex = celObj._width - 1;
+				for (int16 x = targetRect.left; x < targetRect.right; ++x) {
+					_valuesX[x] = lastIndex - (table->valuesX[x] - unscaledX);
+				}
+			} else {
+				for (int16 x = targetRect.left; x < targetRect.right; ++x) {
+					_valuesX[x] = table->valuesX[x] - unscaledX;
+				}
+			}
+
+			const int16 unscaledY = (scaledPosition.y / scaleY).toInt();
+			for (int16 y = targetRect.top; y < targetRect.bottom; ++y) {
+				_valuesY[y] = table->valuesY[y] - unscaledY;
 			}
 		} else {
-			for (int16 x = targetRect.left; x < targetRect.right; ++x) {
-				_valuesX[x] = table->valuesX[x] - unscaledX;
+			if (FLIP) {
+				int lastIndex = celObj._width - 1;
+				for (int16 x = 0; x < targetRect.width(); ++x) {
+					_valuesX[targetRect.left + x] = lastIndex - table->valuesX[x];
+				}
+			} else {
+				for (int16 x = 0; x < targetRect.width(); ++x) {
+					_valuesX[targetRect.left + x] = table->valuesX[x];
+				}
 			}
-		}
 
-		const int16 unscaledY = (scaledPosition.y / scaleY).toInt();
-		for (int16 y = targetRect.top; y < targetRect.bottom; ++y) {
-			_valuesY[y] = table->valuesY[y] - unscaledY;
+			for (int16 y = 0; y < targetRect.height(); ++y) {
+				_valuesY[targetRect.top + y] = table->valuesY[y];
+			}
 		}
 	}
 
@@ -323,6 +351,10 @@ public:
 #pragma mark -
 #pragma mark CelObj - Remappers
 
+/**
+ * Pixel mapper for a CelObj with transparent pixels and no
+ * remapping data.
+ */
 struct MAPPER_NoMD {
 	inline void draw(byte *target, const byte pixel, const uint8 skipColor) const {
 		if (pixel != skipColor) {
@@ -330,21 +362,45 @@ struct MAPPER_NoMD {
 		}
 	}
 };
+
+/**
+ * Pixel mapper for a CelObj with no transparent pixels and
+ * no remapping data.
+ */
 struct MAPPER_NoMDNoSkip {
 	inline void draw(byte *target, const byte pixel, const uint8) const {
 		*target = pixel;
 	}
 };
 
+/**
+ * Pixel mapper for a CelObj with transparent pixels,
+ * remapping data, and remapping enabled.
+ */
 struct MAPPER_Map {
 	inline void draw(byte *target, const byte pixel, const uint8 skipColor) const {
 		if (pixel != skipColor) {
+			// NOTE: For some reason, SSCI never checks if the source
+			// pixel is *above* the range of remaps.
 			if (pixel < g_sci->_gfxRemap32->getStartColor()) {
 				*target = pixel;
-			} else {
-				if (g_sci->_gfxRemap32->remapEnabled(pixel))
-					*target = g_sci->_gfxRemap32->remapColor(pixel, *target);
+			} else if (g_sci->_gfxRemap32->remapEnabled(pixel)) {
+				*target = g_sci->_gfxRemap32->remapColor(pixel, *target);
 			}
+		}
+	}
+};
+
+/**
+ * Pixel mapper for a CelObj with transparent pixels,
+ * remapping data, and remapping disabled.
+ */
+struct MAPPER_NoMap {
+	inline void draw(byte *target, const byte pixel, const uint8 skipColor) const {
+		// NOTE: For some reason, SSCI never checks if the source
+		// pixel is *above* the range of remaps.
+		if (pixel != skipColor && pixel < g_sci->_gfxRemap32->getStartColor()) {
+			*target = pixel;
 		}
 	}
 };
@@ -353,6 +409,7 @@ void CelObj::draw(Buffer &target, const ScreenItem &screenItem, const Common::Re
 	const Common::Point &scaledPosition = screenItem._scaledPosition;
 	const Ratio &scaleX = screenItem._ratioX;
 	const Ratio &scaleY = screenItem._ratioY;
+	_drawBlackLines = screenItem._drawBlackLines;
 
 	if (_remap) {
 		// NOTE: In the original code this check was `g_Remap_numActiveRemaps && _remap`,
@@ -434,6 +491,8 @@ void CelObj::draw(Buffer &target, const ScreenItem &screenItem, const Common::Re
 			}
 		}
 	}
+
+	_drawBlackLines = false;
 }
 
 void CelObj::draw(Buffer &target, const ScreenItem &screenItem, const Common::Rect &targetRect, bool mirrorX) {
@@ -511,18 +570,14 @@ uint8 CelObj::readPixel(uint16 x, const uint16 y, bool mirrorX) const {
 
 void CelObj::submitPalette() const {
 	if (_hunkPaletteOffset) {
-		Palette palette;
-
-		byte *res = getResPointer();
-		// NOTE: In SCI engine this uses HunkPalette::Init.
-		// TODO: Use a better size value
-		g_sci->_gfxPalette32->createFromData(res + _hunkPaletteOffset, 999999, &palette);
+		HunkPalette palette(getResPointer() + _hunkPaletteOffset);
 		g_sci->_gfxPalette32->submit(palette);
 	}
 }
 
 #pragma mark -
 #pragma mark CelObj - Caching
+
 int CelObj::_nextCacheId = 1;
 CelCache *CelObj::_cache = nullptr;
 
@@ -572,7 +627,7 @@ void CelObj::putCopyInCache(const int cacheIndex) const {
 #pragma mark -
 #pragma mark CelObj - Drawing
 
-template<typename MAPPER, typename SCALER>
+template<typename MAPPER, typename SCALER, bool DRAW_BLACK_LINES>
 struct RENDERER {
 	MAPPER &_mapper;
 	SCALER &_scaler;
@@ -590,6 +645,12 @@ struct RENDERER {
 		const int16 targetWidth = targetRect.width();
 		const int16 targetHeight = targetRect.height();
 		for (int16 y = 0; y < targetHeight; ++y) {
+			if (DRAW_BLACK_LINES && (y % 2) == 0) {
+				memset(targetPixel, 0, targetWidth);
+				targetPixel += targetWidth + skipStride;
+				continue;
+			}
+
 			_scaler.setTarget(targetRect.left, targetRect.top + y);
 
 			for (int16 x = 0; x < targetWidth; ++x) {
@@ -606,7 +667,7 @@ void CelObj::render(Buffer &target, const Common::Rect &targetRect, const Common
 
 	MAPPER mapper;
 	SCALER scaler(*this, targetRect.left - scaledPosition.x + targetRect.width(), scaledPosition);
-	RENDERER<MAPPER, SCALER> renderer(mapper, scaler, _transparentColor);
+	RENDERER<MAPPER, SCALER, false> renderer(mapper, scaler, _transparentColor);
 	renderer.draw(target, targetRect, scaledPosition);
 }
 
@@ -615,42 +676,45 @@ void CelObj::render(Buffer &target, const Common::Rect &targetRect, const Common
 
 	MAPPER mapper;
 	SCALER scaler(*this, targetRect, scaledPosition, scaleX, scaleY);
-	RENDERER<MAPPER, SCALER> renderer(mapper, scaler, _transparentColor);
-	renderer.draw(target, targetRect, scaledPosition);
-}
-
-void dummyFill(Buffer &target, const Common::Rect &targetRect) {
-	target.fillRect(targetRect, 250);
+	if (_drawBlackLines) {
+		RENDERER<MAPPER, SCALER, true> renderer(mapper, scaler, _transparentColor);
+		renderer.draw(target, targetRect, scaledPosition);
+	} else {
+		RENDERER<MAPPER, SCALER, false> renderer(mapper, scaler, _transparentColor);
+		renderer.draw(target, targetRect, scaledPosition);
+	}
 }
 
 void CelObj::drawHzFlip(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("drawHzFlip");
-	dummyFill(target, targetRect);
+	render<MAPPER_NoMap, SCALER_NoScale<true, READER_Compressed> >(target, targetRect, scaledPosition);
 }
 
 void CelObj::drawNoFlip(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("drawNoFlip");
-	dummyFill(target, targetRect);
+	render<MAPPER_NoMap, SCALER_NoScale<false, READER_Compressed> >(target, targetRect, scaledPosition);
 }
 
 void CelObj::drawUncompNoFlip(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("drawUncompNoFlip");
-	dummyFill(target, targetRect);
+	render<MAPPER_NoMap, SCALER_NoScale<false, READER_Uncompressed> >(target, targetRect, scaledPosition);
 }
 
 void CelObj::drawUncompHzFlip(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("drawUncompHzFlip");
-	dummyFill(target, targetRect);
+	render<MAPPER_NoMap, SCALER_NoScale<true, READER_Uncompressed> >(target, targetRect, scaledPosition);
 }
 
 void CelObj::scaleDraw(Buffer &target, const Ratio &scaleX, const Ratio &scaleY, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("scaleDraw");
-	dummyFill(target, targetRect);
+	if (_drawMirrored) {
+		render<MAPPER_NoMap, SCALER_Scale<true, READER_Compressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	} else {
+		render<MAPPER_NoMap, SCALER_Scale<false, READER_Compressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	}
 }
 
 void CelObj::scaleDrawUncomp(Buffer &target, const Ratio &scaleX, const Ratio &scaleY, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	debug("scaleDrawUncomp");
-	dummyFill(target, targetRect);
+	if (_drawMirrored) {
+		render<MAPPER_NoMap, SCALER_Scale<true, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	} else {
+		render<MAPPER_NoMap, SCALER_Scale<false, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	}
 }
 
 void CelObj::drawHzFlipMap(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
@@ -670,17 +734,19 @@ void CelObj::drawUncompHzFlipMap(Buffer &target, const Common::Rect &targetRect,
 }
 
 void CelObj::scaleDrawMap(Buffer &target, const Ratio &scaleX, const Ratio &scaleY, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	if (_drawMirrored)
+	if (_drawMirrored) {
 		render<MAPPER_Map, SCALER_Scale<true, READER_Compressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
-	else
+	} else {
 		render<MAPPER_Map, SCALER_Scale<false, READER_Compressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	}
 }
 
 void CelObj::scaleDrawUncompMap(Buffer &target, const Ratio &scaleX, const Ratio &scaleY, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	if (_drawMirrored)
+	if (_drawMirrored) {
 		render<MAPPER_Map, SCALER_Scale<true, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
-	else
+	} else {
 		render<MAPPER_Map, SCALER_Scale<false, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	}
 }
 
 void CelObj::drawNoFlipNoMD(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
@@ -715,14 +781,16 @@ void CelObj::scaleDrawNoMD(Buffer &target, const Ratio &scaleX, const Ratio &sca
 }
 
 void CelObj::scaleDrawUncompNoMD(Buffer &target, const Ratio &scaleX, const Ratio &scaleY, const Common::Rect &targetRect, const Common::Point &scaledPosition) const {
-	if (_drawMirrored)
+	if (_drawMirrored) {
 		render<MAPPER_NoMD, SCALER_Scale<true, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
-	else
+	} else {
 		render<MAPPER_NoMD, SCALER_Scale<false, READER_Uncompressed> >(target, targetRect, scaledPosition, scaleX, scaleY);
+	}
 }
 
 #pragma mark -
 #pragma mark CelObjView
+
 CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int16 celNo) {
 	_info.type = kCelTypeView;
 	_info.resourceId = viewId;
@@ -765,8 +833,8 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 	if (_scaledWidth == 0 || _scaledHeight == 0) {
 		byte sizeFlag = data[5];
 		if (sizeFlag == 0) {
-			_scaledWidth = 320;
-			_scaledHeight = 200;
+			_scaledWidth = kLowResX;
+			_scaledHeight = kLowResY;
 		} else if (sizeFlag == 1) {
 			_scaledWidth = 640;
 			_scaledHeight = 480;
@@ -840,8 +908,12 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 bool CelObjView::analyzeUncompressedForRemap() const {
 	byte *pixels = getResPointer() + READ_SCI11ENDIAN_UINT32(getResPointer() + _celHeaderOffset + 24);
 	for (int i = 0; i < _width * _height; ++i) {
-		byte pixel = pixels[i];
-		if (pixel >= g_sci->_gfxRemap32->getStartColor() && pixel <= g_sci->_gfxRemap32->getEndColor() && pixel != _transparentColor) {
+		const byte pixel = pixels[i];
+		if (
+			pixel >= g_sci->_gfxRemap32->getStartColor() &&
+			pixel <= g_sci->_gfxRemap32->getEndColor() &&
+			pixel != _transparentColor
+		) {
 			return true;
 		}
 	}
@@ -853,8 +925,12 @@ bool CelObjView::analyzeForRemap() const {
 	for (int y = 0; y < _height; y++) {
 		const byte *curRow = reader.getRow(y);
 		for (int x = 0; x < _width; x++) {
-			byte pixel = curRow[x];
-			if (pixel >= g_sci->_gfxRemap32->getStartColor() && pixel <= g_sci->_gfxRemap32->getEndColor() && pixel != _transparentColor) {
+			const byte pixel = curRow[x];
+			if (
+				pixel >= g_sci->_gfxRemap32->getStartColor() &&
+				pixel <= g_sci->_gfxRemap32->getEndColor() &&
+				pixel != _transparentColor
+			) {
 				return true;
 			}
 		}
@@ -881,6 +957,7 @@ byte *CelObjView::getResPointer() const {
 
 #pragma mark -
 #pragma mark CelObjPic
+
 CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	_info.type = kCelTypePic;
 	_info.resourceId = picId;
@@ -942,8 +1019,8 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 		_scaledWidth = sizeFlag1;
 		_scaledHeight = sizeFlag2;
 	} else if (sizeFlag1 == 0) {
-		_scaledWidth = 320;
-		_scaledHeight = 200;
+		_scaledWidth = kLowResX;
+		_scaledHeight = kLowResY;
 	} else if (sizeFlag1 == 1) {
 		_scaledWidth = 640;
 		_scaledHeight = 480;
@@ -1002,6 +1079,7 @@ byte *CelObjPic::getResPointer() const {
 
 #pragma mark -
 #pragma mark CelObjMem
+
 CelObjMem::CelObjMem(const reg_t bitmapObject) {
 	_info.type = kCelTypeMem;
 	_info.bitmap = bitmapObject;
@@ -1010,7 +1088,7 @@ CelObjMem::CelObjMem(const reg_t bitmapObject) {
 	_celHeaderOffset = 0;
 	_transparent = true;
 
-	BitmapResource bitmap(bitmapObject);
+	SciBitmap &bitmap = *g_sci->getEngineState()->_segMan->lookupBitmap(bitmapObject);
 	_width = bitmap.getWidth();
 	_height = bitmap.getHeight();
 	_displace = bitmap.getDisplace();
@@ -1026,11 +1104,12 @@ CelObjMem *CelObjMem::duplicate() const {
 }
 
 byte *CelObjMem::getResPointer() const {
-	return g_sci->getEngineState()->_segMan->getHunkPointer(_info.bitmap);
+	return g_sci->getEngineState()->_segMan->lookupBitmap(_info.bitmap)->getRawData();
 }
 
 #pragma mark -
 #pragma mark CelObjColor
+
 CelObjColor::CelObjColor(const uint8 color, const int16 width, const int16 height) {
 	_info.type = kCelTypeColor;
 	_info.color = color;

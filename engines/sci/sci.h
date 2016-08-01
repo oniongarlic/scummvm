@@ -56,6 +56,7 @@ class SoundCommandParser;
 class EventManager;
 class SegManager;
 class ScriptPatcher;
+class Sync;
 
 class GfxAnimate;
 class GfxCache;
@@ -66,7 +67,6 @@ class GfxCoordAdjuster;
 class GfxCursor;
 class GfxMacIconBar;
 class GfxMenu;
-class GfxPaint;
 class GfxPaint16;
 class GfxPaint32;
 class GfxPalette;
@@ -80,8 +80,12 @@ class GfxText32;
 class GfxTransitions;
 
 #ifdef ENABLE_SCI32
+// TODO: Move RobotDecoder to Video32
 class RobotDecoder;
 class GfxFrameout;
+class Audio32;
+class Video32;
+class GfxTransitions32;
 #endif
 
 // our engine debug levels
@@ -137,7 +141,9 @@ enum SciGameId {
 	GID_HOYLE2,
 	GID_HOYLE3,
 	GID_HOYLE4,
+	GID_HOYLE5,
 	GID_ICEMAN,
+	GID_INNDEMO,
 	GID_ISLANDBRAIN,
 	GID_JONES,
 	GID_KQ1,
@@ -302,6 +308,8 @@ public:
 	/** Remove the 'TARGET-' prefix of the given filename, if present. */
 	Common::String unwrapFilename(const Common::String &name) const;
 
+	const char *getGameObjectName(); // Gets the name of the game object (should only be used for identifying fanmade games)
+
 	/**
 	 * Checks if we are in a QfG import screen, where special handling
 	 * of file-listings is performed.
@@ -356,7 +364,6 @@ public:
 	GfxPalette32 *_gfxPalette32; // Palette for 32-bit gfx
 	GfxRemap *_gfxRemap16;	// Remapping for the QFG4 demo
 	GfxRemap32 *_gfxRemap32; // Remapping for 32-bit gfx
-	GfxPaint *_gfxPaint;
 	GfxPaint16 *_gfxPaint16; // Painting in 16-bit gfx
 	GfxPaint32 *_gfxPaint32; // Painting in 32-bit gfx
 	GfxPorts *_gfxPorts; // Port managment for 16-bit gfx
@@ -367,11 +374,15 @@ public:
 	GfxMacIconBar *_gfxMacIconBar; // Mac Icon Bar manager
 
 #ifdef ENABLE_SCI32
+	Audio32 *_audio32;
+	Video32 *_video32;
 	RobotDecoder *_robotDecoder;
 	GfxFrameout *_gfxFrameout; // kFrameout and the like for 32-bit gfx
+	GfxTransitions32 *_gfxTransitions32;
 #endif
 
 	AudioPlayer *_audio;
+	Sync *_sync;
 	SoundCommandParser *_soundCmd;
 	GameFeatures *_features;
 

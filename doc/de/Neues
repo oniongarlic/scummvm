@@ -3,6 +3,11 @@ Programmcodes finden Sie auf Englisch unter:
         https://github.com/scummvm/scummvm/commits/
 
 1.9.0 (DD.MM.YYYY)
+ Neue Spiele:
+   - Unterstützung für Myst hinzugefügt.
+   - Unterstützung für Myst: Masterpiece Edition hinzugefügt.
+   - Unterstützung für U.F.O.s./Gnap: Der Schurke aus dem All hinzugefügt.
+
  AGI:
    - Unterstützung für Hercules-Darstellung (Grün + Bernstein) hinzugefügt.
    - Unterstützung für hochauflösende Hercules-Schriftart hinzugefügt
@@ -15,6 +20,9 @@ Programmcodes finden Sie auf Englisch unter:
    - Fehlende Dialogzeile in QfG3 hinzugefügt, die mit drei zusätzlichen Punkten
      belohnt wird. Diese Dialogzeile fehlt im Originalspiel, weshalb
      es bislang unmöglich war, die maximale Punktzahl im Spiel zu erreichen.
+
+ Windows-Portierung:
+   - Taskleisten-Integration unter Windows 10 und höher repariert.
 
 1.8.1 (25.05.2016)
  Neue Portierungen:

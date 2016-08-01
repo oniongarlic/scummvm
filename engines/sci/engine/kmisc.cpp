@@ -243,10 +243,18 @@ reg_t kGetTime(EngineState *s, int argc, reg_t *argv) {
 		debugC(kDebugLevelTime, "GetTime(24h) returns %d", retval);
 		break;
 	case KGETTIME_DATE :
-		// Year since 1980 (0 = 1980, 1 = 1981, etc.)
-		retval = loc_time.tm_mday | ((loc_time.tm_mon + 1) << 5) | (((loc_time.tm_year - 80) & 0x7f) << 9);
+	{
+		// SCI0 late: Year since 1920 (0 = 1920, 1 = 1921, etc)
+		// SCI01 and newer: Year since 1980 (0 = 1980, 1 = 1981, etc)
+		// Atari ST SCI0 late versions use the newer base year.
+		int baseYear = 80;
+		if (getSciVersion() == SCI_VERSION_0_LATE && g_sci->getPlatform() == Common::kPlatformDOS) {
+			baseYear = 20;
+		}
+		retval = loc_time.tm_mday | ((loc_time.tm_mon + 1) << 5) | (((loc_time.tm_year - baseYear) & 0x7f) << 9);
 		debugC(kDebugLevelTime, "GetTime(date) returns %d", retval);
 		break;
+	}
 	default:
 		error("Attempt to use unknown GetTime mode %d", mode);
 		break;
@@ -400,6 +408,15 @@ reg_t kGetConfig(EngineState *s, int argc, reg_t *argv) {
 		s->_segMan->strcpy(data, "");
 	} else if (setting == "startroom") {
 		// Debug setting in LSL7, specifies the room to start from.
+		s->_segMan->strcpy(data, "");
+	} else if (setting == "game") {
+		// Hoyle 5 startup, specifies the number of the game to start.
+		s->_segMan->strcpy(data, "");
+	} else if (setting == "laptop") {
+		// Hoyle 5 startup.
+		s->_segMan->strcpy(data, "");
+	} else if (setting == "jumpto") {
+		// Hoyle 5 startup.
 		s->_segMan->strcpy(data, "");
 	} else {
 		error("GetConfig: Unknown configuration setting %s", setting.c_str());
@@ -597,18 +614,28 @@ reg_t kEmpty(EngineState *s, int argc, reg_t *argv) {
 reg_t kStub(EngineState *s, int argc, reg_t *argv) {
 	Kernel *kernel = g_sci->getKernel();
 	int kernelCallNr = -1;
+	int kernelSubCallNr = -1;
 
 	Common::List<ExecStack>::const_iterator callIterator = s->_executionStack.end();
 	if (callIterator != s->_executionStack.begin()) {
 		callIterator--;
 		ExecStack lastCall = *callIterator;
-		kernelCallNr = lastCall.debugSelector;
+		kernelCallNr = lastCall.debugKernelFunction;
+		kernelSubCallNr = lastCall.debugKernelSubFunction;
 	}
 
-	Common::String warningMsg = "Dummy function k" + kernel->getKernelName(kernelCallNr) +
-								Common::String::format("[%x]", kernelCallNr) +
-								" invoked. Params: " +
-								Common::String::format("%d", argc) + " (";
+	Common::String warningMsg;
+	if (kernelSubCallNr == -1) {
+		warningMsg = "Dummy function k" + kernel->getKernelName(kernelCallNr) +
+		             Common::String::format("[%x]", kernelCallNr);
+	} else {
+		warningMsg = "Dummy function k" + kernel->getKernelName(kernelCallNr, kernelSubCallNr) +
+		             Common::String::format("[%x:%x]", kernelCallNr, kernelSubCallNr);
+
+	}
+
+	warningMsg += " invoked. Params: " +
+	              Common::String::format("%d", argc) + " (";
 
 	for (int i = 0; i < argc; i++) {
 		warningMsg +=  Common::String::format("%04x:%04x", PRINT_REG(argv[i]));

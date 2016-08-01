@@ -101,7 +101,7 @@ SaveStateList WageMetaEngine::listSaves(const char *target) const {
 	Common::StringArray filenames;
 	char saveDesc[31];
 	Common::String pattern = target;
-	pattern += ".???";
+	pattern += ".###";
 
 	filenames = saveFileMan->listSavefiles(pattern);
 
@@ -142,11 +142,11 @@ void WageMetaEngine::removeSaveState(const char *target, int slot) const {
 namespace Wage {
 
 bool WageEngine::canLoadGameStateCurrently() {
-	return false;
+	return true;
 }
 
 bool WageEngine::canSaveGameStateCurrently() {
-	return false;
+	return true;
 }
 
 } // End of namespace Wage
