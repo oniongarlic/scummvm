@@ -73,41 +73,45 @@ protected:
 class DiskImage {
 public:
 	DiskImage() :
+			_stream(nullptr),
 			_tracks(0),
 			_sectorsPerTrack(0),
-			_bytesPerSector(0) {
-		_f = new Common::File();
+			_bytesPerSector(0),
+			_sectorLimit(0) { }
+
+	~DiskImage() {
+		delete _stream;
 	}
 
-	virtual ~DiskImage() {
-		delete _f;
-	}
-
-	virtual bool open(const Common::String &filename) = 0;
-	virtual const DataBlockPtr getDataBlock(uint track, uint sector, uint offset = 0, uint size = 0) const = 0;
-	virtual Common::SeekableReadStream *createReadStream(uint track, uint sector, uint offset = 0, uint size = 0) const = 0;
+	bool open(const Common::String &filename);
+	const DataBlockPtr getDataBlock(uint track, uint sector, uint offset = 0, uint size = 0) const;
+	Common::SeekableReadStream *createReadStream(uint track, uint sector, uint offset = 0, uint size = 0, uint sectorsUsed = 0) const;
+	void setSectorLimit(uint sectorLimit) { _sectorLimit = sectorLimit; } // Maximum number of sectors to read per track before stepping
 
 protected:
 	class DataBlock : public Adl::DataBlock {
 	public:
-		DataBlock(const DiskImage *disk, uint track, uint sector, uint offset, uint size) :
+		DataBlock(const DiskImage *disk, uint track, uint sector, uint offset, uint size, uint sectorLimit) :
 				_track(track),
 				_sector(sector),
 				_offset(offset),
 				_size(size),
+				_sectorLimit(sectorLimit),
 				_disk(disk) { }
 
 		Common::SeekableReadStream *createReadStream() const {
-			return _disk->createReadStream(_track, _sector, _offset, _size);
+			return _disk->createReadStream(_track, _sector, _offset, _size, _sectorLimit);
 		}
 
 	private:
 		uint _track, _sector, _offset, _size;
+		uint _sectorLimit;
 		const DiskImage *_disk;
 	};
 
-	Common::File *_f;
+	Common::SeekableReadStream *_stream;
 	uint _tracks, _sectorsPerTrack, _bytesPerSector;
+	uint _sectorLimit;
 };
 
 // Data in plain files
@@ -115,30 +119,6 @@ class Files_Plain : public Files {
 public:
 	const DataBlockPtr getDataBlock(const Common::String &filename, uint offset = 0) const;
 	Common::SeekableReadStream *createReadStream(const Common::String &filename, uint offset = 0) const;
-};
-
-// .DSK disk image - 35 tracks, 16 sectors per track, 256 bytes per sector
-class DiskImage_DSK : public DiskImage {
-public:
-	bool open(const Common::String &filename);
-	const DataBlockPtr getDataBlock(uint track, uint sector, uint offset = 0, uint size = 0) const;
-	Common::SeekableReadStream *createReadStream(uint track, uint sector, uint offset = 0, uint size = 0) const;
-};
-
-// .NIB disk image
-class DiskImage_NIB : public DiskImage {
-public:
-	DiskImage_NIB() : _memStream(nullptr) { }
-	virtual ~DiskImage_NIB() {
-		delete _memStream;
-	}
-
-	bool open(const Common::String &filename);
-	const DataBlockPtr getDataBlock(uint track, uint sector, uint offset = 0, uint size = 0) const;
-	Common::SeekableReadStream *createReadStream(uint track, uint sector, uint offset = 0, uint size = 0) const;
-
-private:
-	Common::SeekableReadStream *_memStream;
 };
 
 // Data in files contained in Apple DOS 3.3 disk image

@@ -88,6 +88,7 @@ const SciWorkaroundEntry arithmeticWorkarounds[] = {
 	{ GID_QFG2,           200,  200,  0,              "astro", "messages",                        NULL,     0, { WORKAROUND_FAKE,   0 } }, // op_lsi: when getting asked for your name by the astrologer - bug #5152
 	{ GID_QFG3,           780,  999,  0,                   "", "export 6",                        NULL,     0, { WORKAROUND_FAKE,   0 } }, // op_add: trying to talk to yourself at the top of the giant tree - bug #6692
 	{ GID_QFG4,           710,64941,  0,          "RandCycle", "doit",                            NULL,     0, { WORKAROUND_FAKE,   1 } }, // op_gt: when the tentacle appears in the third room of the caves
+	{ GID_TORIN,        51400,64928,  0,              "Blink", "init",                            NULL,     0, { WORKAROUND_FAKE,   1 } }, // op_div: when Lycentia knocks Torin out after he removes her collar
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -317,19 +318,19 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_LSL6,          820,    82,  0,                   "", "export 0",                        NULL,    -1, { WORKAROUND_FAKE,   0 } }, // when touching the electric fence - bug #5103
 	{ GID_LSL6,           -1,    85,  0,          "washcloth", "doVerb",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // washcloth in inventory
 	{ GID_LSL6,           -1,   928, -1,           "Narrator", "startText",                       NULL,     0, { WORKAROUND_FAKE,   0 } }, // used by various objects that are even translated in foreign versions, that's why we use the base-class
-	{ GID_LSL6HIRES,       0,    85,  0,             "LL6Inv", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // on startup
+	{ GID_LSL6HIRES,      -1,    85,  0,             "LL6Inv", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // when creating a new game
 	{ GID_LSL6HIRES,      -1, 64950,  1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // at least when entering swimming pool area
 	{ GID_LSL6HIRES,      -1, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // during the game
 	{ GID_MOTHERGOOSE256, -1,     0,  0,                 "MG", "doit",                            NULL,     5, { WORKAROUND_FAKE,   0 } }, // SCI1.1: When moving the cursor all the way to the left during the game - bug #5224
 	{ GID_MOTHERGOOSE256, -1,   992,  0,             "AIPath", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // Happens in the demo and full version. In the demo, it happens when walking two screens from mother goose's house to the north. In the full version, it happens in rooms 7 and 23 - bug #5269
 	{ GID_MOTHERGOOSE256, 90,    90,  0,        "introScript", "changeState",                     NULL,    65, { WORKAROUND_FAKE,   0 } }, // SCI1(CD): At the very end, after the game is completed and restarted - bug #5626
 	{ GID_MOTHERGOOSE256, 94,    94,  0,            "sunrise", "changeState",                     NULL,   367, { WORKAROUND_FAKE,   0 } }, // At the very end, after the game is completed - bug #5294
-	{ GID_MOTHERGOOSEHIRES,-1,64950,  1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // right when clicking on a child at the start and probably also later
-	{ GID_MOTHERGOOSEHIRES,-1,64950,  1,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // see above
+	{ GID_MOTHERGOOSEHIRES,-1,64950, -1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // right when clicking on a child at the start and probably also later
+	{ GID_MOTHERGOOSEHIRES,-1,64950, -1,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // see above
 	{ GID_PEPPER,         -1,   894,  0,            "Package", "doVerb",                          NULL,     3, { WORKAROUND_FAKE,   0 } }, // using the hand on the book in the inventory - bug #5154
 	{ GID_PEPPER,        150,   928,  0,           "Narrator", "startText",                       NULL,     0, { WORKAROUND_FAKE,   0 } }, // happens during the non-interactive demo of Pepper
 	{ GID_PQ4,            -1,    25,  0,         "iconToggle", "select",                          NULL,     1, { WORKAROUND_FAKE,   0 } }, // when toggling the icon bar to auto-hide or not
-	{ GID_PQSWAT,         -1, 64950,  0,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // Using the menu in the beginning
+	{ GID_PQSWAT,         -1, 64950,  0,                 NULL, "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // Using any menus in-game
 	{ GID_QFG1,           -1,   210,  0,          "Encounter", "init",           sig_uninitread_qfg1_1,     0, { WORKAROUND_FAKE,   0 } }, // qfg1/hq1: going to the brigands hideout
 	{ GID_QFG1VGA,        16,    16,  0,        "lassoFailed", "changeState",                     NULL,    -1, { WORKAROUND_FAKE,   0 } }, // qfg1vga: casting the "fetch" spell in the screen with the flowers, temps 0 and 1 - bug #5309
 	{ GID_QFG1VGA,        -1,   210,  0,          "Encounter", "init",        sig_uninitread_qfg1vga_1,     0, { WORKAROUND_FAKE,   0 } }, // qfg1vga: going to the brigands hideout - bug #5515
@@ -378,8 +379,10 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_SQ6,            -1,     0,  0,                "SQ6", "init",                            NULL,     2, { WORKAROUND_FAKE,   0 } }, // Demo and full version: called when the game starts (demo: room 0, full: room 100)
 	{ GID_SQ6,            -1, 64950, -1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // called when pressing "Start game" in the main menu, when entering the Orion's Belt bar (room 300), and perhaps other places
 	{ GID_SQ6,            -1, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // during the game
+	{ GID_SQ6,           210,   210,  0,       "buttonSecret", "doVerb",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // after winning the first round of stooge fighter 3
 	{ GID_TORIN,          -1, 64017,  0,             "oFlags", "clear",                           NULL,     0, { WORKAROUND_FAKE,   0 } }, // entering Torin's home in the French version
-	{ GID_TORIN,       10000, 64029,  0,             "oMessager", "nextMsg",                      NULL,     3, { WORKAROUND_FAKE,   0 } }, // start of chapter one
+	{ GID_TORIN,       10000, 64029,  0,          "oMessager", "nextMsg",                         NULL,     3, { WORKAROUND_FAKE,   0 } }, // start of chapter one
+	{ GID_TORIN,       20100, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // going down the cliff at the first screen of chapter 2 (washing area)
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -390,6 +393,12 @@ const SciWorkaroundEntry kAbs_workarounds[] = {
 	{ GID_HOYLE1,          3,     3,  0,              "room3", "doit",                      NULL,     0, { WORKAROUND_FAKE,  0x3e9 } }, // hearts - called with objects instead of integers
 	{ GID_QFG1VGA,        -1,    -1,  0,                 NULL, "doit",                      NULL,     0, { WORKAROUND_FAKE,  0x3e9 } }, // when the game is patched with the NRS patch
 	{ GID_QFG3   ,        -1,    -1,  0,                 NULL, "doit",                      NULL,     0, { WORKAROUND_FAKE,  0x3e9 } }, // when the game is patched with the NRS patch - bugs #6042, #6043
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kArraySetElements_workarounds[] = {
+	{ GID_PHANTASMAGORIA,902, 64918,  0,                "Str", "callKernel",                NULL,     0, { WORKAROUND_FAKE, 0 } }, // tries to set an element of a string array to the ego object when starting a new game and selecting a chapter above 1
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -492,7 +501,7 @@ const SciWorkaroundEntry kDisplay_workarounds[] = {
 	{ GID_PQ2,            23,    23,  0,         "rm23Script", "elements",     sig_kDisplay_pq2_1,     0, { WORKAROUND_IGNORE,    0 } }, // when looking at the 2nd page of pate's file - 0x75 as id - bug #5223
 	{ GID_QFG1,           11,    11,  0,             "battle", "init",                       NULL,     0, { WORKAROUND_IGNORE,    0 } }, // DEMO: When entering battle, 0x75 as id
 	{ GID_SQ4,           397,     0,  0,                   "", "export 12",                  NULL,     0, { WORKAROUND_IGNORE,    0 } }, // FLOPPY: when going into the computer store - bug #5227
-	{ GID_SQ4,           391,   391,  0,          "doCatalog", "mode",         sig_kDisplay_sq4_1,     0, { WORKAROUND_IGNORE,    0 } }, // CD: clicking on catalog in roboter sale - a parameter is an object
+	{ GID_SQ4,           391,   391,  0,          "doCatalog", "changeState",  sig_kDisplay_sq4_1,     0, { WORKAROUND_IGNORE,    0 } }, // CD: clicking on catalog in roboter sale - a parameter is an object
 	{ GID_SQ4,           391,   391,  0,         "choosePlug", "changeState",                NULL,     0, { WORKAROUND_IGNORE,    0 } }, // CD: ordering connector in roboter sale - a parameter is an object
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
@@ -519,6 +528,7 @@ const SciWorkaroundEntry kDoSoundPlay_workarounds[] = {
 	{ GID_LSL6HIRES,    -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
 	{ GID_QFG4,         -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
 	{ GID_PQ4,          -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // always passes an extra null argument
+	{ GID_GK1,          -1,  64989,   0,          NULL,          "play",                    NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // Mac version always passes an extra null argument
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -537,6 +547,12 @@ const SciWorkaroundEntry kGetAngle_workarounds[] = {
 	{ GID_FANMADE,       516,   992,  0,             "Motion", "init",                      NULL,     0, { WORKAROUND_FAKE,      0 } }, // The Legend of the Lost Jewel Demo (fan made): called with third/fourth parameters as objects
 	{ GID_KQ6,            -1,   752,  0,        "throwDazzle", "changeState",               NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // room 740/790 after the Genie is exposed in the Palace (short and long ending), it starts shooting lightning bolts around. An extra 5th parameter is passed - bug #4959 & #5203
 	{ GID_SQ1,            -1,   927,  0,           "PAvoider", "doit",                      NULL,     0, { WORKAROUND_FAKE,      0 } }, // all rooms in Ulence Flats after getting the Pilot Droid: called with a single parameter when the droid is in Roger's path - bug #6016
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kFileIOOpen_workarounds[] = {
+	{ GID_TORIN,       61000, 61000,  0,       "roSierraLogo", "init",                      NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // Missing second argument when the game checks for autosave.cat after the Sierra logo
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -667,10 +683,32 @@ const SciWorkaroundEntry kNewWindow_workarounds[] = {
 };
 
 //    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kNumCels_workarounds[] = {
+	{ GID_GK1,           460, 64998, -1,              "GKEgo", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 5 } }, // when Gabriel clicks "ask" on the bartender from a distance
+	{ GID_GK1,           808, 64998, -1,          "sDJEnters", "changeState",               NULL,    -1, { WORKAROUND_FAKE, 6 } }, //
+	{ GID_GK2,           470, 64998, -1,        "pLookieLoos", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 50 } }, // random background movement in the crime scene in Munich city centre
+	{ GID_GK2,           470, 64998, -1,          "pNewsCrew", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 18 } }, // random background movement in the crime scene in Munich city centre
+	{ GID_GK2,           470, 64998, -1,        "pLeberGroup", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 22 } }, // random background movement in the crime scene in Munich city centre
+	{ GID_SQ6,           270, 64998, -1,           "offWorld", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 3 } }, // when exiting the kidnapping room
+	{ GID_SQ6,           320, 64998, -1,          "wandererB", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 8 } }, // random background movement on Polysorbate LX street 3
+	{ GID_SQ6,           340, 64998, -1,          "wandererB", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 8 } }, // random background movement on Polysorbate LX street 1
+	{ GID_SQ6,           530, 64998, -1,           "monitors", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 5 } }, // random background movement during cutscene
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
 const SciWorkaroundEntry kPalVarySetPercent_workarounds[] = {
 	{ GID_GK1,           370,   370,  0,        "graceComeOut", "changeState",              NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // there's an extra parameter in GK1, when changing chapters. This extra parameter seems to be a bug or just unimplemented functionality, as there's no visible change from the original in the chapter change room
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kRandom_workarounds[] = {
+	{ GID_TORIN,        51400,64928,  0,               "Blink", "init",                     NULL,     0, { WORKAROUND_STILLCALL,  0 } }, // when Lycentia knocks Torin out after he removes her collar
+	{ GID_TORIN,        51400,64928,  0,               "Blink", "cycleDone",                NULL,     0, { WORKAROUND_STILLCALL,  0 } }, // when Lycentia knocks Torin out after he removes her collar
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
 
 //    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
 const SciWorkaroundEntry kReadNumber_workarounds[] = {
@@ -688,6 +726,7 @@ const SciWorkaroundEntry kPaletteUnsetFlag_workarounds[] = {
 //    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
 const SciWorkaroundEntry kSetCursor_workarounds[] = {
 	{ GID_KQ5,            -1,   768,  0,           "KQCursor", "init",                      NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // CD: gets called with 4 additional "900d" parameters
+	{ GID_MOTHERGOOSEHIRES,-1,    0, -1,                 "MG", "setCursor",                 NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // At the start of the game, an object is passed as the cel number
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -757,10 +796,10 @@ const SciWorkaroundEntry kUnLoad_workarounds[] = {
 //    gameID,           room,script,lvl,          object-name, method-name,  local-call-signature, index,                workaround
 const SciWorkaroundEntry kScrollWindowAdd_workarounds[] = {
 	{ GID_PHANTASMAGORIA, 45, 64907,  0,   "ScrollableWindow", "addString",                  NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // ScrollWindow interface passes the last two parameters twice
+	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
-
-SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroundEntry *workaroundList, SciTrackOriginReply *trackOrigin) {
+SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroundEntry *workaroundList, SciCallOrigin *trackOrigin) {
 	// HACK for SCI3: Temporarily ignore this
 	if (getSciVersion() == SCI_VERSION_3) {
 		warning("SCI3 HACK: trackOriginAndFindWorkaround() called, ignoring");
@@ -772,37 +811,14 @@ SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroun
 
 	const EngineState *state = g_sci->getEngineState();
 	ExecStack *lastCall = state->xs;
-	const Script *localScript = state->_segMan->getScriptIfLoaded(lastCall->local_segment);
-	int curScriptNr = localScript->getScriptNumber();
-	int curLocalCallOffset = lastCall->debugLocalCallOffset;
-
-	if (curLocalCallOffset != -1) {
-		// if lastcall was actually a local call search back for a real call
-		Common::List<ExecStack>::const_iterator callIterator = state->_executionStack.end();
-		while (callIterator != state->_executionStack.begin()) {
-			callIterator--;
-			const ExecStack &loopCall = *callIterator;
-			if ((loopCall.debugSelector != -1) || (loopCall.debugExportId != -1)) {
-				lastCall->debugSelector = loopCall.debugSelector;
-				lastCall->debugExportId = loopCall.debugExportId;
-				break;
-			}
-		}
-	}
-
-	Common::String curObjectName = state->_segMan->getObjectName(lastCall->sendp);
-	Common::String curMethodName;
 	const SciGameId gameId = g_sci->getGameId();
-	const int curRoomNumber = state->currentRoomNumber();
 
-	if (lastCall->type == EXEC_STACK_TYPE_CALL) {
-		if (lastCall->debugSelector != -1) {
-			curMethodName = g_sci->getKernel()->getSelectorName(lastCall->debugSelector);
-		} else if (lastCall->debugExportId != -1) {
-			curObjectName = "";
-			curMethodName = Common::String::format("export %d", lastCall->debugExportId);
-		}
-	}
+	*trackOrigin = state->getCurrentCallOrigin();
+	const Common::String &curObjectName = trackOrigin->objectName;
+	const Common::String &curMethodName = trackOrigin->methodName;
+	const int &curRoomNumber = trackOrigin->roomNr;
+	const int &curScriptNr = trackOrigin->scriptNr;
+	const int &curLocalCallOffset = trackOrigin->localCallOffset;
 
 	if (workaroundList) {
 		// Search if there is a workaround for this one
@@ -877,12 +893,6 @@ SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroun
 				searchObjectName = state->_segMan->getObjectName(searchObject);
 		} while (!searchObject.isNull()); // no parent left?
 	}
-
-	// give caller origin data
-	trackOrigin->objectName = curObjectName;
-	trackOrigin->methodName = curMethodName;
-	trackOrigin->scriptNr = curScriptNr;
-	trackOrigin->localCallOffset = lastCall->debugLocalCallOffset;
 
 	SciWorkaroundSolution noneFound;
 	noneFound.type = WORKAROUND_NONE;

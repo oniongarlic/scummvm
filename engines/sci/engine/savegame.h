@@ -37,6 +37,9 @@ struct EngineState;
  *
  * Version - new/changed feature
  * =============================
+ *      39 - Accurate SCI32 arrays/strings, score metadata, avatar metadata
+ *      38 - SCI32 cursor
+ *      37 - Segment entry data changed to pointers
  *      36 - SCI32 bitmap segment
  *      35 - SCI32 remap
  *      34 - SCI32 palettes, and store play time in ticks
@@ -61,7 +64,7 @@ struct EngineState;
  */
 
 enum {
-	CURRENT_SAVEGAME_VERSION = 36,
+	CURRENT_SAVEGAME_VERSION = 39,
 	MINIMUM_SAVEGAME_VERSION = 14
 };
 
@@ -75,6 +78,13 @@ struct SavegameMetadata {
 	uint32 playTime;
 	uint16 gameObjectOffset;
 	uint16 script0Size;
+
+	// Used by Shivers 1
+	uint16 lowScore;
+	uint16 highScore;
+
+	// Used by MGDX
+	uint8 avatarId;
 };
 
 /**

@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -49,19 +49,19 @@
 #include "common/system.h"
 #include "graphics/cursorman.h"
 #include "graphics/primitives.h"
+#include "graphics/macgui/macwindowmanager.h"
+#include "graphics/macgui/macwindow.h"
+#include "graphics/macgui/macmenu.h"
 
 #include "wage/wage.h"
 #include "wage/design.h"
 #include "wage/entities.h"
 #include "wage/gui.h"
-#include "wage/macwindow.h"
-#include "wage/macwindowmanager.h"
-#include "wage/macmenu.h"
 #include "wage/world.h"
 
 namespace Wage {
 
-static const MenuData menuSubItems[] = {
+static const Graphics::MenuData menuSubItems[] = {
 	{ kMenuHighLevel, "File",	0, 0, false },
 	{ kMenuHighLevel, "Edit",	0, 0, false },
 	{ kMenuFile, "New",			kMenuActionNew, 0, false },
@@ -96,16 +96,22 @@ static void cursorTimerHandler(void *refCon) {
 
 	x += gui->_consoleWindow->getInnerDimensions().left;
 	y += gui->_consoleWindow->getInnerDimensions().top;
+	int h = kCursorHeight;
 
-	gui->_screen.vLine(x, y, y + kCursorHeight, gui->_cursorState ? kColorBlack : kColorWhite);
+	if (y + h > gui->_consoleWindow->getInnerDimensions().bottom) {
+		h = gui->_consoleWindow->getInnerDimensions().bottom - y;
+	}
+
+	if (h > 0)
+		gui->_screen.vLine(x, y, y + h, gui->_cursorState ? kColorBlack : kColorWhite);
 
 	if (!gui->_cursorOff)
 		gui->_cursorState = !gui->_cursorState;
 
 	gui->_cursorRect.left = x;
 	gui->_cursorRect.right = MIN<uint16>(x + 1, gui->_screen.w);
-	gui->_cursorRect.top = y;
-	gui->_cursorRect.bottom = MIN<uint16>(y + kCursorHeight, gui->_screen.h);
+	gui->_cursorRect.top = MIN<uint16>(y - 1, gui->_consoleWindow->getInnerDimensions().top);
+	gui->_cursorRect.bottom = MIN<uint16>(MIN<uint16>(y + h, gui->_screen.h), gui->_consoleWindow->getInnerDimensions().bottom);
 
 	gui->_cursorDirty = true;
 }
@@ -168,6 +174,9 @@ Gui::Gui(WageEngine *engine) {
 
 	_consoleWindow = _wm.addWindow(true, true, true);
 	_consoleWindow->setCallback(consoleWindowCallback, this);
+
+	loadBorders();
+
 }
 
 Gui::~Gui() {
@@ -211,8 +220,19 @@ void Gui::draw() {
 	_wm.draw();
 
 	if (_cursorDirty && _cursorRect.left < _screen.w && _cursorRect.bottom < _screen.h) {
-		g_system->copyRectToScreen(_screen.getBasePtr(_cursorRect.left, _cursorRect.top), _screen.pitch,
-				_cursorRect.left, _cursorRect.top, _cursorRect.width(), _cursorRect.height());
+		int x = _cursorRect.left, y = _cursorRect.top, w = _cursorRect.width(), h = _cursorRect.height();
+		if (x < 0) {
+			w += x;
+			x = 0;
+		}
+		if (y < 0) {
+			h += y;
+			y = 0;
+		}
+		if (x + w > _screen.w) w = _screen.w - x;
+		if (y + h > _screen.h) h = _screen.h - y;
+		if (w != 0 && h != 0)
+			g_system->copyRectToScreen(_screen.getBasePtr(x, y), _screen.pitch, x, y, w, h);
 
 		_cursorDirty = false;
 	}
@@ -360,6 +380,32 @@ void Gui::executeMenuCommand(int action, Common::String &text) {
 	default:
 		warning("Unknown action: %d", action);
 
+	}
+}
+
+void Gui::loadBorders() {
+	// Do not load borders for now
+	//loadBorder(_sceneWindow, "border_inac.bmp", false);
+	//loadBorder(_sceneWindow, "border_act.bmp", true);
+}
+
+void Gui::loadBorder(Graphics::MacWindow *target, Common::String filename, bool active) {
+	Common::File borderfile;
+
+	if (!borderfile.open(filename)) {
+		debug(1, "Cannot open border file");
+		return;
+	}
+
+	Image::BitmapDecoder bmpDecoder;
+	Common::SeekableReadStream *stream = borderfile.readStream(borderfile.size());
+	if (stream) {
+
+		target->loadBorder(*stream, active, 10, 10, 1, 1);
+
+		borderfile.close();
+
+		delete stream;
 	}
 }
 

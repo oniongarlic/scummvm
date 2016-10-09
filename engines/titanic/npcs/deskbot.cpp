@@ -113,7 +113,7 @@ bool CDeskbot::MovieEndMsg(CMovieEndMsg *msg) {
 			petSetArea(PET_ROOMS);
 			dec54();
 			unlockMouse();
-			playSound("z#47.wav", 100, 0, 0);
+			playSound("z#47.wav");
 			_classNum = false;
 		}
 
@@ -176,12 +176,12 @@ bool CDeskbot::TrueTalkTriggerActionMsg(CTrueTalkTriggerActionMsg *msg) {
 
 		switch (_classNum) {
 		case 1:
-			petDisplayMessage("You have been upgraded to 1st Class status. Enjoy hugely.");
+			petDisplayMessage(UPGRADED_TO_FIRST_CLASS);
 			setPassengerClass(_classNum);
 			petReassignRoom(_classNum);
 			break;
 		case 2:
-			petDisplayMessage("You have been upgraded to 2nd Class status. Enjoy.");
+			petDisplayMessage(UPGRADED_TO_SECOND_CLASS);
 			setPassengerClass(_classNum);
 			petReassignRoom(_classNum);
 			break;

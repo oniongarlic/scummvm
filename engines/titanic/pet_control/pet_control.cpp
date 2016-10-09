@@ -52,7 +52,7 @@ CPetControl::CPetControl() : CGameObject(),
 	_sections[PET_ROOMS] = &_rooms;
 	_sections[PET_REAL_LIFE] = &_realLife;
 	_sections[PET_STARFIELD] = &_starfield;
-	_sections[PET_MESSAGE] = &_message;
+	_sections[PET_TRANSLATION] = &_translation;
 }
 
 void CPetControl::save(SimpleFile *file, int indent) {
@@ -87,7 +87,7 @@ void CPetControl::setup() {
 	_inventory.setup(this);
 	_starfield.setup(this);
 	_realLife.setup(this);
-	_message.setup(this);
+	_translation.setup(this);
 	_frame.setup(this);
 }
 
@@ -98,7 +98,7 @@ bool CPetControl::isValid() {
 		_inventory.isValid(this) &&
 		_starfield.isValid(this) &&
 		_realLife.isValid(this) &&
-		_message.isValid(this) &&
+		_translation.isValid(this) &&
 		_frame.isValid(this);
 }
 
@@ -109,7 +109,7 @@ void CPetControl::loadAreas(SimpleFile *file, int param) {
 	_inventory.load(file, param);
 	_starfield.load(file, param);
 	_realLife.load(file, param);
-	_message.load(file, param);
+	_translation.load(file, param);
 	_frame.load(file, param);
 }
 
@@ -120,7 +120,7 @@ void CPetControl::saveAreas(SimpleFile *file, int indent) {
 	_inventory.save(file, indent);
 	_starfield.save(file, indent);
 	_realLife.save(file, indent);
-	_message.save(file, indent);
+	_translation.save(file, indent);
 	_frame.save(file, indent);
 }
 
@@ -152,7 +152,7 @@ void CPetControl::postLoad() {
 	if (!_activeNPCName.empty() && root)
 		_activeNPC = root->findByName(_activeNPCName);
 	if (!_remoteTargetName.empty() && root)
-		_remoteTarget = static_cast<CGameObject *>(root->findByName(_remoteTargetName));
+		_remoteTarget = dynamic_cast<CGameObject *>(root->findByName(_remoteTargetName));
 
 	setArea(_currentArea);
 	loaded();
@@ -165,7 +165,7 @@ void CPetControl::loaded() {
 	_inventory.postLoad();
 	_starfield.postLoad();
 	_realLife.postLoad();
-	_message.postLoad();
+	_translation.postLoad();
 	_frame.postLoad();
 }
 
@@ -192,6 +192,10 @@ void CPetControl::setActiveNPC(CTrueTalkNPC *npc) {
 			_activeNPCName = "";
 		}
 	}
+}
+
+void CPetControl::setActiveNPC(const CString &name) {
+	_conversations.setActiveNPC(name);
 }
 
 void CPetControl::refreshNPC() {
@@ -251,7 +255,7 @@ CRoomItem *CPetControl::getHiddenRoom() {
 
 CGameObject *CPetControl::getHiddenObject(const CString &name) {
 	CRoomItem *room = getHiddenRoom();
-	return room ? static_cast<CGameObject *>(findUnder(room, name)) : nullptr;
+	return room ? dynamic_cast<CGameObject *>(findUnder(room, name)) : nullptr;
 }
 
 bool CPetControl::containsPt(const Common::Point &pt) const {
@@ -355,7 +359,8 @@ bool CPetControl::VirtualKeyCharMsg(CVirtualKeyCharMsg *msg) {
 }
 
 bool CPetControl::TimerMsg(CTimerMsg *msg) {
-	warning("TODO: CPetControl::CTimerMsg");
+	if (_timers[msg->_actionVal]._target)
+		_timers[msg->_actionVal]._target->timerExpired(msg->_actionVal);
 	return true;
 }
 
@@ -371,26 +376,41 @@ bool CPetControl::checkDragEnd(CGameObject *item) const {
 	return _sections[_currentArea]->checkDragEnd(item);
 }
 
-void CPetControl::displayMessage(const CString &msg) const {
+void CPetControl::displayMessage(StringId stringId, int param) const {
+	CString msg = CString::format(_strings[stringId].c_str(), param);
 	_sections[_currentArea]->displayMessage(msg);
 }
 
+void CPetControl::displayMessage(const CString &str, int param) const {
+	CString msg = CString::format(str.c_str(), param);
+	_sections[_currentArea]->displayMessage(msg);
+}
+
+void CPetControl::addTranslation(StringId id1, StringId id2) {
+	setArea(PET_TRANSLATION);
+	_translation.addTranslation(_strings[id1], _strings[id2]);
+}
+
+void CPetControl::clearTranslation() {
+	_translation.clearTranslation();
+}
+
 CGameObject *CPetControl::getFirstObject() const {
-	return static_cast<CGameObject *>(getFirstChild());
+	return dynamic_cast<CGameObject *>(getFirstChild());
 }
 
 CGameObject *CPetControl::getNextObject(CGameObject *prior) const {
 	if (!prior || prior->getParent() != this)
 		return nullptr;
 
-	return static_cast<CGameObject *>(prior->getNextSibling());
+	return dynamic_cast<CGameObject *>(prior->getNextSibling());
 }
 
 void CPetControl::addToInventory(CGameObject *item) {
 	item->detach();
 
 	if (item->getName() == "CarryParcel") {
-		CCarry *child = static_cast<CCarry *>(getLastChild());
+		CCarry *child = dynamic_cast<CCarry *>(getLastChild());
 		if (child)
 			child->detach();
 
@@ -541,7 +561,7 @@ bool CPetControl::isBotInView(const CString &name) const {
 	
 	// Iterate to find NPC
 	for (CTreeItem *child = view->getFirstChild(); child; child = child->scan(view)) {
-		CGameObject *gameObject = static_cast<CGameObject *>(child);
+		CGameObject *gameObject = dynamic_cast<CGameObject *>(child);
 		if (gameObject) {
 			if (!gameObject->getName().compareToIgnoreCase(name))
 				return true;
@@ -609,7 +629,7 @@ bool CPetControl::isDoorOrBellbotPresent() const {
 	for (CTreeItem *treeItem = view->getFirstChild(); treeItem;
 			treeItem = treeItem->scan(view)) {
 		CString name = treeItem->getName();
-		if (static_cast<CGameObject *>(treeItem) &&
+		if (dynamic_cast<CGameObject *>(treeItem) &&
 				(name.contains("Doorbot") || name.contains("BellBot")))
 			return true;
 	}
@@ -638,7 +658,7 @@ void CPetControl::setTimerPersisent(int id, bool flag) {
 CGameObject *CPetControl::findBot(const CString &name, CTreeItem *root) {
 	for (CTreeItem *item = root; item; item = item->scan(root)) {
 		if (!item->getName().compareToIgnoreCase(name)) {
-			CGameObject *obj = static_cast<CGameObject *>(item);
+			CGameObject *obj = dynamic_cast<CGameObject *>(item);
 			if (obj)
 				return obj;
 		}
@@ -658,6 +678,10 @@ bool CPetControl::isSuccUBusActive() const {
 void CPetControl::convResetDials(int flag) {
 	if (flag == 1)
 		_conversations.resetDials(_activeNPCName);
+}
+
+void CPetControl::resetDials0() {
+	_conversations.resetDials0();
 }
 
 int CPetControl::getMailDest(const CRoomFlags &roomFlags) const {

@@ -31,6 +31,7 @@
 #include "titanic/true_talk/tt_quotes_tree.h"
 #include "titanic/true_talk/tt_scripts.h"
 #include "titanic/true_talk/tt_talker.h"
+#include "titanic/game_state.h"
 
 namespace Titanic {
 
@@ -49,7 +50,7 @@ private:
 	int _currentCharId;
 	CDialogueFile *_dialogueFile;
 	int _dialogueId;
-	int _field18;
+	uint _speechDuration;
 	TTtalkerList _talkers;
 private:
 	/**
@@ -95,9 +96,10 @@ private:
 	CString readDialogueString();
 
 	/**
-	 * Read in the sound from the dialogue file
+	 * Read in the speech from the dialogue file
+	 * @returns		Duration of the speech in seconds
 	 */
-	int readDialogSound();
+	uint readDialogueSpeech();
 
 	/**
 	 * Triggers animation for the NPC
@@ -109,7 +111,10 @@ private:
 	 */
 	void playSpeech(TTtalker *talker, TTroomScript *roomScript, CViewItem *view, bool isParrot);
 
-	static bool proximityMethod1(int val);
+	/**
+	 * Called when a talker finishes
+	 */
+	static void talkerEnd(TTtalker *talker);
 
 	/**
 	 * Return the game state
@@ -197,8 +202,6 @@ public:
 	 */
 	CGameManager *getGameManager() const;
 
-	void update2();
-
 	/**
 	 * Start a TrueTalk conversation
 	 */
@@ -234,7 +237,7 @@ public:
 	 */
 	int getPassengerClass() const;
 
-	int getState14() const;
+	Season getCurrentSeason() const;
 };
 
 } // End of namespace Titanic

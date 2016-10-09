@@ -28,11 +28,13 @@
 namespace Titanic {
 
 class CMovieTester : public CGameObject {
+	DECLARE_MESSAGE_MAP;
+	bool MouseButtonDownMsg(CMouseButtonDownMsg *msg);
 public:
-	int _value1, _value2;
+	int _movieNumFrames, _movieFrameNum;
 public:
 	CLASSDEF;
-	CMovieTester() : CGameObject(), _value1(0), _value2(0) {}
+	CMovieTester() : CGameObject(), _movieNumFrames(0), _movieFrameNum(0) {}
 
 	/**
 	 * Save the data for the class to file
@@ -43,6 +45,14 @@ public:
 	 * Load the data for the class from file
 	 */
 	virtual void load(SimpleFile *file);
+
+	/**
+	 * Loads a movie
+	 */
+	void loadMovie(const CString &name, bool pendingFlag = true) {
+		CGameObject::loadMovie(name, pendingFlag);
+		_surface->flipVertically();
+	}
 };
 
 } // End of namespace Titanic

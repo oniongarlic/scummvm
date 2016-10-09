@@ -565,8 +565,8 @@ const ADGameDescription *SciMetaEngine::fallbackDetect(const FileMap &allFiles, 
 	// the file should be over 10MB, as it contains all the game speech and is usually
 	// around 450MB+. The size check is for some floppy game versions like KQ6 floppy, which
 	// also have a small resource.aud file
-	if (allFiles.contains("resource.aud") || allFiles.contains("audio001.002")) {
-		Common::FSNode file = allFiles.contains("resource.aud") ? allFiles["resource.aud"] :  allFiles["audio001.002"];
+	if (allFiles.contains("resource.aud") || allFiles.contains("resaud.001") || allFiles.contains("audio001.002")) {
+		Common::FSNode file = allFiles.contains("resource.aud") ? allFiles["resource.aud"] : (allFiles.contains("resaud.001") ? allFiles["resaud.001"] : allFiles["audio001.002"]);
 		Common::SeekableReadStream *tmpStream = file.createReadStream();
 		if (tmpStream->size() > 10 * 1024 * 1024) {
 			// We got a CD version, so set the CD flag accordingly
@@ -772,8 +772,7 @@ SaveStateList SciMetaEngine::listSaves(const char *target) const {
 				SaveStateDescriptor descriptor(slotNr, meta.name);
 
 				if (slotNr == 0) {
-					// ScummVM auto-save slot, not used by SCI
-					// SCI does not support auto-saving, but slot 0 is reserved for auto-saving in ScummVM.
+					// ScummVM auto-save slot
 					descriptor.setWriteProtectedFlag(true);
 				} else {
 					descriptor.setWriteProtectedFlag(false);
@@ -795,9 +794,8 @@ SaveStateDescriptor SciMetaEngine::querySaveMetaInfos(const char *target, int sl
 	Common::InSaveFile *in = g_system->getSavefileManager()->openForLoading(fileName);
 	SaveStateDescriptor descriptor(slotNr, "");
 
-	// Do not allow save slot 0 (used for auto-saving) to be deleted or
-	// overwritten. SCI does not support auto-saving, but slot 0 is reserved for auto-saving in ScummVM.
 	if (slotNr == 0) {
+		// ScummVM auto-save slot
 		descriptor.setWriteProtectedFlag(true);
 		descriptor.setDeletableFlag(false);
 	} else {

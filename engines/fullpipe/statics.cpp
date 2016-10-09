@@ -47,7 +47,7 @@ StepArray::~StepArray() {
 		for (int i = 0; i < _pointsCount; i++)
 			delete _points[i];
 
-		delete _points;
+		free(_points);
 
 		_points = 0;
 	}
@@ -69,7 +69,8 @@ Common::Point *StepArray::getCurrPoint(Common::Point *point) {
 		point->x = 0;
 		point->y = 0;
 	} else {
-		point = _points[_currPointIndex];
+		point->x = _points[_currPointIndex]->x;
+		point->y = _points[_currPointIndex]->y;
 	}
 	return point;
 }
@@ -96,7 +97,7 @@ Common::Point *StepArray::getPoint(Common::Point *point, int index, int offset) 
 }
 
 bool StepArray::gotoNextPoint() {
-	if (_currPointIndex < _maxPointIndex) {
+	if (_currPointIndex < _maxPointIndex - 1) {
 		_currPointIndex++;
 		return true;
 	} else {
@@ -107,20 +108,22 @@ bool StepArray::gotoNextPoint() {
 
 void StepArray::insertPoints(Common::Point **points, int pointsCount) {
 	if (_currPointIndex + pointsCount >= _pointsCount) {
-		_points = (Common::Point **)realloc(_points, sizeof(Common::Point *) * (_currPointIndex + pointsCount));
+		_points = (Common::Point **)realloc(_points, sizeof(Common::Point *) * (_pointsCount + pointsCount));
 
 		if (!_points) {
 			error("Out of memory at StepArray::insertPoints()");
 		}
+
+		for(int i = 0; i < pointsCount; i++)
+			_points[_pointsCount + i] = new Common::Point;
+
+		_pointsCount += pointsCount;
 	}
 
 	_maxPointIndex = _currPointIndex + pointsCount;
 
-	for (int i = 0; i < pointsCount; i++) {
-		_points[_currPointIndex + i] = new Common::Point;
-
+	for (int i = 0; i < pointsCount; i++)
 		*_points[_currPointIndex + i] = *points[i];
-	}
 }
 
 StaticANIObject::StaticANIObject() {
@@ -156,7 +159,7 @@ StaticANIObject::~StaticANIObject() {
 
 	_movements.clear();
 
-	g_fp->_mgm->clear();
+	g_fp->_aniHandler->detachAllObjects();
 }
 
 StaticANIObject::StaticANIObject(StaticANIObject *src) : GameObject(src) {
@@ -188,9 +191,9 @@ StaticANIObject::StaticANIObject(StaticANIObject *src) : GameObject(src) {
 		Movement *newmov;
 
 		if (src->_movements[i]->_currMovement) {
-			// WORKAROUND: Original uses weird construction here:
-			//    new Movement(getMovementById(src->getMovementIdById(mov->_id)), this);
-			newmov = new Movement(src->getMovementById(src->getMovementIdById(src->_movements[i]->_id)), this);
+			// This is weird code. Logically it should be
+			// newmov = new Movement(src->getMovementById(src->getMovementIdById(src->_movements[i]->_id)), this);
+			newmov = new Movement(getMovementById(src->getMovementIdById(src->_movements[i]->_id)), this);
 			newmov->_id = src->_movements[i]->_id;
 		} else {
 			newmov = new Movement(src->_movements[i], 0, -1, this);
@@ -394,6 +397,9 @@ void StaticANIObject::startMQIfIdle(int qId, int flag) {
 }
 
 bool StaticANIObject::isIdle() {
+	if (_objtype != kObjTypeStaticANIObject)
+		return true;
+
 	if (_messageQueueId) {
 		MessageQueue *m = g_fp->_globalMessageQueueList->getMessageQueueById(_messageQueueId);
 
@@ -434,7 +440,7 @@ int StaticANIObject::getMovementIdById(int itemId) {
 
 		if (mov->_currMovement) {
 			if (mov->_id == itemId)
-				return mov->_id;
+				return mov->_currMovement->_id;
 
 			if (mov->_currMovement->_id == itemId)
 				return mov->_id;
@@ -452,7 +458,11 @@ Movement *StaticANIObject::getMovementByName(char *name) {
 	return 0;
 }
 
-bool StaticANIObject::getPixelAtPos(int x, int y, int *pixel) {
+bool StaticANIObject::isPixelHitAtPos(int x, int y) {
+	return getPixelAtPos(x, y, 0, true);
+}
+
+bool StaticANIObject::getPixelAtPos(int x, int y, uint32 *pixel, bool hitOnly) {
 	bool res = false;
 	Picture *pic;
 
@@ -498,6 +508,10 @@ bool StaticANIObject::getPixelAtPos(int x, int y, int *pixel) {
 	y = pic->_y;
 	pic->_x = 0;
 	pic->_y = 0;
+
+	if (hitOnly)
+		return pic->isPixelHitAtPos(xtarget, ytarget);
+
 	if (pic->isPixelHitAtPos(xtarget, ytarget)) {
 		*pixel = pic->getPixelAtPos(xtarget, ytarget);
 
@@ -523,11 +537,6 @@ void Movement::draw(bool flipFlag, int angle) {
 
 	if (_currDynamicPhase->getPaletteData())
 		g_fp->_globalPalette = _currDynamicPhase->getPaletteData();
-
-	if (_currDynamicPhase->getAlpha() < 0xFF) {
-		warning("Movement::draw: alpha < 0xff: %d", _currDynamicPhase->getAlpha());
-		//vrtSetAlphaBlendMode(g_vrtDrawHandle, 1, _currDynamicPhase->getAlpha());
-	}
 
 	Bitmap *bmp;
 	if (_currMovement) {
@@ -821,7 +830,7 @@ void StaticANIObject::update(int counterdiff) {
 					newex->_excFlags |= 2;
 					if (newex->_messageKind == 17) {
 						newex->_parentId = _id;
-						newex->_keyCode = _okeyCode;
+						newex->_param = _odelay;
 					}
 					newex->sendMessage();
 
@@ -830,10 +839,10 @@ void StaticANIObject::update(int counterdiff) {
 				}
 			}
 
-			if (dyn->_initialCountdown != dyn->_countdown || dyn->_field_68 == 0) {
+			if (dyn->_initialCountdown == dyn->_countdown && dyn->_field_68 != 0) {
 				newex = new ExCommand(_id, 17, dyn->_field_68, 0, 0, 0, 1, 0, 0, 0);
 				newex->_excFlags = 2;
-				newex->_keyCode = _okeyCode;
+				newex->_param = _odelay;
 				newex->sendMessage();
 
 				if (!_movement)
@@ -856,15 +865,15 @@ void StaticANIObject::update(int counterdiff) {
 						}
 					}
 				}
-				if (!_movement)
-					return;
-
-				_stepArray.getCurrPoint(&point);
-				setOXY(point.x + _ox, point.y + _oy);
-				_stepArray.gotoNextPoint();
-				if (_someDynamicPhaseIndex == _movement->_currDynamicPhaseIndex)
-					adjustSomeXY();
 			}
+			if (!_movement)
+				return;
+
+			_stepArray.getCurrPoint(&point);
+			setOXY(point.x + _ox, point.y + _oy);
+			_stepArray.gotoNextPoint();
+			if (_someDynamicPhaseIndex == _movement->_currDynamicPhaseIndex)
+				adjustSomeXY();
 		} else if (_flags & 0x20) {
 			_flags ^= 0x20;
 			_flags |= 1;
@@ -951,7 +960,7 @@ Common::Point *StaticANIObject::calcNextStep(Common::Point *pRes) {
 }
 
 void StaticANIObject::stopAnim_maybe() {
-	debugC(6, kDebugAnimation, "StaticANIObject::stopAnim_maybe()");
+	debugC(2, kDebugAnimation, "StaticANIObject::stopAnim_maybe()");
 
 	if (!(_flags & 1))
 		return;
@@ -966,7 +975,10 @@ void StaticANIObject::stopAnim_maybe() {
 		setOXY(_movement->_ox, _movement->_oy);
 
 		if (_flags & 0x40) {
-			if (!_movement->_currMovement && !_movement->_currDynamicPhaseIndex) {
+			if (!_movement->_currMovement) {
+				if (_movement->_currDynamicPhaseIndex)
+					goto L11;
+L8:
 				_statics = _movement->_staticsObj1;
 				_movement->getCurrDynamicPhaseXY(point);
 				_ox -= point.x;
@@ -984,13 +996,14 @@ void StaticANIObject::stopAnim_maybe() {
 					_ox += point.x;
 					_oy += point.y;
 				}
-			} else {
-			  _statics = _movement->_staticsObj2;
+				goto L12;
 			}
-		} else {
-			_statics = _movement->_staticsObj2;
+			if (!_movement->_currDynamicPhaseIndex)
+				goto L8;
 		}
-
+L11:
+		_statics = _movement->_staticsObj2;
+L12:
 		_statics->getSomeXY(point);
 
 		_statics->_x = _ox - point.x;
@@ -999,7 +1012,7 @@ void StaticANIObject::stopAnim_maybe() {
 		_movement = 0;
 
 		ExCommand *ex = new ExCommand(_id, 17, 24, 0, 0, 0, 1, 0, 0, 0);
-		ex->_keyCode = _okeyCode;
+		ex->_param = _odelay;
 		ex->_excFlags = 2;
 		ex->postMessage();
 	}
@@ -1040,9 +1053,9 @@ void StaticANIObject::adjustSomeXY() {
 }
 
 MessageQueue *StaticANIObject::changeStatics1(int msgNum) {
-	g_fp->_mgm->addItem(_id);
+	g_fp->_aniHandler->attachObject(_id);
 
-	MessageQueue *mq = g_fp->_mgm->genMQ(this, msgNum, 0, 0, 0);
+	MessageQueue *mq = g_fp->_aniHandler->makeQueue(this, msgNum, 0, 0, 0);
 
 	if (!mq)
 		return 0;
@@ -1071,8 +1084,8 @@ void StaticANIObject::changeStatics2(int objId) {
 	deleteFromGlobalMessageQueue();
 
 	if (_movement || _statics) {
-		g_fp->_mgm->addItem(_id);
-		g_fp->_mgm->updateAnimStatics(this, objId);
+		g_fp->_aniHandler->attachObject(_id);
+		g_fp->_aniHandler->putObjectToStatics(this, objId);
 	} else {
 		_statics = getStaticsById(objId);
 	}
@@ -1267,7 +1280,7 @@ void StaticANIObject::startAnimSteps(int movementId, int messageQueueId, int x, 
 
 	ExCommand *ex = new ExCommand(_id, 17, 23, 0, 0, movementId, 1, 0, 0, 0);
 
-	ex->_keyCode = _okeyCode;
+	ex->_param = _odelay;
 	ex->_excFlags = 2;
 	ex->postMessage();
 }
@@ -1379,7 +1392,7 @@ bool StaticANIObject::startAnim(int movementId, int messageQueueId, int dynPhase
 
 	ExCommand *newex = new ExCommand(_id, 17, 23, 0, 0, movementId, 1, 0, 0, 0);
 
-	newex->_keyCode = _okeyCode;
+	newex->_param = _odelay;
 	newex->_excFlags = 2;
 
 	newex->postMessage();
@@ -1462,8 +1475,13 @@ bool Statics::load(MfcArchive &file) {
 void Statics::init() {
 	Picture::init();
 
-	if (_staticsId & 0x4000)
-		_bitmap->reverseImage();
+	if (_staticsId & 0x4000) {
+		Bitmap *reversed = _bitmap->reverseImage();
+		freePixelData();
+		// TODO: properly dispose old _bitmap
+		_bitmap = reversed;
+		// _data = ... // useless?
+	}
 }
 
 Common::Point *Statics::getSomeXY(Common::Point &p) {
@@ -1696,8 +1714,8 @@ bool Movement::load(MfcArchive &file, StaticANIObject *ani) {
 			_staticsObj1 = ani->addReverseStatics(s);
 		}
 
-		_mx = file.readUint32LE();
-		_my = file.readUint32LE();
+		_mx = file.readSint32LE();
+		_my = file.readSint32LE();
 
 		staticsid = file.readUint16LE();
 
@@ -1708,8 +1726,8 @@ bool Movement::load(MfcArchive &file, StaticANIObject *ani) {
 			_staticsObj2 = ani->addReverseStatics(s);
 		}
 
-		_m2x = file.readUint32LE();
-		_m2y = file.readUint32LE();
+		_m2x = file.readSint32LE();
+		_m2y = file.readSint32LE();
 
 		if (_staticsObj2) {
 			_dynamicPhases.push_back(_staticsObj2);
@@ -1875,11 +1893,11 @@ int Movement::calcDuration() {
 
 	if (_currMovement)
 		for (uint i = 0; i < _currMovement->_dynamicPhases.size(); i++) {
-			res += _currMovement->_dynamicPhases[i]->_initialCountdown;
+			res += _currMovement->_dynamicPhases[i]->_initialCountdown + 1;
 		}
 	else
 		for (uint i = 0; i < _dynamicPhases.size(); i++) {
-			res += _dynamicPhases[i]->_initialCountdown;
+			res += _dynamicPhases[i]->_initialCountdown + 1;
 		}
 
 	return res;
@@ -1931,12 +1949,12 @@ DynamicPhase *Movement::getDynamicPhaseByIndex(int idx) {
 
 void Movement::loadPixelData() {
 	Movement *mov = this;
-	for (Movement *i = _currMovement; i; i = i->_currMovement)
-		mov = i;
+	while (mov->_currMovement)
+		mov = mov->_currMovement;
 
-	for (uint i = 0; i < _dynamicPhases.size(); i++) {
-		if ((Statics *)_dynamicPhases[i] != mov->_staticsObj2 || !(mov->_staticsObj2->_staticsId & 0x4000))
-			_dynamicPhases[i]->getPixelData();
+	for (uint i = 0; i < mov->_dynamicPhases.size(); i++) {
+		if ((Statics *)mov->_dynamicPhases[i] != mov->_staticsObj2 || !(mov->_staticsObj2->_staticsId & 0x4000))
+			mov->_dynamicPhases[i]->getPixelData();
 	}
 
 	if (!(mov->_staticsObj1->_staticsId & 0x4000))
@@ -1961,8 +1979,8 @@ void Movement::removeFirstPhase() {
 			_dynamicPhases.remove_at(0);
 
 			for (uint i = 0; i < _dynamicPhases.size(); i++) {
-				_framePosOffsets[i - 1]->x = _framePosOffsets[i]->x;
-				_framePosOffsets[i - 1]->y = _framePosOffsets[i]->y;
+				_framePosOffsets[i]->x = _framePosOffsets[i + 1]->x;
+				_framePosOffsets[i]->y = _framePosOffsets[i + 1]->y;
 			}
 		}
 		_currDynamicPhaseIndex--;
@@ -1982,7 +2000,7 @@ bool Movement::gotoNextFrame(void (*callback1)(int, Common::Point *point, int, i
 				return false;
 			}
 		} else if ((uint)_currDynamicPhaseIndex == _dynamicPhases.size() - 1
-				   && !(_dynamicPhases.back()->_countdown)) {
+					&& !(_dynamicPhases.back()->_countdown)) {
 			return false;
 		}
 	}
@@ -2147,11 +2165,17 @@ void Movement::gotoFirstFrame() {
 
 void Movement::gotoLastFrame() {
 	if (_currMovement) {
-		while ((uint)_currDynamicPhaseIndex != _currMovement->_dynamicPhases.size() - 1)
-			gotoNextFrame(0, 0);
+		if ((uint)_currDynamicPhaseIndex != _currMovement->_dynamicPhases.size() - 1) {
+			do {
+				gotoNextFrame(0, 0);
+			} while ((uint)_currDynamicPhaseIndex != _currMovement->_dynamicPhases.size() - 1);
+		}
 	} else {
-		while ((uint)_currDynamicPhaseIndex != _dynamicPhases.size() - 1)
-			gotoNextFrame(0, 0);
+		if ((uint)_currDynamicPhaseIndex != _dynamicPhases.size() - 1) {
+			do {
+				gotoNextFrame(0, 0);
+			} while ((uint)_currDynamicPhaseIndex != _dynamicPhases.size() - 1);
+		}
 	}
 }
 
@@ -2260,17 +2284,17 @@ bool DynamicPhase::load(MfcArchive &file) {
 
 	_field_7C = file.readUint16LE();
 	_rect = new Common::Rect();
-	_rect->left = file.readUint32LE();
-	_rect->top = file.readUint32LE();
-	_rect->right = file.readUint32LE();
-	_rect->bottom = file.readUint32LE();
+	_rect->left = file.readSint32LE();
+	_rect->top = file.readSint32LE();
+	_rect->right = file.readSint32LE();
+	_rect->bottom = file.readSint32LE();
 
-	assert (g_fp->_gameProjectVersion >= 1);
+	assert(g_fp->_gameProjectVersion >= 1);
 
-	_someX = file.readUint32LE();
-	_someY = file.readUint32LE();
+	_someX = file.readSint32LE();
+	_someY = file.readSint32LE();
 
-	assert (g_fp->_gameProjectVersion >= 12);
+	assert(g_fp->_gameProjectVersion >= 12);
 
 	_dynFlags = file.readUint32LE();
 

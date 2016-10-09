@@ -30,10 +30,9 @@ namespace Sci {
 typedef Common::Array<DrawList> ScreenItemListList;
 typedef Common::Array<RectList> EraseListList;
 
-class GfxCoordAdjuster32;
-class GfxScreen;
+class GfxCursor32;
 class GfxTransitions32;
-class PlaneShowStyle;
+struct PlaneShowStyle;
 
 /**
  * Frameout class, kFrameout and relevant functions for SCI32 games.
@@ -41,16 +40,21 @@ class PlaneShowStyle;
  */
 class GfxFrameout {
 private:
-	bool _isHiRes;
-	GfxCoordAdjuster32 *_coordAdjuster;
+	GfxCursor32 *_cursor;
 	GfxPalette32 *_palette;
-	ResourceManager *_resMan;
-	GfxScreen *_screen;
 	SegManager *_segMan;
 
+	/**
+	 * Determines whether the current game should be rendered in
+	 * high resolution.
+	 */
+	bool gameIsHiRes() const;
+
 public:
-	GfxFrameout(SegManager *segMan, ResourceManager *resMan, GfxCoordAdjuster *coordAdjuster, GfxScreen *screen, GfxPalette32 *palette, GfxTransitions32 *transitions);
+	GfxFrameout(SegManager *segMan, GfxPalette32 *palette, GfxTransitions32 *transitions, GfxCursor32 *cursor);
 	~GfxFrameout();
+
+	bool _isHiRes;
 
 	void clear();
 	void syncWithScripts(bool addElements); // this is what Game::restore does, only needed when our ScummVM dialogs are patched in
@@ -112,7 +116,7 @@ public:
 	void kernelAddScreenItem(const reg_t object);
 	void kernelUpdateScreenItem(const reg_t object);
 	void kernelDeleteScreenItem(const reg_t object);
-	void kernelSetNowSeen(const reg_t screenItemObject) const;
+	bool kernelSetNowSeen(const reg_t screenItemObject) const;
 
 #pragma mark -
 #pragma mark Planes
@@ -195,13 +199,6 @@ private:
 	 * be redrawn.
 	 */
 	bool _remapOccurred;
-
-	/**
-	 * Whether or not the data in the current buffer is what
-	 * is visible to the user. During rendering updates,
-	 * this flag is set to false.
-	 */
-	bool _frameNowVisible;
 
 	/**
 	 * TODO: Document
@@ -310,6 +307,13 @@ private:
 
 public:
 	/**
+	 * Whether or not the data in the current buffer is what
+	 * is visible to the user. During rendering updates,
+	 * this flag is set to false.
+	 */
+	bool _frameNowVisible;
+
+	/**
 	 * Whether palMorphFrameOut should be used instead of
 	 * frameOut for rendering. Used by kMorphOn to
 	 * explicitly enable palMorphFrameOut for one frame.
@@ -364,6 +368,11 @@ public:
 	 * hardware. Used to display show styles in SCI2.1mid+.
 	 */
 	void showRect(const Common::Rect &rect);
+
+	/**
+	 * Shakes the screen.
+	 */
+	void shakeScreen(const int16 numShakes, const ShakeDirection direction);
 
 #pragma mark -
 #pragma mark Mouse cursor

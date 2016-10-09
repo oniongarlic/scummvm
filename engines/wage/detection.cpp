@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -78,7 +78,8 @@ bool WageMetaEngine::hasFeature(MetaEngineFeature f) const {
 	return
 		(f == kSupportsListSaves) ||
 		(f == kSupportsLoadingDuringStartup) ||
-		(f == kSupportsDeleteSave);
+		(f == kSupportsDeleteSave) ||
+		(f == kSimpleSavesNames);
 }
 
 bool Wage::WageEngine::hasFeature(EngineFeature f) const {
@@ -99,7 +100,7 @@ SaveStateList WageMetaEngine::listSaves(const char *target) const {
 	const uint32 WAGEflag = MKTAG('W','A','G','E');
 	Common::SaveFileManager *saveFileMan = g_system->getSavefileManager();
 	Common::StringArray filenames;
-	char saveDesc[31];
+	char saveDesc[128] = {0};
 	Common::String pattern = target;
 	pattern += ".###";
 
@@ -113,9 +114,18 @@ SaveStateList WageMetaEngine::listSaves(const char *target) const {
 		if (slotNum >= 0 && slotNum <= 999) {
 			Common::InSaveFile *in = saveFileMan->openForLoading(*file);
 			if (in) {
+				saveDesc[0] = 0;
+				in->seek(in->size() - 8);
+				uint32 offset = in->readUint32BE();
 				uint32 type = in->readUint32BE();
-				if (type == WAGEflag)
-					in->read(saveDesc, 31);
+				if (type == WAGEflag) {
+					in->seek(offset);
+
+					type = in->readUint32BE();
+					if (type == WAGEflag) {
+						in->read(saveDesc, 127);
+					}
+				}
 				saveList.push_back(SaveStateDescriptor(slotNum, saveDesc));
 				delete in;
 			}

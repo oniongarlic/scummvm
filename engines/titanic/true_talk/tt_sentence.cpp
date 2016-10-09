@@ -28,7 +28,7 @@
 namespace Titanic {
 
 TTsentenceConcept *TTsentenceConcept::addSibling() {
-	if (this == nullptr || _nextP != nullptr)
+	if (_nextP != nullptr)
 		// This should never happen
 		return nullptr;
 
@@ -83,7 +83,7 @@ void TTsentence::copyFrom(const TTsentence &src) {
 	if (src._nodesP) {
 		// Source has processed nodes, so duplicate them
 		for (TTsentenceNode *node = src._nodesP; node;
-				node = static_cast<TTsentenceNode *>(node->_nextP)) {
+				node = dynamic_cast<TTsentenceNode *>(node->_nextP)) {
 			TTsentenceNode *newNode = new TTsentenceNode(node->_wordP);
 			if (_nodesP)
 				_nodesP->addToTail(newNode);
@@ -108,22 +108,62 @@ int TTsentence::storeVocabHit(TTword *word) {
 }
 
 bool TTsentence::fn1(const CString &str, int wordId1, const CString &str1, const CString &str2,
-		const CString &str3, int wordId2, int val, int val2, const TTconceptNode *node) const {
-	// TODO
-	return false;
+		const CString &str3, int wordId2, int val1, int val2, const TTconceptNode *node) const {
+	if (node)
+		node = &_sentenceConcept;
+
+	if (!node && !node)
+		return false;
+	if (val1 && !is18(val1, node))
+		return false;
+	if (!str.empty() && !fn2(0, str, node))
+		return false;
+	if (wordId1 && !fn4(1, wordId1, node))
+		return false;
+	if (!str1.empty() && !fn2(2, str1, node))
+		return false;
+	if (!str2.empty() && !fn2(3, str2, node))
+		return false;
+	if (!str3.empty() && !fn2(4, str3, node))
+		return false;
+	if (wordId2 && !fn4(5, wordId2, node))
+		return false;
+	if (val2 && !is1C(val2, node))
+		return false;
+
+	return true;
 }
 
 bool TTsentence::fn3(const CString &str1, const CString &str2, const CString &str3,
 		const CString &str4, const CString &str5, const CString &str6,
-		int val, int val2, const TTconceptNode *node) const {
-	// TODO
-	return false;
+		int val1, int val2, const TTconceptNode *node) const {
+	if (!node)
+		node = &_sentenceConcept;
+
+	if (val1 && !is18(val1, node))
+		return false;
+	if (!str1.empty() && !fn2(0, str1, node))
+		return false;
+	if (!str2.empty() && !fn2(1, str2, node))
+		return false;
+	if (!str3.empty() && !fn2(2, str3, node))
+		return false;
+	if (!str4.empty() && !fn2(3, str4, node))
+		return false;
+	if (!str5.empty() && !fn2(4, str5, node))
+		return false;
+	if (!str6.empty() && !fn2(5, str6, node))
+		return false;
+	if (!val2 && !is1C(val2, node))
+		return false;
+
+	return true;
 }
 
-bool TTsentence::fn2(int slotIndex, const TTstring &str, const TTconceptNode *conceptNode) const {
-	if (!conceptNode)
-		conceptNode = &_sentenceConcept;
-	TTconcept *concept = getFrameSlot(slotIndex, conceptNode);
+bool TTsentence::fn2(int slotIndex, const TTstring &str, const TTconceptNode *node) const {
+	if (!node)
+		node = &_sentenceConcept;
+	TTconcept *concept = getFrameSlot(slotIndex, node);
 
 	if (!concept)
 		return str == "isEmpty";
@@ -183,7 +223,7 @@ bool TTsentence::fn2(int slotIndex, const TTstring &str, const TTconceptNode *co
 	if (g_vm->_exeResources._owner->_concept1P && (slotIndex == 0 || slotIndex == 2)) {
 		if (conceptText == "?" && str == g_vm->_exeResources._owner->_concept2P->getText()) {
 			delete concept;
-			concept = getFrameSlot(5, conceptNode);
+			concept = getFrameSlot(5, node);
 			conceptText = concept->getText();
 
 			if (conceptText == "it" || conceptText == "that" || conceptText == "he" ||
@@ -262,8 +302,42 @@ bool TTsentence::isConcept34(int slotIndex, const TTconceptNode *node) const {
 }
 
 bool TTsentence::localWord(const char *str) const {
-	// TODO
-	return false;
+	CScriptHandler &scriptHandler = *g_vm->_exeResources._owner;
+	bool foundMatch = false;
+
+	if (scriptHandler._concept1P) {
+		TTstring s = scriptHandler._concept1P->getText();
+		if (s == str)
+			foundMatch = true;
+	} else if (scriptHandler._concept2P) {
+			TTstring s = scriptHandler._concept2P->getText();
+			if (s == str)
+				foundMatch = true;
+	}
+
+	int val = g_vm->_exeResources.get18();
+	bool result = false;
+
+	for (TTsentenceNode *nodeP = _nodesP; nodeP && !result;
+			nodeP = dynamic_cast<TTsentenceNode *>(nodeP->_nextP)) {
+		TTsynonym syn;
+		if (!nodeP->_wordP)
+			continue;
+
+		const TTstring wordStr = nodeP->_wordP->_text;
+		if (val == 3 && wordStr == str) {
+			result = true;
+		} else if (nodeP->_wordP->findSynByName(str, &syn, val)) {
+			result = true;
+		} else if (foundMatch) {
+			result = wordStr == "it" || wordStr == "that" || wordStr == "he"
+				|| wordStr == "she" || wordStr == "him" || wordStr == "her"
+				|| wordStr == "them" || wordStr == "they" || wordStr == "those"
+				|| wordStr == "1" || wordStr == "thing";
+		}
+	}
+
+	return result;
 }
 
 bool TTsentence::contains(const char *str) const {

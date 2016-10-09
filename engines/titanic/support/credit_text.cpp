@@ -28,7 +28,7 @@ namespace Titanic {
 CCreditText::CCreditText() : _screenManagerP(nullptr), _field14(0),
 	_ticks(0), _fontHeight(1), _objectP(nullptr), _totalHeight(0),
 	_field40(0), _field44(0), _field48(0), _field4C(0), _field50(0),
-	_field54(0), _field58(0), _field5C(0) {
+	_field54(0), _field58(0), _counter(0) {
 }
 
 void CCreditText::clear() {
@@ -52,7 +52,7 @@ void CCreditText::load(CGameObject *obj, CScreenManager *screenManager,
 	_field50 = 0;
 	_field54 = 0;
 	_field58 = 0;
-	_field5C = 0;
+	_counter = 0;
 }
 
 void CCreditText::setup() {
@@ -87,8 +87,11 @@ void CCreditText::setup() {
 		}
 
 		_groups.push_back(group);
+		if (hasDots)
+			handleDots(group);
 	}
 
+	_screenManagerP->setFontNumber(oldFontNumber);
 	_groupIt = _groups.begin();
 	_lineIt = (*_groupIt)->_lines.begin();
 	_totalHeight = _objectP->getBounds().height() + _fontHeight * 2;
@@ -147,7 +150,108 @@ void CCreditText::handleDots(CCreditLineGroup *group) {
 }
 
 bool CCreditText::draw() {
-	return false;
+	if (_groupIt == _groups.end())
+		return false;
+
+	if (++_counter > 200) {
+		_field44 += _field50;
+		_field48 += _field54;
+		_field4C += _field58;
+		_field50 = g_vm->getRandomNumber(63) + 192 - _field44;
+		_field54 = g_vm->getRandomNumber(63) + 192 - _field48;
+		_field58 = g_vm->getRandomNumber(63) + 192 - _field4C;
+		_counter = 0;
+	}
+
+	// Positioning adjustment, changing lines and/or group if necessary
+	int yDiff = (int)(g_vm->_events->getTicksCount() - _ticks) / 22 - _field40;
+	while (yDiff > 0) {
+		if (_totalHeight > 0) {
+			if (yDiff < _totalHeight) {
+				_totalHeight -= yDiff;
+				_field40 += yDiff;
+				yDiff = 0;
+			} else {
+				yDiff -= _totalHeight;
+				_field40 += _totalHeight;
+				_totalHeight = 0;
+			}
+		} else {
+			if (yDiff < _fontHeight)
+				break;
+
+			++_lineIt;
+			yDiff -= _fontHeight;
+			_field40 += _fontHeight;
+
+			if (_lineIt == (*_groupIt)->_lines.end()) {
+				// Move to next line group
+				++_groupIt;
+				if (_groupIt == _groups.end())
+					// Reached end of groups
+					return false;
+
+				_lineIt = (*_groupIt)->_lines.begin();
+				_totalHeight = _fontHeight * 3 / 2;
+			}
+		}
+	}
+
+	int oldFontNumber = _screenManagerP->setFontNumber(3);
+	CCreditLineGroups::iterator groupIt = _groupIt;
+	CCreditLines::iterator lineIt = _lineIt;
+
+	Point textPos;
+	for (textPos.y = _rect.top + _totalHeight; textPos.y <= _rect.bottom;
+			textPos.y += _fontHeight) {
+		int textR = _field44 + _field50 * _counter / 200;
+		int textG = _field48 + _field54 * _counter / 200;
+		int textB = _field4C + _field58 * _counter / 200;
+
+		// Single iteration loop to figure out RGB values for the line
+		do {
+			int percent = 0;
+			if (textPos.y < (_rect.top + 2 * _fontHeight)) {
+				percent = (textPos.y - _rect.top) * 100 / (_fontHeight * 2);
+				if (percent < 0)
+					percent = 0;
+			} else {
+				int bottom = _rect.bottom - 2 * _fontHeight;
+				if (textPos.y < bottom)
+					break;
+
+				percent = (_rect.bottom - textPos.y) * 100
+					/ (_fontHeight * 2);
+			}
+
+			// Adjust the RGB to the specified percentage intensity
+			textR = textR * percent / 100;
+			textG = textG * percent / 100;
+			textB = textB * percent / 100;
+		} while (0);
+
+		// Write out the line
+		_screenManagerP->setFontColor(textR, textG, textB);
+		textPos.x = _rect.left + (_rect.width() - (*lineIt)->_lineWidth) / 2;
+		_screenManagerP->writeString(SURFACE_BACKBUFFER, textPos,
+			_rect, (*lineIt)->_line, (*lineIt)->_lineWidth);
+
+		// Move to next line
+		++lineIt;
+		if (lineIt == (*groupIt)->_lines.end()) {
+			++groupIt;
+			if (groupIt == _groups.end())
+				// Finished all lines
+				break;
+
+			lineIt = (*groupIt)->_lines.begin();
+			textPos.y += _fontHeight * 3 / 2;
+		}
+	}
+
+	_objectP->makeDirty();
+	_screenManagerP->setFontNumber(oldFontNumber);
+	return true;
 }
 
 } // End of namespace Titanic

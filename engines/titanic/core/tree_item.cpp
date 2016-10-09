@@ -34,7 +34,7 @@
 #include "titanic/core/room_item.h"
 #include "titanic/pet_control/pet_control.h"
 #include "titanic/game_manager.h"
-#include "titanic/game/placeholder/place_holder_item.h"
+#include "titanic/game/placeholder/place_holder.h"
 
 namespace Titanic {
 
@@ -96,7 +96,7 @@ bool CTreeItem::isLinkItem() const {
 }
 
 bool CTreeItem::isPlaceHolderItem() const {
-	return isInstanceOf(CPlaceHolderItem::_type);
+	return isInstanceOf(CPlaceHolder::_type);
 }
 
 bool CTreeItem::isNamedItem() const {
@@ -252,19 +252,32 @@ void CTreeItem::detach() {
 	_priorSibling = _nextSibling = _parent = nullptr;
 }
 
-CNamedItem *CTreeItem::findByName(const CString &name, int maxLen) {
+void CTreeItem::attach(CTreeItem *item) {
+	_nextSibling = item;
+	_priorSibling = item->_priorSibling;
+	_parent = item->_parent;
+
+	if (item->_priorSibling)
+		item->_priorSibling->_nextSibling = this;
+
+	item->_priorSibling = this;
+	if (item->_parent && !item->_parent->_firstChild)
+		item->_parent->_firstChild = this;
+}
+
+CNamedItem *CTreeItem::findByName(const CString &name, bool subMatch) {
 	CString nameLower = name;
 	nameLower.toLowercase();
 
 	for (CTreeItem *treeItem = this; treeItem; treeItem = treeItem->scan(this)) {
-		CString nodeName = treeItem->getName();
-		nodeName.toLowercase();
+		CString itemName = treeItem->getName();
+		itemName.toLowercase();
 
-		if (maxLen) {
-			if (nodeName.left(maxLen).compareTo(nameLower))
+		if (subMatch) {
+			if (itemName.left(name.size()).compareTo(nameLower))
 				return dynamic_cast<CNamedItem *>(treeItem);
 		} else {
-			if (!nodeName.compareTo(nameLower))
+			if (!itemName.compareTo(nameLower))
 				return dynamic_cast<CNamedItem *>(treeItem);
 		}
 	}

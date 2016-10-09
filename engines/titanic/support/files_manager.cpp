@@ -21,13 +21,15 @@
  */
 
 #include "common/file.h"
+#include "common/memstream.h"
 #include "titanic/support/files_manager.h"
 #include "titanic/game_manager.h"
+#include "titanic/titanic.h"
 
 namespace Titanic {
 
-CFilesManager::CFilesManager() : _gameManager(nullptr), _assetsPath("Assets"),
-		_field0(0), _drive(-1), _field18(0), _field1C(0), _field3C(0) {
+CFilesManager::CFilesManager(TitanicEngine *vm) : _vm(vm), _gameManager(nullptr),
+		_assetsPath("Assets"), _drive(-1) {
 	loadResourceIndex();
 }
 
@@ -51,7 +53,7 @@ void CFilesManager::loadResourceIndex() {
 	for (;;) {
 		offset = _datFile.readUint32LE();
 		size = _datFile.readUint32LE();
-		if (size == 0)
+		if (offset == 0 && size == 0)
 			break;
 
 		Common::String resName;
@@ -103,8 +105,9 @@ void CFilesManager::loadDrive() {
 	resetView();
 }
 
-void CFilesManager::debug(CScreenManager *screenManager) {
-	warning("TODO: CFilesManager::debug");
+void CFilesManager::insertCD(CScreenManager *screenManager) {
+	// We not support running game directly from the original CDs,
+	// so this method can remain stubbed
 }
 
 void CFilesManager::resetView() {
@@ -114,19 +117,22 @@ void CFilesManager::resetView() {
 	}
 }
 
-void CFilesManager::fn4(const CString &name) {
-	warning("TODO: CFilesManager::fn4");
-}
-
 void CFilesManager::preload(const CString &name) {
 	// We don't currently do any preloading of resources
 }
 
 Common::SeekableReadStream *CFilesManager::getResource(const CString &str) {
 	ResourceEntry resEntry = _resources[str];
+
+	// If we're running the German version, check for the existance of
+	// a German specific version of the given resource
+	if (_vm->isGerman() && _resources.contains(str + "/DE"))
+		resEntry = _resources[str + "/DE"];
+
 	_datFile.seek(resEntry._offset);
 
-	return _datFile.readStream(resEntry._size);
+	return (resEntry._size > 0) ? _datFile.readStream(resEntry._size) :
+		new Common::MemoryReadStream(nullptr, 0);
 }
 
 } // End of namespace Titanic

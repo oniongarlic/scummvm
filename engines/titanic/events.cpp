@@ -84,6 +84,11 @@ void Events::pollEvents() {
 void Events::pollEventsAndWait() {
 	pollEvents();
 	g_system->delayMillis(10);
+
+	// Regularly update the sound mixer
+	CGameManager *gameManager = g_vm->_window->_gameManager;
+	if (gameManager)
+		gameManager->_sound.updateMixer();
 }
 
 bool Events::checkForNextFrameCounter() {
@@ -115,17 +120,21 @@ uint32 Events::getTicksCount() const {
 void Events::sleep(uint time) {
 	uint32 delayEnd = g_system->getMillis() + time;
 
-	while (!_vm->shouldQuit() && g_system->getMillis() < delayEnd) {
+	while (!_vm->shouldQuit() && g_system->getMillis() < delayEnd)
 		pollEventsAndWait();
-	}
 }
 
 bool Events::waitForPress(uint expiry) {
+	CGameManager *gameManager = g_vm->_window->_gameManager;
 	uint32 delayEnd = g_system->getMillis() + expiry;
 
 	while (!_vm->shouldQuit() && g_system->getMillis() < delayEnd) {
 		g_system->delayMillis(10);
 		checkForNextFrameCounter();
+
+		// Regularly update the sound mixer
+		if (gameManager)
+			gameManager->_sound.updateMixer();
 
 		Common::Event event;
 		if (g_system->getEventManager()->pollEvent(event)) {

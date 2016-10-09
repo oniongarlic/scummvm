@@ -55,7 +55,7 @@ void CBrain::load(SimpleFile *file) {
 }
 
 bool CBrain::UseWithOtherMsg(CUseWithOtherMsg *msg) {
-	CBrainSlot *slot = static_cast<CBrainSlot *>(msg->_other);
+	CBrainSlot *slot = dynamic_cast<CBrainSlot *>(msg->_other);
 	if (slot) {
 		if (slot->getName() == "CentralCore") {
 			setVisible(false);
@@ -68,7 +68,7 @@ bool CBrain::UseWithOtherMsg(CUseWithOtherMsg *msg) {
 			petMoveToHiddenRoom();
 			CAddHeadPieceMsg headpieceMsg(getName());
 			headpieceMsg.execute(msg->_other);
-			playSound("z#116.wav", 100, 0, 0);
+			playSound("z#116.wav");
 			setPosition(Point(0, 0));
 			setVisible(false);
 			_field134 = 1;

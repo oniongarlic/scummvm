@@ -24,16 +24,44 @@
 
 namespace Titanic {
 
+BEGIN_MESSAGE_MAP(CBarShelfVisCentre, CPlaceHolder)
+	ON_MESSAGE(MouseButtonDownMsg)
+	ON_MESSAGE(TimerMsg)
+	ON_MESSAGE(EnterViewMsg)
+END_MESSAGE_MAP()
+
 void CBarShelfVisCentre::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
-	file->writeNumberLine(_value, indent);
-	CPlaceHolderItem::save(file, indent);
+	file->writeNumberLine(_flag, indent);
+	CPlaceHolder::save(file, indent);
 }
 
 void CBarShelfVisCentre::load(SimpleFile *file) {
 	file->readNumber();
-	_value = file->readNumber();
-	CPlaceHolderItem::load(file);
+	_flag = file->readNumber();
+	CPlaceHolder::load(file);
 }
+
+bool CBarShelfVisCentre::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
+	if (!_flag) {
+		CActMsg actMsg("ClickOnVision");
+		actMsg.execute("Barbot");
+		addTimer(3000);
+		_flag = true;
+	}
+
+	return true;
+}
+
+bool CBarShelfVisCentre::TimerMsg(CTimerMsg *msg) {
+	_flag = false;
+	return true;
+}
+
+bool CBarShelfVisCentre::EnterViewMsg(CEnterViewMsg *msg) {
+	_flag = false;
+	return true;
+}
+
 
 } // End of namespace Titanic

@@ -66,6 +66,13 @@
 #endif
 
 #include "backends/keymapper/keymapper.h"
+#ifdef USE_LIBCURL
+#include "backends/cloud/cloudmanager.h"
+#include "backends/networking/curl/connectionmanager.h"
+#endif
+#ifdef USE_SDL_NET
+#include "backends/networking/sdl_net/localwebserver.h"
+#endif
 
 #if defined(_WIN32_WCE)
 #include "backends/platform/wince/CELauncherDialog.h"
@@ -391,6 +398,10 @@ extern "C" int scummvm_main(int argc, const char * const argv[]) {
 	} else if (ConfMan.hasKey("debugflags"))
 		specialDebug = ConfMan.get("debugflags");
 
+	if (settings.contains("debug-channels-only"))
+		gDebugChannelsOnly = true;
+
+
 	PluginManager::instance().init();
  	PluginManager::instance().loadAllPlugins(); // load plugins for cached plugin manager
 
@@ -470,6 +481,11 @@ extern "C" int scummvm_main(int argc, const char * const argv[]) {
 		GUI::UpdatesDialog dlg;
 		dlg.runModal();
 	}
+#endif
+		
+#ifdef USE_LIBCURL
+	CloudMan.init();
+	CloudMan.syncSaves();
 #endif
 
 	// Unless a game was specified, show the launcher dialog
@@ -580,6 +596,14 @@ extern "C" int scummvm_main(int argc, const char * const argv[]) {
 			launcherDialog();
 		}
 	}
+#ifdef USE_SDL_NET
+	Networking::LocalWebserver::destroy();
+#endif
+#ifdef USE_LIBCURL
+	Networking::ConnectionManager::destroy();
+	//I think it's important to destroy it after ConnectionManager
+	Cloud::CloudManager::destroy();
+#endif
 	PluginManager::instance().unloadAllPlugins();
 	PluginManager::destroy();
 	GUI::GuiManager::destroy();

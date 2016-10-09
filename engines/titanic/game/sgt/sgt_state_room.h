@@ -47,15 +47,18 @@ struct CSGTStateRoomStatics {
 
 class CSGTStateRoom : public CBackground {
 	DECLARE_MESSAGE_MAP;
+	bool ActMsg(CActMsg *msg);
+	bool VisibleMsg(CVisibleMsg *msg);
 	bool EnterRoomMsg(CEnterRoomMsg *msg);
-private:
+	bool LeaveRoomMsg(CLeaveRoomMsg *msg);
+protected:
 	static CSGTStateRoomStatics *_statics;
-private:
-	int _fieldE0;
+protected:
+	bool _fieldE0;
 	int _fieldE4;
 	int _fieldE8;
-	int _fieldEC;
-	int _fieldF0;
+	bool _fieldEC;
+	bool _fieldF0;
 public:
 	CLASSDEF;
 	CSGTStateRoom();

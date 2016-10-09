@@ -43,16 +43,15 @@ BEGIN_MESSAGE_MAP(CCarryParrot, CCarry)
 END_MESSAGE_MAP()
 
 CCarryParrot::CCarryParrot() : CCarry(), _string6("PerchedParrot"),
-		_timerId(0), _field13C(0), _field140(false), _field144(10),
-		_field148(25), _field14C(0), _field150(8) {
+		_timerId(0), _freeCounter(0), _feathersFlag(false) {
 }
 
 void CCarryParrot::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
 	file->writeQuotedLine(_string6, indent);
 	file->writeNumberLine(_timerId, indent);
-	file->writeNumberLine(_field13C, indent);
-	file->writeNumberLine(_field140, indent);
+	file->writeNumberLine(_freeCounter, indent);
+	file->writeNumberLine(_feathersFlag, indent);
 
 	CCarry::save(file, indent);
 }
@@ -61,8 +60,8 @@ void CCarryParrot::load(SimpleFile *file) {
 	file->readNumber();
 	_string6 = file->readString();
 	_timerId = file->readNumber();
-	_field13C = file->readNumber();
-	_field140 = file->readNumber();
+	_freeCounter = file->readNumber();
+	_feathersFlag = file->readNumber();
 
 	CCarry::load(file);
 }
@@ -77,7 +76,7 @@ bool CCarryParrot::PETGainedObjectMsg(CPETGainedObjectMsg *msg) {
 
 bool CCarryParrot::TimerMsg(CTimerMsg *msg) {
 	if (CParrot::_v4 == 1 || CParrot::_v4 == 4) {
-		if (++_field13C >= 30) {
+		if (++_freeCounter >= 30) {
 			CActMsg actMsg("FreeParrot");
 			actMsg.execute(this);
 		}
@@ -111,7 +110,7 @@ bool CCarryParrot::MouseDragEndMsg(CMouseDragEndMsg *msg) {
 
 	if (compareViewNameTo("ParrotLobby.Node 1.N")) {
 		if (msg->_mousePos.x >= 75 && msg->_mousePos.x <= 565 &&
-				!CParrot::_v2 && !CCage::_v2) {
+				!CParrot::_v2 && !CCage::_open) {
 			setVisible(false);
 			_fieldE0 = 0;
 			CTreeItem *perchedParrot = findUnder(getRoot(), "PerchedParrot");
@@ -125,7 +124,7 @@ bool CCarryParrot::MouseDragEndMsg(CMouseDragEndMsg *msg) {
 			setVisible(false);
 			_fieldE0 = 0;
 			CParrot::_v4 = 2;
-			playSound("z#475.wav", 100, 0, 0);
+			playSound("z#475.wav");
 			sound8(true);
 			moveUnder(findRoom());
 
@@ -133,14 +132,14 @@ bool CCarryParrot::MouseDragEndMsg(CMouseDragEndMsg *msg) {
 			actMsg.execute("ParrotCage");
 		}
 	} else {
-		CCharacter *character = static_cast<CCharacter *>(msg->_dropTarget);
+		CCharacter *character = dynamic_cast<CCharacter *>(msg->_dropTarget);
 		if (character) {
 			CUseWithCharMsg charMsg(character);
 			charMsg.execute(this, nullptr, 0);
 		} else {
 			setVisible(false);
 			_fieldE0 = 0;
-			playSound("z#475.wav", 100, 0, 0);
+			playSound("z#475.wav");
 			sound8(true);
 			moveUnder(findRoom());
 		}
@@ -160,19 +159,19 @@ bool CCarryParrot::PassOnDragStartMsg(CPassOnDragStartMsg *msg) {
 		stopTimer(_timerId);
 		_timerId = addTimer(1000, 1000);
 
-		_field13C = 0;
+		_freeCounter = 0;
 		CParrot::_v4 = 1;
 		msg->_value3 = 1;
 
 		return CCarry::PassOnDragStartMsg(msg);
 	}
 
-	CTrueTalkNPC *npc = static_cast<CTrueTalkNPC *>(getRoot()->findByName(_string6));
+	CTrueTalkNPC *npc = dynamic_cast<CTrueTalkNPC *>(getRoot()->findByName(_string6));
 	if (npc)
 		startTalking(npc, 0x446BF);
 
 	_fieldE0 = 0;
-	playSound("z#475.wav", 100, 0, 0);
+	playSound("z#475.wav");
 	moveUnder(findRoom());
 	msg->_value4 = 1;
 
@@ -181,7 +180,7 @@ bool CCarryParrot::PassOnDragStartMsg(CPassOnDragStartMsg *msg) {
 
 bool CCarryParrot::PreEnterViewMsg(CPreEnterViewMsg *msg) {
 	loadSurface();
-	CCarryParrot *parrot = static_cast<CCarryParrot *>(getRoot()->findByName("CarryParrot"));
+	CCarryParrot *parrot = dynamic_cast<CCarryParrot *>(getRoot()->findByName("CarryParrot"));
 	if (parrot)
 		parrot->_fieldE0 = 0;
 
@@ -189,7 +188,7 @@ bool CCarryParrot::PreEnterViewMsg(CPreEnterViewMsg *msg) {
 }
 
 bool CCarryParrot::UseWithCharMsg(CUseWithCharMsg *msg) {
-	CSuccUBus *succubus = static_cast<CSuccUBus *>(msg->_character);
+	CSuccUBus *succubus = dynamic_cast<CSuccUBus *>(msg->_character);
 	if (succubus)
 		CParrot::_v4 = 3;
 
@@ -198,7 +197,7 @@ bool CCarryParrot::UseWithCharMsg(CUseWithCharMsg *msg) {
 
 bool CCarryParrot::ActMsg(CActMsg *msg) {
 	if (msg->_action == "FreeParrot" && (CParrot::_v4 == 4 || CParrot::_v4 == 1)) {
-		CTrueTalkNPC *npc = static_cast<CTrueTalkNPC *>(getRoot()->findByName(_string6));
+		CTrueTalkNPC *npc = dynamic_cast<CTrueTalkNPC *>(getRoot()->findByName(_string6));
 		if (npc)
 			startTalking(npc, 0x446BF);
 
@@ -209,16 +208,16 @@ bool CCarryParrot::ActMsg(CActMsg *msg) {
 			CActMsg actMsg("Shut");
 			actMsg.execute("ParrotCage");
 		} else {
-			playSound("z#475.wav", 100, 0, 0);
+			playSound("z#475.wav");
 
-			if (!_field140) {
-				CCarry *feathers = static_cast<CCarry *>(getRoot()->findByName("Feathers"));
+			if (!_feathersFlag) {
+				CCarry *feathers = dynamic_cast<CCarry *>(getRoot()->findByName("Feathers"));
 				if (feathers) {
 					feathers->setVisible(true);
 					feathers->petAddToInventory();
 				}
 
-				_field140 = true;
+				_feathersFlag = true;
 			}
 
 			getPetControl()->removeFromInventory(this);

@@ -31,8 +31,12 @@ namespace Titanic {
 
 enum NpcFlag {
 	NPCFLAG_SPEAKING = 1, NPCFLAG_2 = 2, NPCFLAG_4 = 4, NPCFLAG_8 = 8,
-	NPCFLAG_10000 = 0x10000, NPCFLAG_20000 = 0x20000, NPCFLAG_40000 = 0x40000,
-	NPCFLAG_80000 = 0x80000, NPCFLAG_100000 = 0x100000
+	NPCFLAG_10000 = 0x10000, NPCFLAG_20000 = 0x20000,
+	NPCFLAG_40000 = 0x40000, NPCFLAG_80000 = 0x80000,
+	NPCFLAG_100000 = 0x100000, NPCFLAG_200000 = 0x200000,
+	NPCFLAG_400000 = 0x400000, NPCFLAG_800000 = 0x800000,
+	NPCFLAG_1000000 = 0x1000000, NPCFLAG_2000000 = 0x2000000,
+	NPCFLAG_4000000 = 0x4000000, NPCFLAG_8000000 = 0x8000000
 };
 
 class CViewItem;
@@ -53,30 +57,16 @@ protected:
 	CString _assetName;
 	int _fieldE4;
 	uint _npcFlags;
-	uint _soundId;
-	int _fieldF0;
+	uint _speechDuration;
+	uint _startTicks;
 	int _fieldF4;
 	int _fieldF8;
 	int _speechTimerId;
-	int _field100;
 	int _field104;
 protected:
 	void processInput(CTextInputMsg *msg, CViewItem *view);
-	
-	/**
-	 * Start an animation timer
-	 */
-	int startAnimTimer(const CString &action, uint firstDuration, uint duration);
-
-	/**
-	 * Stop an animation timer
-	 */
-	void stopAnimTimer(int id);
-
-	/**
-	 * Perform an action
-	 */
-	void performAction(bool startTalking, CViewItem *view);
+public:
+	int _field100;
 public:
 	CLASSDEF;
 	CTrueTalkNPC();
@@ -100,6 +90,11 @@ public:
 	 * Start the talker in the given view
 	 */
 	void startTalker(CViewItem *view);
+
+	/**
+	 * Perform an action
+	 */
+	void performAction(bool startTalking, CViewItem *view = nullptr);
 };
 
 } // End of namespace Titanic

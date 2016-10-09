@@ -21,7 +21,6 @@
  */
 
 #include "fullpipe/fullpipe.h"
-#include "graphics/thumbnail.h"
 
 #include "fullpipe/gameloader.h"
 #include "fullpipe/scene.h"
@@ -66,7 +65,7 @@ GameLoader::GameLoader() {
 	_field_F8 = 0;
 	_sceneSwitcher = 0;
 	_preloadCallback = 0;
-	_readSavegameCallback = 0;
+	_savegameCallback = 0;
 	_gameVar = 0;
 	_preloadSceneId = 0;
 	_preloadEntranceId = 0;
@@ -88,10 +87,10 @@ GameLoader::~GameLoader() {
 
 	for (uint i = 0; i < _sc2array.size(); i++) {
 		if (_sc2array[i]._defPicAniInfos)
-			delete _sc2array[i]._defPicAniInfos;
+			free(_sc2array[i]._defPicAniInfos);
 
 		if (_sc2array[i]._picAniInfos)
-			delete _sc2array[i]._picAniInfos;
+			free(_sc2array[i]._picAniInfos);
 
 		if (_sc2array[i]._motionController)
 			delete _sc2array[i]._motionController;
@@ -307,7 +306,7 @@ bool preloadCallback(PreloadItem &pre, int flag) {
 				g_fp->_scene3 = 0;
 			}
 		} else {
-			scene19_setMovements(g_fp->accessScene(pre.preloadId1), pre.keyCode);
+			scene19_setMovements(g_fp->accessScene(pre.preloadId1), pre.param);
 
 			g_vars->scene18_inScene18p1 = true;
 
@@ -318,9 +317,9 @@ bool preloadCallback(PreloadItem &pre, int flag) {
 			}
 		}
 
-		if (((pre.sceneId == SC_19 && pre.keyCode == TrubaRight) || (pre.sceneId == SC_18 && pre.keyCode == TrubaRight)) && !pre.preloadId2) {
+		if (((pre.sceneId == SC_19 && pre.param == TrubaRight) || (pre.sceneId == SC_18 && pre.param == TrubaRight)) && !pre.preloadId2) {
 			pre.sceneId = SC_18;
-			pre.keyCode = TrubaLeft;
+			pre.param = TrubaLeft;
 		}
 
 		if (!g_fp->_loaderScene) {
@@ -398,7 +397,7 @@ bool GameLoader::preloadScene(int sceneId, int entranceId) {
 
 	ExCommand *ex = new ExCommand(_preloadItems[idx]->sceneId, 17, 62, 0, 0, 0, 1, 0, 0, 0);
 	ex->_excFlags = 2;
-	ex->_keyCode = _preloadItems[idx]->keyCode;
+	ex->_param = _preloadItems[idx]->param;
 
 	_preloadSceneId = 0;
 	_preloadEntranceId = 0;
@@ -429,7 +428,7 @@ bool GameLoader::unloadScene(int sceneId) {
 	_sc2array[sceneTag]._isLoaded = 0;
 	_sc2array[sceneTag]._scene = 0;
 
-   return true;
+	return true;
 }
 
 int GameLoader::getSceneTagBySceneId(int sceneId, SceneTag **st) {
@@ -504,7 +503,79 @@ void GameLoader::applyPicAniInfos(Scene *sc, PicAniInfo **picAniInfo, int picAni
 }
 
 void GameLoader::saveScenePicAniInfos(int sceneId) {
-	warning("STUB: GameLoader::saveScenePicAniInfos(%d)", sceneId);
+	SceneTag *st;
+
+	int idx = getSceneTagBySceneId(sceneId, &st);
+
+	if (idx < 0)
+		return;
+
+	if (!_sc2array[idx]._isLoaded)
+		return;
+
+	if (!st->_scene)
+		return;
+
+	int picAniInfosCount;
+
+	PicAniInfo **pic = savePicAniInfos(st->_scene, 0, 128, &picAniInfosCount);
+
+	if (_sc2array[idx]._picAniInfos)
+		free(_sc2array[idx]._picAniInfos);
+
+	_sc2array[idx]._picAniInfos = pic;
+	_sc2array[idx]._picAniInfosCount = picAniInfosCount;
+}
+
+PicAniInfo **GameLoader::savePicAniInfos(Scene *sc, int flag1, int flag2, int *picAniInfoCount) {
+	PicAniInfo **res;
+
+	*picAniInfoCount = 0;
+	if (!sc)
+		return NULL;
+
+	if (!sc->_picObjList.size())
+		return NULL;
+
+	int numInfos = sc->_staticANIObjectList1.size() + sc->_picObjList.size() - 1;
+	if (numInfos < 1)
+		return NULL;
+
+	res = (PicAniInfo **)malloc(sizeof(PicAniInfo *) * numInfos);
+
+	int idx = 0;
+
+	for (uint i = 0; i < sc->_picObjList.size(); i++) {
+		PictureObject *obj = sc->_picObjList[i];
+
+		if (obj && ((obj->_flags & flag1) == flag1) && ((obj->_field_8 & flag2) == flag2)) {
+			res[idx] = new PicAniInfo();
+			obj->getPicAniInfo(res[idx]);
+			idx++;
+		}
+	}
+
+	for (uint i = 0; i < sc->_staticANIObjectList1.size(); i++) {
+		StaticANIObject *obj = sc->_staticANIObjectList1[i];
+
+		if (obj && ((obj->_flags & flag1) == flag1) && ((obj->_field_8 & flag2) == flag2)) {
+			res[idx] = new PicAniInfo();
+			obj->getPicAniInfo(res[idx]);
+			res[idx]->type &= 0xFFFF;
+			idx++;
+		}
+	}
+
+	*picAniInfoCount = idx;
+
+	debugC(4, kDebugBehavior | kDebugAnimation, "savePicAniInfos: Stored %d infos", idx);
+
+	if (!idx) {
+		free(res);
+		return NULL;
+	}
+
+	return res;
 }
 
 void GameLoader::updateSystems(int counterdiff) {
@@ -524,14 +595,6 @@ void GameLoader::updateSystems(int counterdiff) {
 		processMessages();
 		preloadScene(_preloadSceneId, _preloadEntranceId);
 	}
-}
-
-void GameLoader::readSavegame(const char *fname) {
-	warning("STUB: readSavegame(%s)", fname);
-}
-
-void GameLoader::writeSavegame(Scene *sc, const char *fname) {
-	warning("STUB: writeSavegame(sc, %s)", fname);
 }
 
 Sc2::Sc2() {
@@ -618,7 +681,7 @@ bool PreloadItems::load(MfcArchive &file) {
 		t->preloadId1 = file.readUint32LE();
 		t->preloadId2 = file.readUint32LE();
 		t->sceneId = file.readUint32LE();
-		t->keyCode = file.readUint32LE();
+		t->param = file.readSint32LE();
 
 		push_back(t);
 	}
@@ -630,32 +693,6 @@ const char *getSavegameFile(int saveGameIdx) {
 	static char buffer[20];
 	sprintf(buffer, "fullpipe.s%02d", saveGameIdx);
 	return buffer;
-}
-
-bool readSavegameHeader(Common::InSaveFile *in, FullpipeSavegameHeader &header) {
-	char saveIdentBuffer[6];
-	header.thumbnail = NULL;
-
-	// Validate the header Id
-	in->read(saveIdentBuffer, 6);
-	if (strcmp(saveIdentBuffer, "SVMCR"))
-		return false;
-
-	header.version = in->readByte();
-	if (header.version != FULLPIPE_SAVEGAME_VERSION)
-		return false;
-
-	// Read in the string
-	header.saveName.clear();
-	char ch;
-	while ((ch = (char)in->readByte()) != '\0') header.saveName += ch;
-
-	// Get the thumbnail
-	header.thumbnail = Graphics::loadThumbnail(*in);
-	if (!header.thumbnail)
-		return false;
-
-	return true;
 }
 
 void GameLoader::restoreDefPicAniInfos() {

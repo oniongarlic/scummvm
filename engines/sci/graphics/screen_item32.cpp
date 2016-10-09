@@ -178,7 +178,9 @@ void ScreenItem::setFromObject(SegManager *segMan, const reg_t object, const boo
 			const uint8 loopCount = view->data[2];
 			const uint8 loopSize = view->data[12];
 
-			if (_celInfo.loopNo >= loopCount) {
+			// loopNo is set to be an unsigned integer in SSCI, so if it's a
+			// negative value, it'll be fixed accordingly
+			if ((uint16)_celInfo.loopNo >= loopCount) {
 				const int maxLoopNo = loopCount - 1;
 				_celInfo.loopNo = maxLoopNo;
 				writeSelectorValue(segMan, object, SELECTOR(loop), maxLoopNo);
@@ -189,8 +191,11 @@ void ScreenItem::setFromObject(SegManager *segMan, const reg_t object, const boo
 			if (seekEntry != -1) {
 				loopData = view->data + headerSize + (seekEntry * loopSize);
 			}
+
+			// celNo is set to be an unsigned integer in SSCI, so if it's a
+			// negative value, it'll be fixed accordingly
 			const uint8 celCount = loopData[2];
-			if (_celInfo.celNo >= celCount) {
+			if ((uint16)_celInfo.celNo >= celCount) {
 				const int maxCelNo = celCount - 1;
 				_celInfo.celNo = maxCelNo;
 				writeSelectorValue(segMan, object, SELECTOR(cel), maxCelNo);
@@ -258,16 +263,13 @@ void ScreenItem::calcRects(const Plane &plane) {
 	}
 
 	Ratio scaleX, scaleY;
-
-	if (_scale.signal & kScaleSignalDoScaling32) {
-		if (_scale.signal & kScaleSignalUseVanishingPoint) {
-			int num = _scale.max * (_position.y - plane._vanishingPoint.y) / (scriptWidth - plane._vanishingPoint.y);
-			scaleX = Ratio(num, 128);
-			scaleY = Ratio(num, 128);
-		} else {
-			scaleX = Ratio(_scale.x, 128);
-			scaleY = Ratio(_scale.y, 128);
-		}
+	if (_scale.signal == kScaleSignalManual) {
+		scaleX = Ratio(_scale.x, 128);
+		scaleY = Ratio(_scale.y, 128);
+	} else if (_scale.signal == kScaleSignalVanishingPoint) {
+		int num = _scale.max * (_position.y - plane._vanishingPoint.y) / (scriptWidth - plane._vanishingPoint.y);
+		scaleX = Ratio(num, 128);
+		scaleY = Ratio(num, 128);
 	}
 
 	if (scaleX.getNumerator() && scaleY.getNumerator()) {
@@ -588,15 +590,13 @@ Common::Rect ScreenItem::getNowSeenRect(const Plane &plane) const {
 	const uint16 scriptHeight = g_sci->_gfxFrameout->getCurrentBuffer().scriptHeight;
 
 	Ratio scaleX, scaleY;
-	if (_scale.signal & kScaleSignalDoScaling32) {
-		if (_scale.signal & kScaleSignalUseVanishingPoint) {
-			int num = _scale.max * (_position.y - plane._vanishingPoint.y) / (scriptWidth - plane._vanishingPoint.y);
-			scaleX = Ratio(num, 128);
-			scaleY = Ratio(num, 128);
-		} else {
-			scaleX = Ratio(_scale.x, 128);
-			scaleY = Ratio(_scale.y, 128);
-		}
+	if (_scale.signal == kScaleSignalManual) {
+		scaleX = Ratio(_scale.x, 128);
+		scaleY = Ratio(_scale.y, 128);
+	} else if (_scale.signal == kScaleSignalVanishingPoint) {
+		int num = _scale.max * (_position.y - plane._vanishingPoint.y) / (scriptWidth - plane._vanishingPoint.y);
+		scaleX = Ratio(num, 128);
+		scaleY = Ratio(num, 128);
 	}
 
 	if (scaleX.getNumerator() == 0 || scaleY.getNumerator() == 0) {

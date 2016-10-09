@@ -52,17 +52,17 @@ void CBridgePiece::load(SimpleFile *file) {
 }
 
 bool CBridgePiece::UseWithOtherMsg(CUseWithOtherMsg *msg) {
-	CShipSetting *shipSetting = static_cast<CShipSetting *>(msg->_other);
+	CShipSetting *shipSetting = dynamic_cast<CShipSetting *>(msg->_other);
 	if (!shipSetting) {
 		return CCarry::UseWithOtherMsg(msg);
-	} else if (shipSetting->_string4 == "NULL") {
+	} else if (shipSetting->_itemName != "NULL") {
 		petAddToInventory();
 		return true;
 	} else {
 		setVisible(false);
-		playSound("z#54.wav", 100, 0, 0);
+		playSound("z#54.wav");
 		setPosition(shipSetting->_pos1);
-		shipSetting->_string4 = getName();
+		shipSetting->_itemName = getName();
 		petMoveToHiddenRoom();
 
 		CAddHeadPieceMsg headpieceMsg(shipSetting->getName() == _string6 ?

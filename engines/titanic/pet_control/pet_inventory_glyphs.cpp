@@ -165,7 +165,7 @@ void CPetInventoryGlyph::getTooltip(CPetText *text) {
 
 bool CPetInventoryGlyph::doAction(CGlyphAction *action) {
 	CInventoryGlyphAction *invAction = static_cast<CInventoryGlyphAction *>(action);
-	CPetInventoryGlyphs *owner = static_cast<CPetInventoryGlyphs *>(_owner);
+	CPetInventoryGlyphs *owner = dynamic_cast<CPetInventoryGlyphs *>(_owner);
 	if (!invAction)
 		return false;
 
@@ -198,17 +198,17 @@ bool CPetInventoryGlyph::doAction(CGlyphAction *action) {
 	return true;
 }
 
-void CPetInventoryGlyph::setItem(CGameObject *item, int val) {
+void CPetInventoryGlyph::setItem(CGameObject *item, bool isLoading) {
 	_item = item;
 
 	if (_owner && item) {
-		int v1 = populateItem(item, val);
+		int v1 = populateItem(item, isLoading);
 		_background = static_cast<CPetInventoryGlyphs *>(_owner)->getBackground(v1);
 		_image = static_cast<CPetInventory *>(getPetSection())->getImage(v1);
 	}
 }
 
-int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
+int CPetInventoryGlyph::populateItem(CGameObject *item, bool isLoading) {
 	// Scan the master item names list
 	CString itemName = item->getName();
 	int itemIndex = -1;
@@ -221,7 +221,7 @@ int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
 
 	switch (ITEM_MODES[itemIndex]) {
 	case 0:
-		switch (subMode(item, val)) {
+		switch (subMode(item, isLoading)) {
 		case 0:
 		case 1:
 			return 0;
@@ -233,7 +233,7 @@ int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
 		}
 
 	case 2:
-		switch (subMode(item, val)) {
+		switch (subMode(item, isLoading)) {
 		case 0:
 			return 2;
 		default:
@@ -242,7 +242,7 @@ int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
 		break;
 
 	case 15:
-		switch (subMode(item, val)) {
+		switch (subMode(item, isLoading)) {
 		case 0:
 		case 1:
 			return 14;
@@ -260,7 +260,7 @@ int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
 		break;
 
 	case 26:
-		switch (subMode(item, val)) {
+		switch (subMode(item, isLoading)) {
 		case 0:
 			return 26;
 		case 1:
@@ -281,11 +281,11 @@ int CPetInventoryGlyph::populateItem(CGameObject *item, int val) {
 	return ITEM_MODES[itemIndex];
 }
 
-int CPetInventoryGlyph::subMode(CGameObject *item, int val) {
+int CPetInventoryGlyph::subMode(CGameObject *item, bool isLoading) {
 	int frameNum = item->getFrameNumber();
 	int movieFrame = item->getMovieFrame();
 
-	if (val && frameNum != -1 && frameNum != movieFrame)
+	if (isLoading && frameNum != -1 && frameNum != movieFrame)
 		item->loadFrame(frameNum);
 
 	return frameNum;
@@ -293,7 +293,7 @@ int CPetInventoryGlyph::subMode(CGameObject *item, int val) {
 
 void CPetInventoryGlyph::startBackgroundMovie() {
 	if (_owner) {
-		CPetInventory *section = static_cast<CPetInventory *>(_owner->getOwner());
+		CPetInventory *section = dynamic_cast<CPetInventory *>(_owner->getOwner());
 		if (section)
 			section->playMovie(_background, 1);
 	}
@@ -301,7 +301,7 @@ void CPetInventoryGlyph::startBackgroundMovie() {
 
 void CPetInventoryGlyph::startForegroundMovie() {
 	if (_owner) {
-		CPetInventory *section = static_cast<CPetInventory *>(_owner->getOwner());
+		CPetInventory *section = dynamic_cast<CPetInventory *>(_owner->getOwner());
 		if (section)
 			section->playMovie(_image, 1);
 	}
@@ -309,7 +309,7 @@ void CPetInventoryGlyph::startForegroundMovie() {
 
 void CPetInventoryGlyph::stopMovie() {
 	if (_owner) {
-		CPetInventory *section = static_cast<CPetInventory *>(_owner->getOwner());
+		CPetInventory *section = dynamic_cast<CPetInventory *>(_owner->getOwner());
 		if (section)
 			section->playMovie(nullptr, 1);
 	}

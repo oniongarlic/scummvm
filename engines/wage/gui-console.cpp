@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -51,24 +51,22 @@
 #include "graphics/cursorman.h"
 #include "graphics/fonts/bdf.h"
 #include "graphics/palette.h"
+#include "graphics/macgui/macfontmanager.h"
+#include "graphics/macgui/macwindow.h"
+#include "graphics/macgui/macmenu.h"
 
 #include "wage/wage.h"
 #include "wage/design.h"
 #include "wage/entities.h"
-#include "wage/macwindow.h"
-#include "wage/macmenu.h"
 #include "wage/gui.h"
 #include "wage/world.h"
 
 namespace Wage {
 
 const Graphics::Font *Gui::getConsoleFont() {
-	char fontName[128];
 	Scene *scene = _engine->_world->_player->_currentScene;
 
-	snprintf(fontName, 128, "%s-%d", scene->getFontName(), scene->_fontSize);
-
-	return _wm.getFont(fontName, Graphics::FontManager::kConsoleFont);
+	return _wm._fontMan->getFont(*scene->getFont());
 }
 
 void Gui::clearOutput() {
@@ -309,7 +307,20 @@ void Gui::drawInput() {
 
 		font->drawString(&_screen, _out[_inputTextLineNum], x, y, _screen.w, kColorBlack);
 
-		g_system->copyRectToScreen(_screen.getBasePtr(x, y), _screen.pitch, x, y, _consoleWindow->getInnerDimensions().width(), font->getFontHeight());
+		int w = _consoleWindow->getInnerDimensions().width();
+		int h = font->getFontHeight();
+		if (x < 0) {
+			w += x;
+			x = 0;
+		}
+		if (y < 0) {
+			h += y;
+			y = 0;
+		}
+		if (x + w > _screen.w) w = _screen.w - x;
+		if (y + h > _screen.h) h = _screen.h - y;
+		if (w != 0 && h != 0)
+			g_system->copyRectToScreen(_screen.getBasePtr(x, y), _screen.pitch, x, y, w, h);
 	}
 
 	_cursorX = font->getStringWidth(_out[_inputTextLineNum]) + kConHPadding;

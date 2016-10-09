@@ -81,7 +81,6 @@ MODULE_OBJS := \
 	game/arb_background.o \
 	game/arboretum_gate.o \
 	game/auto_animate.o \
-	game/bilge_succubus.o \
 	game/bar_menu.o \
 	game/bar_menu_button.o \
 	game/bar_bell.o \
@@ -95,7 +94,6 @@ MODULE_OBJS := \
 	game/broken_pell_base.o \
 	game/broken_pellerator.o \
 	game/broken_pellerator_froz.o \
-	game/call_pellerator.o \
 	game/cage.o \
 	game/captains_wheel.o \
 	game/cdrom.o \
@@ -159,6 +157,8 @@ MODULE_OBJS := \
 	game/music_system_lock.o \
 	game/musical_instrument.o \
 	game/nav_helmet.o \
+	game/nav_helmet_off.o \
+	game/nav_helmet_on.o \
 	game/navigation_computer.o \
 	game/no_nut_bowl.o \
 	game/nose_holder.o \
@@ -167,6 +167,7 @@ MODULE_OBJS := \
 	game/pet_disabler.o \
 	game/phonograph.o \
 	game/phonograph_lid.o \
+	game/place_holder_item.o \
 	game/play_music_button.o \
 	game/play_on_act.o \
 	game/port_hole.o \
@@ -199,6 +200,7 @@ MODULE_OBJS := \
 	game/titania_still_control.o \
 	game/up_lighter.o \
 	game/useless_lever.o \
+	game/variable_list.o \
 	game/volume_control.o \
 	game/wheel_button.o \
 	game/wheel_hotspot.o \
@@ -221,7 +223,6 @@ MODULE_OBJS := \
 	game/parrot/parrot_nut_bowl_actor.o \
 	game/parrot/parrot_nut_eater.o \
 	game/parrot/parrot_perch_holder.o \
-	game/parrot/parrot_succubus.o \
 	game/parrot/parrot_trigger.o \
 	game/parrot/player_meets_parrot.o \
 	game/pet/pet.o \
@@ -243,7 +244,7 @@ MODULE_OBJS := \
 	game/pickup/pick_up_speech_centre.o \
 	game/pickup/pick_up_vis_centre.o \
 	game/placeholder/bar_shelf_vis_centre.o \
-	game/placeholder/place_holder_item.o \
+	game/placeholder/place_holder.o \
 	game/placeholder/lemon_on_bar.o \
 	game/placeholder/tv_on_bar.o \
 	game/transport/gondolier.o \
@@ -278,7 +279,6 @@ MODULE_OBJS := \
 	gfx/chev_right_off.o \
 	gfx/chev_right_on.o \
 	gfx/chev_send_rec_switch.o \
-	gfx/chev_switch.o \
 	gfx/edit_control.o \
 	gfx/elevator_button.o \
 	gfx/get_from_succ.o \
@@ -297,7 +297,12 @@ MODULE_OBJS := \
 	gfx/move_object_button.o \
 	gfx/music_control.o \
 	gfx/music_slider.o \
+	gfx/music_slider_pitch.o \
+	gfx/music_slider_speed.o \
 	gfx/music_switch.o \
+	gfx/music_switch_inversion.o \
+	gfx/music_switch_reverse.o \
+	gfx/music_voice_mute.o \
 	gfx/send_to_succ.o \
 	gfx/sgt_selector.o \
 	gfx/slider_button.o \
@@ -319,6 +324,7 @@ MODULE_OBJS := \
 	messages/messages.o \
 	messages/mouse_messages.o \
 	messages/service_elevator_door.o \
+	moves/call_pellerator.o \
 	moves/enter_bomb_room.o \
 	moves/enter_bridge.o \
 	moves/enter_exit_first_class_state.o \
@@ -343,6 +349,7 @@ MODULE_OBJS := \
 	moves/trip_down_canal.o \
 	npcs/barbot.o \
 	npcs/bellbot.o \
+	npcs/bilge_succubus.o \
 	npcs/callbot.o \
 	npcs/character.o \
 	npcs/deskbot.o \
@@ -351,6 +358,7 @@ MODULE_OBJS := \
 	npcs/maitre_d.o \
 	npcs/mobile.o \
 	npcs/parrot.o \
+	npcs/parrot_succubus.o \
 	npcs/robot_controller.o \
 	npcs/starlings.o \
 	npcs/succubus.o \
@@ -364,7 +372,6 @@ MODULE_OBJS := \
 	pet_control/pet_gfx_element.o \
 	pet_control/pet_inventory.o \
 	pet_control/pet_inventory_glyphs.o \
-	pet_control/pet_message.o \
 	pet_control/pet_starfield.o \
 	pet_control/pet_real_life.o \
 	pet_control/pet_remote.o \
@@ -372,6 +379,7 @@ MODULE_OBJS := \
 	pet_control/pet_rooms.o \
 	pet_control/pet_rooms_glyphs.o \
 	pet_control/pet_section.o \
+	pet_control/pet_translation.o \
 	pet_control/pet_drag_chev.o \
 	pet_control/pet_graphic2.o \
 	pet_control/pet_graphic.o \
@@ -387,6 +395,7 @@ MODULE_OBJS := \
 	pet_control/pet_pannel3.o \
 	pet_control/pet_quit.o \
 	pet_control/pet_save.o \
+	pet_control/pet_show_translation.o \
 	pet_control/pet_slider.o \
 	pet_control/pet_sound.o \
 	pet_control/pet_text.o \
@@ -400,8 +409,12 @@ MODULE_OBJS := \
 	sound/enter_view_toggles_other_music.o \
 	sound/gondolier_song.o \
 	sound/music_room.o \
+	sound/music_room_handler.o \
 	sound/music_player.o \
+	sound/music_wave.o \
 	sound/node_auto_sound_player.o \
+	sound/proximity.o \
+	sound/qmixer.o \
 	sound/restricted_auto_music_player.o \
 	sound/room_auto_sound_player.o \
 	sound/room_trigger_auto_music_player.o \
@@ -453,6 +466,7 @@ MODULE_OBJS := \
 	support/font.o \
 	support/image.o \
 	support/image_decoders.o \
+	support/strings.o \
 	support/mouse_cursor.o \
 	support/movie.o \
 	support/movie_clip.o \
@@ -460,11 +474,12 @@ MODULE_OBJS := \
 	support/movie_range_info.o \
 	support/movie_manager.o \
 	support/credit_text.o \
-	support/proximity.o \
+	support/transparency_surface.o \
 	support/rect.o \
 	support/screen_manager.o \
 	support/simple_file.o \
 	support/string.o \
+	support/string_parser.o \
 	support/text_cursor.o \
 	support/time_event_info.o \
 	support/video_surface.o \

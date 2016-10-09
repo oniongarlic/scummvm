@@ -28,7 +28,15 @@
 namespace Titanic {
 
 class CSeasonalAdjustment : public CBackground {
-public:
+	DECLARE_MESSAGE_MAP;
+	bool StatusChangeMsg(CStatusChangeMsg *msg);
+	bool MouseButtonDownMsg(CMouseButtonDownMsg *msg);
+	bool MouseButtonUpMsg(CMouseButtonUpMsg *msg);
+	bool MovieEndMsg(CMovieEndMsg *msg);
+	bool TurnOn(CTurnOn *msg);
+	bool TurnOff(CTurnOff *msg);
+	bool ActMsg(CActMsg *msg);
+private:
 	int _fieldE0;
 	int _fieldE4;
 public:

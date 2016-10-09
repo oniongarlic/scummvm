@@ -55,15 +55,33 @@
  */
 
 #define VERSION_NUMBER 1
-#define HEADER_SIZE 0xD00
+#define HEADER_SIZE 0xF00
 
 Common::File inputFile, outputFile;
-Common::PEResources res;
+Common::PEResources resEng, resGer;
 uint headerOffset = 6;
 uint dataOffset = HEADER_SIZE;
-#define SEGMENT_OFFSET 0x401C00
 
-const int FILE_DIFF = 0x401C00;
+#define ENGLISH_10042C_FILESIZE 4099072
+#define ENGLISH_10042B_FILESIZE 4095488
+#define ENGLISH_10042_FILESIZE 4094976
+#define GERMAN_10042D_FILESIZE 4542464
+
+enum {
+	ENGLISH_10042C_DIFF = 0x401C00,
+	ENGLISH_10042B_DIFF = 0x401400,
+	ENGLISH_10042_DIFF = 0x402000
+};
+enum Version {
+	ENGLISH_10042C = 0,
+	ENGLISH_10042B = 1,
+	ENGLISH_10042 = 2
+};
+Version _version;
+
+const int FILE_DIFF[3] = {
+	ENGLISH_10042C_DIFF, ENGLISH_10042B_DIFF, ENGLISH_10042_DIFF
+};
 
 static const char *const ITEM_NAMES[46] = {
 	"LeftArmWith", "LeftArmWithout", "RightArmWith", "RightArmWithout", "BridgeRed",
@@ -249,6 +267,359 @@ static const CommonPhrase BELLBOT_COMMON_PHRASES[] = {
 	{ nullptr, 0, 0, 0 }
 };
 
+struct FrameRange {
+	int _startFrame;
+	int _endFrame;
+};
+
+static const FrameRange BARBOT_FRAME_RANGES[60] = {
+	{ 558, 585 }, { 659, 692 }, { 802, 816 }, { 1941, 1977 }, { 1901, 1941 },
+	{ 810, 816 }, { 857, 865}, { 842, 857 }, { 821, 842 }, { 682, 692 },
+	{ 1977, 2018 }, { 2140, 2170 }, { 2101, 2139 }, { 2018, 2099}, { 1902, 2015 },
+	{ 1811, 1901 }, { 1751, 1810 }, { 1703, 1750 }, { 1681, 1702 }, { 1642, 1702 },
+	{ 1571, 1641 }, { 1499, 1570 }, { 1403, 1463 }, { 1464, 1499 }, { 1288, 1295 },
+	{ 1266, 1287 }, { 1245, 1265 }, { 1208, 1244 }, { 1171, 1207 }, { 1120, 1170 },
+	{ 1092, 1120 }, { 1092, 1092 }, { 1044, 1091 }, { 1011, 1043 }, { 1001, 1010 },
+	{ 985, 1001 }, { 927, 984 }, { 912, 926 }, { 898, 906 }, { 802, 896 },
+	{ 865, 896 }, { 842, 865 }, { 816, 842 }, { 802, 842 }, { 740, 801 },
+	{ 692, 740 }, { 610, 692 }, { 558, 610 }, { 500, 558 }, { 467, 500 },
+	{ 421, 466 }, { 349, 420 }, { 306, 348 }, { 305, 306 }, { 281, 305 },
+	{ 202, 281 }, { 182, 202 }, { 165, 182 }, { 96, 165 }, { 0, 95 }
+};
+
+static const char *const MISSIVEOMAT_MESSAGES[3] = {
+	"Welcome, Leovinus.\n"
+	"\n"
+	"This is your Missive-O-Mat.\n"
+	"\n"
+	"You have received 1827 Electric Missives.\n"
+	"\n"
+	"For your convenience I have deleted:\n"
+	" 453 things that people you don't know thought it would be "
+	"terribly witty to forward to you,\n"
+	" 63 Missives containing double or triple exclamation marks,\n"
+	" 846 Missives from mailing-lists you once thought might be quite "
+	"interesting and now can't figure out how to cancel,\n"
+	" 962 Chain Missives,\n"
+	" 1034 instructions on how to become a millionaire using butter,\n"
+	" 3 Yassaccan Death Threats (slightly down on last week which is"
+	" pleasing news),\n"
+	" and a Missive from your Mother which I have answered reassuringly.\n"
+	"\n"
+	"I have selected the following Missives for your particular attention. "
+	"You will not need to run Fib-Finder to see why.  Something Is Up and I "
+	"suspect those two slippery urchins Brobostigon and Scraliontis are behind it.",
+
+	"Hello Droot.  I have evaluated your recent missives.\n"
+	"Contents break down as follows:\n"
+	"\n"
+	"Good news 49%\n"
+	"Bad news 48%\n"
+	"Indifferent news 4%\n"
+	"Petty mailings and Family Missives 5%\n"
+	"Special Offers from the Blerontin Sand Society 1% (note - there's"
+	" a rather pretty dune for hire on p4)\n"
+	"\n"
+	"In general terms you Thrive.  You continue to Prosper.   Your shares are"
+	" Secure.  Your hair, as always, looks Good.  Carpet 14 needs cleaning.  \n"
+	"\n"
+	"I am pleased to report there have been no further comments about "
+	"foot odor.\n"
+	"\n"
+	"Recommend urgently you sell all fish paste shares as Market jittery.\n"
+	"\n"
+	"As your Great Scheme nears completion I have taken the liberty of"
+	" replying to all non-urgent Missives and list below only communic"
+	"ations with Manager Brobostigon and His Pain in the Ass Loftiness"
+	" Leovinus.  \n"
+	"\n"
+	"Beware - Leovinus grows suspicious.  Don't take your eye off B"
+	"robostigon.  \n"
+	"\n"
+	"Weather for the Launch tomorrow is bright and sunny.  Hazy clouds"
+	" will be turned on at eleven.  I suggest the red suit with the st"
+	"reamers.\n"
+	"\n"
+	"All money transfers will be completed through alias accounts by m"
+	"oonsup.\n"
+	"\n"
+	"Eat well.  Your fish levels are down and you may suffer indecisio"
+	"n flutters mid-morning.\n"
+	"\n"
+	"Here are your Missives...",
+
+	"Hello Antar, this is your Missive-o-Mat.\n"
+	"Not that you need reminding but today is the Glorious Dawning of "
+	"a New Age in Luxury Space Travel.\n"
+	"\n"
+	"Generally my assessment of your position this morning is that you"
+	" are well, albeit not as rich as you would like to be.  I hope yo"
+	"ur interesting collaboration with Mr Scraliontis will soon bear f"
+	"ruit. \n"
+	"\n"
+	"I trust your flatulence has eased during the night.  Such a distr"
+	"essing condition for a man in your position.\n"
+	"\n"
+	"Most of your Missives are routine construction matters which I ha"
+	"ve dealt with and deleted.  All Missives from Mr Scraliontis and "
+	"His Loftiness Leovinus are here."
+};
+
+struct BedheadEntry {
+	const char *_name1;
+	const char *_name2;
+	const char *_name3;
+	const char *_name4;
+	int _startFrame;
+	int _endFrame;
+};
+
+static const BedheadEntry ON_CLOSED[4] = {
+	{ "Closed", "Closed", "Open", "Open", 0, 12 },
+	{ "Open", "Any", "Any", "RestingUTV", 0, 4 },
+	{ "Closed", "Open", "Any", "RestingV", 0, 6 },
+	{ "Closed", "Closed", "Closed", "RestingG", 0, 21 }
+};
+static const BedheadEntry ON_RESTING_TV[2] = {
+	{ "Any", "Closed", "Open", "Open", 6, 12 },
+	{ "Any", "Closed", "Closed", "RestingG", 6, 21 }
+};
+static const BedheadEntry ON_RESTING_UV[2] = {
+	{ "Any", "Any", "Open", "Open", 8, 12 },
+	{ "Any", "Any", "Closed", "RestingG", 8, 21 }
+};
+static const BedheadEntry ON_CLOSED_WRONG[2] = {
+	{ "Any", "Any", "Closed", "OpenWrong", 42, 56 },
+	{ "Any", "Any", "Open", "RestingDWrong", 42, 52 }
+};
+
+static const BedheadEntry OFF_OPEN[3] = {
+	{ "Closed", "Closed", "Open", "Closed", 27, 41 },
+	{ "Any", "Open", "Any", "RestingUV", 27, 29 },
+	{ "Open", "Closed", "Any", "RestingTV", 27, 33 }
+};
+static const BedheadEntry OFF_RESTING_UTV[1] = {
+	{ "Any", "Any", "Any", "Closed", 36, 41 }
+};
+static const BedheadEntry OFF_RESTING_V[1] = {
+	{ "Closed", "Any", "Any", "Closed", 32, 41 }
+};
+static const BedheadEntry OFF_RESTING_G[3] = {
+	{ "Closed", "Closed", "Closed", "Closed", 21, 41 },
+	{ "Any", "Open", "Closed", "RestingUV", 21, 29 },
+	{ "Open", "Closed", "Closed", "RestingTV", 21, 33 }
+};
+static const BedheadEntry OFF_OPEN_WRONG[1] = {
+	{ "Any", "Any", "Any", "ClosedWrong", 56, 70 }
+};
+static const BedheadEntry OFF_RESTING_D_WRONG[1] = {
+	{ "Any", "Any", "Any", "ClosedWrong", 59, 70 }
+};
+
+static const char *const STRINGS_EN[] = {
+	"",
+	"You are standing outside the Pellerator.",
+	"I'm sorry, you cannot enter this pellerator at present as a bot is in the way.",
+	"The Succ-U-Bus is in Standby, or \"Off\" mode at present.",
+	"There is currently nothing to deliver.",
+	"There is currently nothing in the tray to send.",
+	"The Succ-U-Bus is a Single Entity Delivery Device.",
+	"Chickens are allocated on a one-per-customer basis.",
+	"Only one piece of chicken per passenger. Thank you.",
+	"You have been upgraded to 1st Class status. Enjoy hugely.",
+	"You have been upgraded to 2nd Class status. Enjoy.",
+	"This room is reserved for the exclusive use of first class passengers."
+	" That does not currently include you",
+	"No losers.",
+	"Passengers of your class are not permitted to enter this area.",
+	"Please exit from the other side.",
+	"For mysterious and unknowable reasons, this transport is temporarily out of order.",
+	"Unfortunately this fan controller has blown a fuse.",
+	"In case of emergency hammer requirement, poke with long stick.",
+	"This stick is too short to reach the branches.",
+	"You are standing outside Elevator %d",
+	"I'm sorry, you cannot enter this elevator at present as a bot is in the way.",
+	"This elevator is currently in an advanced state of non-functionality.",
+	"That light appears to be loose.",
+	"Lumi-Glow(tm) Lights.  They glow in the dark!",
+	"You already have one.",
+	"This glass is totally and utterly unbreakable.",
+	"For emergency long stick, smash glass.",
+	"This dispenser has suddenly been fitted with unbreakable glass "
+	"to prevent unseemly hoarding of sticks.",
+	"The Chicken is already quite clean enough, thank you.",
+	"Now would be an excellent opportunity to adjust your viewing apparatus.",
+	"You cannot take this because the cage is locked shut.",
+	"You are already at your chosen destination.",
+	"Passengers of your class are not permitted to enter this area.",
+	"Sorry, you must be at least 3rd class before you can summon for help.",
+	"You have not assigned a room to go to.",
+	"Sorry, this elevator does not go below floor 27.",
+	"You must select a game to load first.",
+	"You must select a game to save first.",
+	"Please supply Galactic reference material.",
+	"This is the restaurant music system.  It appears to be locked.",
+	"You can't pick this up on account of it being stuck to the branch.",
+	"You cannot get this, it is frozen to the branch.",
+	"Please check in at the reception desk.",
+	"This foodstuff is already sufficiently garnished.",
+	"Sadly, this dispenser is currently empty.",
+	"Please place food source beneath dispenser for sauce delivery.",
+	"The Seasonal Adjustment switch is not operational at the present time.",
+	"This is your stateroom. It is for sleeping. If you desire "
+	"entertainment or relaxation, please visit your local leisure lounge.",
+	"The bed will not currently support your weight."
+	" We are working on this problem but are unlikely to be able to fix it.",
+	"This is not your assigned room. Please do not enjoy.",
+	"Sadly, this is out of your reach.",
+	"The Succ-U-Bus is a Single Entity Delivery Device.",
+	"Sadly, the Grand Canal transport system is closed for the winter.",
+	"This area is off limits to passengers.",
+	"Go where?",
+	"It would be nice if you could take that but you can't.",
+	"A bowl of pistachio nuts.",
+	"Not a bowl of pistachio nuts."
+};
+
+static const char *const STRINGS_DE[] = {
+	// TODO: Translate these to their German versions
+	"",
+	"Sie befinden sich vor dem Pellerator.",
+	"Wir bedauern, Zutritt zu diesem Pellerator ist nicht m\0xF6"
+		"glich, da die T\0xFC" "r zugefroren ist.",
+	"Der Sukk-U-Bus befindet sich gegenwSrtig im Standby-oder \"AUS\"-Betrieb.",
+	"Zur Zeit gibt es nichts zuzustellen.",
+	"Gegenw\xE4rtig befindet sich nichts im Ablagekorb.",
+	"Der Sukk-U-Bus ist ein Einzel-St\0xFC" "ck-Liefergerst.",
+	"Nur ein H\xFChnchen pro Passagier. Wir bedanken uns f\xFC"
+		"r Ihr Verst\xE4ndnis.",
+	"H\0xFChner werden nur in Eine-Einheit-Pro-Person-Rationen zugeteilt.",
+	"Sie sind in die Erste Klasse h\xF6hergestuft worden. Genie\xDF"
+		"en Sie es in vollen Z\xFCgen.",
+	"Sie sind in die Zweite Klasse h\xF6hergestuft worden. Genie\xDF"
+		"en Sie es.",
+	"Diese Kabine ist ausschlie\xDFlich f\xFCr Erste-Klasse-Passagiere "
+		"reserviert worden. Zur Zeit schlie\xDFt das Sie nicht ein.",
+	"Bitte keine Versager.",
+	"Passagieren Ihrer Klasse ist der Zugang zu diesem Bereich nicht gestattet.",
+	"Benutzen Sie bitte den Ausgang auf der anderen Seite.",
+	"Aus mysteri\xF6sen, v\xF6llig unbekannten Gr\xFCnden ist dieses "
+		"Transportmittel vor\xFC" "bergehend au\xDF" "er Betrieb.",
+	"Leider ist diesem Ventilatorschalter eine Sicherung durchgebrannt.",
+	"Im Falle eines dringenden Hammerbed\xFCrfnisses, bedienen Sie sich eines Stabs.",
+	"Dieser Stab ist zu kurz um die Aste zu erreichen.",
+	"Sie befinden sich vor dem Aufzug %d",
+	"Wir bedauern, da ein Bot den Weg versperrt, ist Ihnen der Zutritt "
+		"zu diesem Aufzug gegenwSrtig verwehrt.",
+	"Dieser Aufzug ist gegenwSrtig im fortgeschrittenen Zustand des "
+		"Nicht-Funktionierens.",
+	"Die Lampe scheint irgendwie los zu sein.",
+	"Lumina Leuchten. Sie leuchten im Dunkeln!",
+	"Sie haben doch schon eins.",
+	"Dieses Glas ist ganz und gar unzerbrechlich.",
+	"Im Falle von dringend ben\xF6tigtem Langen Stab, zertr\xFCmmern Sie das Glas.",
+	"Dieser Automat ist v\xF6llig unerwartet mit unzerbrechlichem Glas "
+		"ausgestattet worden um ungeb\xFC hrlichem Horten von "
+		"St\xF6" "cken vorzubeugen.",
+	"Das H\xFChnchen ist eigentlich schon sauber genug, danke vielmals.",
+	"Jetzt wSre der ideale Zeitpunkt, Ihre Sehhilfe zur Hand zu nehmen.",
+	"Dieses Objekt k\xF6nnen Sie nicht mitnehmen, da die T\xFCr fest verschlossen ist.",
+	"Sie befinden sich bereits an Ihrem gew\xFCnschten Reiseziel.",
+	"Passagieren Ihrer Klasse ist der Zugang zu diesem Bereich nicht gestattet.",
+	"Wir bedauern, aber Sie m\xFCssen mindestens Dritte Klasse sein "
+		"bevor Sie um Hilfe bitten k\xF6nnen.",	
+	"Ihnen wurde keine Kabine zugeteilt.",
+	"Wir bedauern, aber dieser Aufzug geht nicht tiefer als bis in den 27. Stock.",
+	"Sie m\xFCssen zuerst das Spiel selektieren, das Sie laden m\xF6" "chten.",
+	"Sie m\xFCssen zuerst das Spiel selektieren, das Sie speichern m\xF6" "chten.",
+	"Stellen Sie bitte das Galaktische Referenzmaterial zur Verf\xFCgung.",
+	"Dies ist das Musiksystem des Restaurants. Scheinbar ist es verschlossen.",
+	" Aufgrund der Tatsache, da\xDF dieses Objekt an einem Ast festhSngt, "
+		"k\xF6nnen Sie es nicht entfernen.",
+	"Sie k\xF6nnen dieses Objekt nicht entfernen, es ist am Ast festgefroren.",
+	"Melden Sie sich bitte an der Rezeption an.",
+	"Dieses Nahrungsmittel ist bereits ausreichend garniert.",
+	"Leider ist dieser Automat gegenwSrtig leer.",
+	"Bei So¯enbedarf positionieren Sie bitte die Nahrungsquelle direkt "
+		"unter den Automaten.",
+	"Der Jahreszeitenschalter befindet sich zur Zeit au\xDF" "er Betrieb.",
+	"Dies ist Ihre Kabine. Sie dient zum Schlafen. Wenn Sie Unterhaltung "
+		"oder Entspannung w\xFCnschen, statten Sie bitte Ihrem "
+		"nSchstgelegenen Salon einen Besuch ab.",
+	"Das Bett ist Ihrem Gewicht momentan nicht gewachsen. Wir geben "
+		"uns gro\xDF" "e M\xFChe, aber es ist unwahrscheinlich, "
+		"da\xDF wir das Problem beheben k\xF6nnen.",
+	"Dies ist nicht die Ihnen zugeteilte Kabine. Genie\xDF" "en Sie den "
+		"Aufenthalt bitte nicht.",
+	"Leider ist dies f\xFCr Sie au\xDF" "er Reichweite.",
+	"Der Sukk-U-Bus ist ein Einzel-St\xFC" "ck-Lieferger\xE4t.",
+	"Leider ist das Gro¯e-Kanal-Bef\xF6rderungssystem im Winter geschlossen.",
+	"Passagieren ist der Zutritt zu diesem Bereich nicht gestattet.",
+	"Wohin m\xF6" "chten Sie gehen?",
+	"Es wSre zwar ganz nett, wenn Sie das mitnehmen k\xF6nnten, "
+		"aber das k\xF6nnen Sie eben nicht.",
+	"Eine Schale Pistazien.",
+	"Keine Schale Pistazien.",
+	
+	"Sommer",
+	"Herbst",
+	"Winter",
+	"Fr\0xFC" "nhling",
+	"Sn'ood",
+	"J'af'ah",
+	"Bitta",
+	"Fr\0xAA" "ic",
+	"Pflanzen bitte nicht ber\0xFC" "nhren.",
+	"!\0xBC" "ta'\0xAD" "ta! !T\0xAA" "z n\0xAA" " sappibundli t\0xAA"
+		"cn\0xAA" "z!",
+	
+	"Stop",
+	"!Hanaz!",
+	"VorwSrts",
+	"!Panaz!",
+	"T\0xAA" "z k'b\0xAA" "z",
+	"Ein wenig herumkurven",
+	"Otundo a\0x92" " doom\0xAA" "n n\0x92" "sanza",
+	"Sinnlose Drehung des Steuerrads",
+	"!0xBC" "ta\0x92\0xAD" "ta!  T\0xAA""z vidsta\0x92" "jaha i\0xAC"
+		"in\0x92" "qu\0xAA" " m\0xAA" "n\0xAA" "z",
+	"Sternenpanorama des Reiseziels hier einf\0xFC" "ngen.",
+
+	"V'lo\0xAC",
+	"Geschwindigkeit",
+	"Pan",
+	"Ein",
+	"Han",
+	"Aus",
+	"Turgo",
+	"Langsam",
+	"Pido",
+	"Schnell",
+
+	"\0xBC" "lu\0xAD" " q\0xB0 scu'b\0xAA" "rri",
+	"H\0xFC" "hnchen a la sauce tomate",
+	"\0xBC" "lu\0xAD" " q\0xB0 scu'jajaja",
+	"H0xFC" "hnchen a la sauce moutarde",
+	"\0xBC" "lu0xAD q\0xB0 scu'\0xAD" "lu\0xAD",
+	"H\0xFC" "hnchen a la sauce 'Vogel'",
+	"\0xBC" "lu\0xAD" " sanza scu, n\0xAA n\0xAA n\0xAA",
+	"H\0xFC" "hnchen bar jeglicher sauce",
+
+	"!\0xB2" "la! !\0xB2" "la!  !!!Sizzlo ab\0x92\0xAA\0xAA" "o s\0xAA"
+		"nza cr\0xAA" "dibo!!!  N\0xAA" "nto p\0xAA" "rificio i\0xAC" "ind\0xAA",
+	"Achtung, Lebensgefahr. Unglaublich hohe Voltzahl!!! Innen keine "
+		"artungsbed\0xFC" "rftigen Teile vorhanden.",
+	"!!!Birin\0xAC" "i sp\0xAA" "culato t\0xAA" "z n\0xAA n\0xAA n\0xAA"
+		" ouvraditiniz!  J\0x92" "in n\0xAA n\0xAA upraximus stifibilimus"
+		" j\0x92" "in sigorto funct",
+	"Sie hStten die erste Kontrollt\0xFC" "r nicht \0xF6"
+		"ffnen sollen! Dies ist nicht nur ungeheuer gef\0xE4"
+		"hrlich, Sie verlieren auch jegliche Garantie-Anspr\0xFC" "che.",
+	"!T\0xAA" "z n\0xAA bleabaz t\0xAA" "z n\0xAA j\0x92" "abaz!  Coco?",
+	"Und sagen Sie hinterher blo\0xFC nicht, niemand hStte Sie gewarnt.",
+	"Pin\0xAA" "z-pin\0xAA" "z stot \0xAF" "r\0xB0 jibbli",
+	"Dr\0xFC" "cken Sie den Knopf um die Bombe zu entschSrfen."
+};
 
 void NORETURN_PRE error(const char *s, ...) {
 	printf("%s\n", s);
@@ -275,7 +646,7 @@ void writeFinalEntryHeader() {
 void writeStringArray(const char *name, uint offset, int count) {
 	outputFile.seek(dataOffset);
 
-	inputFile.seek(offset);
+	inputFile.seek(offset - FILE_DIFF[_version]);
 	uint *offsets = new uint[count];
 	for (int idx = 0; idx < count; ++idx)
 		offsets[idx] = inputFile.readLong();
@@ -283,7 +654,7 @@ void writeStringArray(const char *name, uint offset, int count) {
 	// Iterate through reading each string
 	for (int idx = 0; idx < count; ++idx) {
 		if (offsets[idx]) {
-			inputFile.seek(offsets[idx] - SEGMENT_OFFSET);
+			inputFile.seek(offsets[idx] - FILE_DIFF[_version]);
 			outputFile.writeString(inputFile);
 		} else {
 			outputFile.writeString("");
@@ -330,20 +701,22 @@ void writeResource(const char *name, Common::File *file) {
 	delete file;
 }
 
-void writeResource(const char *sectionStr, uint32 resId) {
+void writeResource(const char *sectionStr, uint32 resId, bool isEnglish = true) {
 	char nameBuffer[256];
 	sprintf(nameBuffer, "%s/%u", sectionStr, resId);
-	
+
+	Common::PEResources &res = isEnglish ? resEng : resGer;
 	Common::File *file = res.getResource(getResId(sectionStr), resId);
 	assert(file);
 	writeResource(nameBuffer, file);
 }
 
-void writeResource(const char *sectionStr, const char *resId) {
+void writeResource(const char *sectionStr, const char *resId, bool isEnglish = true) {
 	char nameBuffer[256];
 	sprintf(nameBuffer, "%s/%s", sectionStr, resId);
 
-	Common::File *file = res.getResource(getResId(sectionStr), 
+	Common::PEResources &res = isEnglish ? resEng : resGer;
+	Common::File *file = res.getResource(getResId(sectionStr),
 		Common::WinResourceID(resId));
 	assert(file);
 	writeResource(nameBuffer, file);
@@ -359,27 +732,31 @@ void writeBitmap(const char *name, Common::File *file) {
 	outputFile.writeLong(0);					// res1 & res2
 	outputFile.writeLong(0x436);				// image offset
 
-	outputFile.write(*file, file->size() + 14);
+	outputFile.write(*file, file->size());
 
 	writeEntryHeader(name, dataOffset, file->size() + 14);
 	dataOffset += file->size() + 14;
 	delete file;
 }
 
-void writeBitmap(const char *sectionStr, const char *resId) {
+void writeBitmap(const char *sectionStr, const char *resId, bool isEnglish = true) {
 	char nameBuffer[256];
-	sprintf(nameBuffer, "%s/%s", sectionStr, resId);
+	sprintf(nameBuffer, "%s/%s%s", sectionStr, resId,
+		isEnglish ? "" : "/DE");
 
+	Common::PEResources &res = isEnglish ? resEng : resGer;
 	Common::File *file = res.getResource(getResId(sectionStr),
 		Common::WinResourceID(resId));
 	assert(file);
 	writeBitmap(nameBuffer, file);
 }
 
-void writeBitmap(const char *sectionStr, uint32 resId) {
+void writeBitmap(const char *sectionStr, uint32 resId, bool isEnglish = true) {
 	char nameBuffer[256];
-	sprintf(nameBuffer, "%s/%u", sectionStr, resId);
+	sprintf(nameBuffer, "%s/%u%s", sectionStr, resId,
+		isEnglish ? "" : "/DE");
 
+	Common::PEResources &res = isEnglish ? resEng : resGer;
 	Common::File *file = res.getResource(getResId(sectionStr),
 		Common::WinResourceID(resId));
 	assert(file);
@@ -402,7 +779,7 @@ void writeNumbers() {
 }
 
 void writeString(uint offset) {
-	inputFile.seek(offset - FILE_DIFF);
+	inputFile.seek(offset - FILE_DIFF[_version]);
 	char c;
 	do {
 		c = inputFile.readByte();
@@ -412,27 +789,20 @@ void writeString(uint offset) {
 
 void writeResponseTree() {
 	outputFile.seek(dataOffset);
-	
-	inputFile.seek(0x619500 - FILE_DIFF);
-	char buffer[32];
-	inputFile.read(buffer, 32);
-	if (strcmp(buffer, "ReadInt(): No number to read")) {
-		printf("Could not find tree data at expected position\n");
-		exit(1);
-	}
 
+	const uint OFFSETS[3] = { 0x619520, 0x618340, 0x617380 };
 	for (int idx = 0; idx < 1022; ++idx) {
-		inputFile.seek(0x619520 - FILE_DIFF + idx * 8);
+		inputFile.seek(OFFSETS[_version] - FILE_DIFF[_version] + idx * 8);
 		uint id = inputFile.readLong();
 		uint offset = inputFile.readLong();
 
 		outputFile.writeLong(id);
 		if (!id) {
 			// An end of list id
-		} else if (offset >= 0x619520 && offset <= 0x61B510) {
+		} else if (offset >= OFFSETS[_version] && offset <= (OFFSETS[_version] + 0x1FF0)) {
 			// Offset to another table
 			outputFile.writeByte(0);
-			outputFile.writeLong((offset - 0x619520) / 8);
+			outputFile.writeLong((offset - OFFSETS[_version]) / 8);
 		} else {
 			// Offset to ASCIIZ string
 			outputFile.writeByte(1);
@@ -448,11 +818,11 @@ void writeResponseTree() {
 void writeSentenceEntries(const char *name, uint tableOffset) {
 	outputFile.seek(dataOffset);
 
-	uint v1, v2, v4, v9, v11, v12, v13;
+	uint v1, v2, v9, v11, v12, v13;
 	uint offset3, offset5, offset6, offset7, offset8, offset10;
 
 	for (uint idx = 0; ; ++idx) {
-		inputFile.seek(tableOffset - FILE_DIFF + idx * 0x34);
+		inputFile.seek(tableOffset - FILE_DIFF[_version] + idx * 0x34);
 		v1 = inputFile.readLong();
 		if (!v1)
 			// Reached end of list
@@ -461,7 +831,7 @@ void writeSentenceEntries(const char *name, uint tableOffset) {
 		// Read data fields
 		v2 = inputFile.readLong();
 		offset3 = inputFile.readLong();
-		v4 = inputFile.readLong();
+		/* v4 = */inputFile.readLong();
 		offset5 = inputFile.readLong();
 		offset6 = inputFile.readLong();
 		offset7 = inputFile.readLong();
@@ -498,7 +868,7 @@ void writeWords(const char *name, uint tableOffset, int recordCount = 2) {
 
 	uint val, strOffset;
 	for (uint idx = 0; ; ++idx) {
-		inputFile.seek(tableOffset - FILE_DIFF + idx * recordSize);
+		inputFile.seek(tableOffset - FILE_DIFF[_version] + idx * recordSize);
 		val = inputFile.readLong();
 		strOffset = inputFile.readLong();
 
@@ -516,7 +886,7 @@ void writeWords(const char *name, uint tableOffset, int recordCount = 2) {
 }
 
 void writeSentenceMappings(const char *name, uint offset, int numValues) {
-	inputFile.seek(offset - FILE_DIFF);
+	inputFile.seek(offset - FILE_DIFF[_version]);
 	outputFile.seek(dataOffset);
 
 	uint id;
@@ -535,7 +905,8 @@ void writeSentenceMappings(const char *name, uint offset, int numValues) {
 void writeStarfieldPoints() {
 	outputFile.seek(dataOffset);
 
-	inputFile.seek(0x59DE4C - FILE_DIFF);
+	const int OFFSETS[3] = { 0x59DE4C, 0x59DBEC, 0x59CC1C };
+	inputFile.seek(OFFSETS[_version] - FILE_DIFF[_version]);
 	uint size = 876 * 12;
 
 	outputFile.write(inputFile, size);
@@ -546,13 +917,14 @@ void writeStarfieldPoints() {
 void writeStarfieldPoints2() {
 	outputFile.seek(dataOffset);
 
+	const int OFFSETS[3] = { 0x5A2F28, 0x5A2CC8, 0x5A1CF8 };
 	for (int rootCtr = 0; rootCtr < 80; ++rootCtr) {
-		inputFile.seek(0x5A2F28 - FILE_DIFF + rootCtr * 8);
+		inputFile.seek(OFFSETS[_version] - FILE_DIFF[_version] + rootCtr * 8);
 		uint offset = inputFile.readUint32LE();
 		uint count = inputFile.readUint32LE();
 
 		outputFile.writeLong(count);
-		inputFile.seek(offset - FILE_DIFF);
+		inputFile.seek(offset - FILE_DIFF[_version]);
 		outputFile.write(inputFile, count * 4 * 4);
 	}
 
@@ -576,6 +948,99 @@ void writePhrases(const char *name, const CommonPhrase *phrases) {
 	dataOffset += size;
 }
 
+void writeBarbotFrameRanges() {
+	outputFile.seek(dataOffset);
+
+	for (int idx = 0; idx < 60; ++idx) {
+		outputFile.writeLong(BARBOT_FRAME_RANGES[idx]._startFrame);
+		outputFile.writeLong(BARBOT_FRAME_RANGES[idx]._endFrame);
+	}
+
+	uint size = outputFile.size() - dataOffset;
+	writeEntryHeader("FRAMES/BARBOT", dataOffset, size);
+	dataOffset += size;
+}
+
+void writeMissiveOMatMessages() {
+	outputFile.seek(dataOffset);
+
+	for (int idx = 0; idx < 3; ++idx)
+		outputFile.writeString(MISSIVEOMAT_MESSAGES[idx]);
+
+	uint size = outputFile.size() - dataOffset;
+	writeEntryHeader("TEXT/MISSIVEOMAT/WELCOME", dataOffset, size);
+	dataOffset += size;
+
+	static const int MESSAGES[3] = { 0x5A63C0, 0x5A5BA8, 0x5A4A18 };
+	writeStringArray("TEXT/MISSIVEOMAT/MESSAGES", MESSAGES[_version], 58);
+	static const int FROM[3] = { 0x5A61F0, 0x5A59D8, 0x5A4BE8 };
+	writeStringArray("TEXT/MISSIVEOMAT/FROM", FROM[_version], 58);
+	static const int TO[3] = { 0x5A62D8, 0x5A5AC0, 0x5A4B00 };
+	writeStringArray("TEXT/MISSIVEOMAT/TO", TO[_version], 58);
+}
+
+void writeBedheadGroup(const BedheadEntry *data, int count) {
+	for (int idx = 0; idx < count; ++idx, ++data) {
+		outputFile.writeString(data->_name1);
+		outputFile.writeString(data->_name2);
+		outputFile.writeString(data->_name3);
+		outputFile.writeString(data->_name4);
+		outputFile.writeLong(data->_startFrame);
+		outputFile.writeLong(data->_endFrame);
+	}
+}
+
+void writeBedheadData() {
+	outputFile.seek(dataOffset);
+
+	writeBedheadGroup(ON_CLOSED, 4);
+	writeBedheadGroup(ON_RESTING_TV, 2);
+	writeBedheadGroup(ON_RESTING_UV, 2);
+	writeBedheadGroup(ON_CLOSED_WRONG, 2);
+	writeBedheadGroup(OFF_OPEN, 3);
+	writeBedheadGroup(OFF_RESTING_UTV, 1);
+	writeBedheadGroup(OFF_RESTING_V, 1);
+	writeBedheadGroup(OFF_RESTING_G, 3);
+	writeBedheadGroup(OFF_OPEN_WRONG, 1);
+	writeBedheadGroup(OFF_RESTING_D_WRONG, 1);
+
+	uint size = outputFile.size() - dataOffset;
+	writeEntryHeader("DATA/BEDHEAD", dataOffset, size);
+	dataOffset += size;
+}
+
+void writeParrotLobbyLinkUpdaterEntries() {
+	static const int OFFSETS[3] = { 0x5A5B38, 0x5A5320, 0x5A4360 };
+	static const int COUNTS[5] = { 7, 5, 6, 9, 1 };
+	static const int SKIP[5] = { 36, 36, 40, 36, 0 };
+	uint recordOffset = OFFSETS[_version], linkOffset;
+	byte vals[8];
+
+	outputFile.seek(dataOffset);
+
+	for (int groupNum = 0; groupNum < 4; ++groupNum) {
+		for (int entryNum = 0; entryNum < COUNTS[groupNum];
+				++entryNum, recordOffset += 36) {
+			inputFile.seek(recordOffset - FILE_DIFF[_version]);
+			linkOffset = inputFile.readUint32LE();
+			for (int idx = 0; idx < 8; ++idx)
+				vals[idx] = inputFile.readUint32LE();
+
+			// Write out the entry
+			inputFile.seek(linkOffset - FILE_DIFF[_version]);
+			outputFile.writeString(inputFile);
+			outputFile.write(vals, 8);
+		}
+
+		// Skip space between groups
+		recordOffset += SKIP[groupNum];
+	}
+
+	uint size = outputFile.size() - dataOffset;
+	writeEntryHeader("DATA/PARROT_LOBBY_LINK_UPDATOR", dataOffset, size);
+	dataOffset += size;
+}
+
 void writeHeader() {
 	// Write out magic string
 	const char *MAGIC_STR = "SVTN";
@@ -586,18 +1051,22 @@ void writeHeader() {
 }
 
 void writeData() {
-	writeBitmap("Bitmap", "BACKDROP");
-	writeBitmap("Bitmap", "EVILTWIN");
-	writeBitmap("Bitmap", "RESTORED");
-	writeBitmap("Bitmap", "RESTOREF");
-	writeBitmap("Bitmap", "RESTOREU");
-	writeBitmap("Bitmap", "STARTD");
-	writeBitmap("Bitmap", "STARTF");
-	writeBitmap("Bitmap", "STARTU");
-	writeBitmap("Bitmap", "TITANIC");
-	writeBitmap("Bitmap", 133);
-	writeBitmap("Bitmap", 164);
-	writeBitmap("Bitmap", 165);
+	for (int idx = 0; idx < (resGer.empty() ? 1 : 2); ++idx) {
+		bool isEnglish = idx == 0;
+
+		writeBitmap("Bitmap", "BACKDROP", isEnglish);
+		writeBitmap("Bitmap", "EVILTWIN", isEnglish);
+		writeBitmap("Bitmap", "RESTORED", isEnglish);
+		writeBitmap("Bitmap", "RESTOREF", isEnglish);
+		writeBitmap("Bitmap", "RESTOREU", isEnglish);
+		writeBitmap("Bitmap", "STARTD", isEnglish);
+		writeBitmap("Bitmap", "STARTF", isEnglish);
+		writeBitmap("Bitmap", "STARTU", isEnglish);
+		writeBitmap("Bitmap", "TITANIC", isEnglish);
+		writeBitmap("Bitmap", 133, isEnglish);
+		writeBitmap("Bitmap", 164, isEnglish);
+		writeBitmap("Bitmap", 165, isEnglish);
+	}
 
 	writeResource("STFONT", 149);
 	writeResource("STFONT", 151);
@@ -616,71 +1085,125 @@ void writeData() {
 	writeStringArray("TEXT/ITEM_NAMES", ITEM_NAMES, 46);
 	writeStringArray("TEXT/ITEM_IDS", ITEM_IDS, 40);
 	writeStringArray("TEXT/ROOM_NAMES", ROOM_NAMES, 34);
+	writeStringArray("TEXT/STRINGS", STRINGS_EN, 58);
+	writeStringArray("TEXT/STRINGS/DE", STRINGS_DE, 104);
+	const int TEXT_PHRASES[3] = { 0x61D3C8, 0x618340, 0x61B1E0 };
+	const int TEXT_REPLACEMENTS1[3] = { 0x61D9B0, 0x61C788, 0x61B7C8 };
+	const int TEXT_REPLACEMENTS2[3] = { 0x61DD20, 0x61CAF8, 0x61BB38 };
+	const int TEXT_REPLACEMENTS3[3] = { 0x61F5C8, 0x61E3A0, 0x61D3E0 };
+	const int TEXT_PRONOUNS[3] = { 0x631318, 0x6300F8, 0x62F138 };
+	writeStringArray("TEXT/PHRASES", TEXT_PHRASES[_version], 376);
+	writeStringArray("TEXT/REPLACEMENTS1", TEXT_REPLACEMENTS1[_version], 218);
+	writeStringArray("TEXT/REPLACEMENTS2", TEXT_REPLACEMENTS2[_version], 1576);
+	writeStringArray("TEXT/REPLACEMENTS3", TEXT_REPLACEMENTS3[_version], 82);
+	writeStringArray("TEXT/PRONOUNS", TEXT_PRONOUNS[_version], 15);
 
-	writeStringArray("TEXT/PHRASES", 0x21B7C8, 376);
-	writeStringArray("TEXT/REPLACEMENTS1", 0x21BDB0, 218);
-	writeStringArray("TEXT/REPLACEMENTS2", 0x21C120, 1576);
-	writeStringArray("TEXT/REPLACEMENTS3", 0x21D9C8, 82);
-	writeStringArray("TEXT/PRONOUNS", 0x22F718, 15);
+	const int SENTENCES_DEFAULT[3] = { 0x5C0130, 0x5BEFC8, 0x5BE008 };
+	const int SENTENCES_BARBOT[2][3] = {
+		{ 0x5ABE60, 0x5AACF8, 0x5A9D38 }, { 0x5BD4E8, 0x5BC380, 0x5BB3C0 }
+	};
+	const int SENTENCES_BELLBOT[20][3] = {
+		{ 0x5C2230, 0x5C10C8, 0X5C0108 }, { 0x5D1670, 0x5D0508, 0x5CF548 },
+		{ 0x5D1A80, 0x5D0918, 0x5CF958 }, { 0x5D1AE8, 0x5D0980, 0x5CF9C0 },
+		{ 0x5D1B88, 0x5D0A20, 0x5CFA60 }, { 0x5D2A60, 0x5D18F8, 0x5D0938 },
+		{ 0x5D2CD0, 0x5D1B68, 0x5D0BA8 }, { 0x5D3488, 0x5D2320, 0x5D1360 },
+		{ 0x5D3900, 0x5D2798, 0x5D17D8 }, { 0x5D3968, 0x5D2800, 0x5D1840 },
+		{ 0x5D4668, 0x5D3500, 0x5D2540 }, { 0x5D47A0, 0x5D3638, 0x5D2678 },
+		{ 0x5D4EC0, 0x5D3D58, 0x5D2D98 }, { 0x5D5100, 0x5D3F98, 0x5D2FD8 },
+		{ 0x5D5370, 0x5D4208, 0x5D3248 }, { 0x5D5548, 0x5D43E0, 0x5D3420 },
+		{ 0x5D56B8, 0x5D4550, 0x5D3590 }, { 0x5D57C0, 0x5D4658, 0x5D3698 },
+		{ 0x5D5B38, 0x5D49D0, 0x5D3A10 }, { 0x5D61B8, 0x5D5050, 0x5D4090 }
+	};
+	writeSentenceEntries("Sentences/Default", SENTENCES_DEFAULT[_version]);
+	writeSentenceEntries("Sentences/Barbot", SENTENCES_BARBOT[0][_version]);
+	writeSentenceEntries("Sentences/Barbot2", SENTENCES_BARBOT[1][_version]);
+	writeSentenceEntries("Sentences/Bellbot", SENTENCES_BELLBOT[0][_version]);
+	writeSentenceEntries("Sentences/Bellbot/1", SENTENCES_BELLBOT[1][_version]);
+	writeSentenceEntries("Sentences/Bellbot/2", SENTENCES_BELLBOT[2][_version]);
+	writeSentenceEntries("Sentences/Bellbot/3", SENTENCES_BELLBOT[3][_version]);
+	writeSentenceEntries("Sentences/Bellbot/4", SENTENCES_BELLBOT[4][_version]);
+	writeSentenceEntries("Sentences/Bellbot/5", SENTENCES_BELLBOT[5][_version]);
+	writeSentenceEntries("Sentences/Bellbot/6", SENTENCES_BELLBOT[6][_version]);
+	writeSentenceEntries("Sentences/Bellbot/7", SENTENCES_BELLBOT[7][_version]);
+	writeSentenceEntries("Sentences/Bellbot/8", SENTENCES_BELLBOT[8][_version]);
+	writeSentenceEntries("Sentences/Bellbot/9", SENTENCES_BELLBOT[9][_version]);
+	writeSentenceEntries("Sentences/Bellbot/10", SENTENCES_BELLBOT[10][_version]);
+	writeSentenceEntries("Sentences/Bellbot/11", SENTENCES_BELLBOT[11][_version]);
+	writeSentenceEntries("Sentences/Bellbot/12", SENTENCES_BELLBOT[12][_version]);
+	writeSentenceEntries("Sentences/Bellbot/13", SENTENCES_BELLBOT[13][_version]);
+	writeSentenceEntries("Sentences/Bellbot/14", SENTENCES_BELLBOT[14][_version]);
+	writeSentenceEntries("Sentences/Bellbot/15", SENTENCES_BELLBOT[15][_version]);
+	writeSentenceEntries("Sentences/Bellbot/16", SENTENCES_BELLBOT[16][_version]);
+	writeSentenceEntries("Sentences/Bellbot/17", SENTENCES_BELLBOT[17][_version]);
+	writeSentenceEntries("Sentences/Bellbot/18", SENTENCES_BELLBOT[18][_version]);
+	writeSentenceEntries("Sentences/Bellbot/19", SENTENCES_BELLBOT[19][_version]);
 
-	writeSentenceEntries("Sentences/Default", 0x5C0130);
-	writeSentenceEntries("Sentences/Barbot", 0x5ABE60);
-	writeSentenceEntries("Sentences/Barbot2", 0x5BD4E8);
-	writeSentenceEntries("Sentences/Bellbot", 0x5C2230);
-	writeSentenceEntries("Sentences/Bellbot/1", 0x5D1670);
-	writeSentenceEntries("Sentences/Bellbot/2", 0x5D1A80);
-	writeSentenceEntries("Sentences/Bellbot/3", 0x5D1AE8);
-	writeSentenceEntries("Sentences/Bellbot/4", 0x5D1B88);
-	writeSentenceEntries("Sentences/Bellbot/5", 0x5D2A60);
-	writeSentenceEntries("Sentences/Bellbot/6", 0x5D2CD0);
-	writeSentenceEntries("Sentences/Bellbot/7", 0x5D3488);
-	writeSentenceEntries("Sentences/Bellbot/8", 0x5D3900);
-	writeSentenceEntries("Sentences/Bellbot/9", 0x5D3968);
-	writeSentenceEntries("Sentences/Bellbot/10", 0x5D4668);
-	writeSentenceEntries("Sentences/Bellbot/11", 0x5D47A0);
-	writeSentenceEntries("Sentences/Bellbot/12", 0x5D4EC0);
-	writeSentenceEntries("Sentences/Bellbot/13", 0x5D5100);
-	writeSentenceEntries("Sentences/Bellbot/14", 0x5D5370);
-	writeSentenceEntries("Sentences/Bellbot/15", 0x5D5548);
-	writeSentenceEntries("Sentences/Bellbot/16", 0x5D56B8);
-	writeSentenceEntries("Sentences/Bellbot/17", 0x5D57C0);
-	writeSentenceEntries("Sentences/Bellbot/18", 0x5D5B38);
-	writeSentenceEntries("Sentences/Bellbot/19", 0x5D61B8);
+	const int SENTENCES_DESKBOT[3][3] = {
+		{ 0x5DCD10, 0x5DBBA8, 0x5DABE8 }, { 0x5E8E18, 0x5E7CB0, 0x5E6CF0 },
+		{ 0x5E8BA8, 0x5E7A40, 0x5E6A80 }
+	};
+	writeSentenceEntries("Sentences/Deskbot", SENTENCES_DESKBOT[0][_version]);
+	writeSentenceEntries("Sentences/Deskbot/2", SENTENCES_DESKBOT[1][_version]);
+	writeSentenceEntries("Sentences/Deskbot/3", SENTENCES_DESKBOT[2][_version]);
 
-	writeSentenceEntries("Sentences/Deskbot", 0x5DCD10);
-	writeSentenceEntries("Sentences/Deskbot/2", 0x5E8E18);
-	writeSentenceEntries("Sentences/Deskbot/3", 0x5E8BA8);
-	
-	writeSentenceEntries("Sentences/Doorbot", 0x5EC110);
-	writeSentenceEntries("Sentences/Doorbot/2", 0x5FD930);
-	writeSentenceEntries("Sentences/Doorbot/100", 0x5FD930);
-	writeSentenceEntries("Sentences/Doorbot/101", 0x5FE668);
-	writeSentenceEntries("Sentences/Doorbot/102", 0x5FDD40);
-	writeSentenceEntries("Sentences/Doorbot/107", 0x5FFF08);
-	writeSentenceEntries("Sentences/Doorbot/110", 0x5FE3C0);
-	writeSentenceEntries("Sentences/Doorbot/111", 0x5FF0C8);
-	writeSentenceEntries("Sentences/Doorbot/124", 0x5FF780);
-	writeSentenceEntries("Sentences/Doorbot/129", 0x5FFAC0);
-	writeSentenceEntries("Sentences/Doorbot/131", 0x5FFC30);
-	writeSentenceEntries("Sentences/Doorbot/132", 0x6000E0);
+	const int SENTENCES_DOORBOT[12][3] = {
+		{ 0x5EC110, 0x5EAFA8, 0x5E9FE8 }, { 0x5FD930, 0x5FC7C8, 0x5FB808 },
+		{ 0x5FDD0C, 0x5FCBA4, 0x5FBBE4 }, { 0x5FE668, 0x5FD500, 0x5FC540 },
+		{ 0x5FDD40, 0x5FCBD8, 0X5FBC18 }, { 0x5FFF08, 0x5FEDA0, 0x5FDDE0 },
+		{ 0x5FE3C0, 0x5FD258, 0x5FC298 }, { 0x5FF0C8, 0x5FDF60, 0x5FCFA0 },
+		{ 0x5FF780, 0x5FE618, 0x5FD658 }, { 0x5FFAC0, 0x5FE958, 0x5FD998 },
+		{ 0x5FFC30, 0x5FEAC8, 0x5FDB08 }, { 0x6000E0, 0x5FEF78, 0x5FDFB8 }
+	};
+	writeSentenceEntries("Sentences/Doorbot", SENTENCES_DOORBOT[0][_version]);
+	writeSentenceEntries("Sentences/Doorbot/2", SENTENCES_DOORBOT[1][_version]);
+	writeSentenceEntries("Sentences/Doorbot/100", SENTENCES_DOORBOT[2][_version]);
+	writeSentenceEntries("Sentences/Doorbot/101", SENTENCES_DOORBOT[3][_version]);
+	writeSentenceEntries("Sentences/Doorbot/102", SENTENCES_DOORBOT[4][_version]);
+	writeSentenceEntries("Sentences/Doorbot/107", SENTENCES_DOORBOT[5][_version]);
+	writeSentenceEntries("Sentences/Doorbot/110", SENTENCES_DOORBOT[6][_version]);
+	writeSentenceEntries("Sentences/Doorbot/111", SENTENCES_DOORBOT[7][_version]);
+	writeSentenceEntries("Sentences/Doorbot/124", SENTENCES_DOORBOT[8][_version]);
+	writeSentenceEntries("Sentences/Doorbot/129", SENTENCES_DOORBOT[9][_version]);
+	writeSentenceEntries("Sentences/Doorbot/131", SENTENCES_DOORBOT[10][_version]);
+	writeSentenceEntries("Sentences/Doorbot/132", SENTENCES_DOORBOT[11][_version]);
 
-	writeSentenceEntries("Sentences/Liftbot", 0x6026B0);
-	writeSentenceEntries("Sentences/MaitreD", 0x60CFD8);
-	writeSentenceEntries("Sentences/Parrot", 0x615858);
-	writeSentenceEntries("Sentences/SuccUBus", 0x616698);
-	writeSentenceMappings("Mappings/Barbot", 0x5B28A0, 8);
-	writeSentenceMappings("Mappings/Bellbot", 0x5CD830, 1);
-	writeSentenceMappings("Mappings/Deskbot", 0x5E2BB8, 4);
-	writeSentenceMappings("Mappings/Doorbot", 0x5F7950, 4);
-	writeSentenceMappings("Mappings/Liftbot", 0x608660, 4);
-	writeSentenceMappings("Mappings/MaitreD", 0x6125C8, 1);
-	writeSentenceMappings("Mappings/Parrot", 0x615B68, 1);
-	writeSentenceMappings("Mappings/SuccUBus", 0x6189F0, 1);
-	writeWords("Words/Barbot", 0x5BE2E0);
-	writeWords("Words/Bellbot", 0x5D8230);
-	writeWords("Words/Deskbot", 0x5EAAA8);
-	writeWords("Words/Doorbot", 0x601098, 3);
-	writeWords("Words/Liftbot", 0x60C788);
+	const int SENTENCES_LIFTBOT[3] = { 0x6026B0, 0x601548, 0x600588 };
+	const int SENTENCES_MAITRED[2][3] = {
+		{ 0x60CFD8, 0x60BE70, 0x60AEB0 }, { 0x614288, 0x613120, 0x612160 }
+	};
+	const int SENTENCES_PARROT[3] = { 0x615858, 0x6146F0, 0x613730 };
+	const int SENTENCES_SUCCUBUS[3] = { 0x616698, 0x615530, 0x614570 };
+	const int MAPPINGS_BARBOT[3] = { 0x5B28A0, 0x5B173E, 0x5B0778 };
+	const int MAPPINGS_BELLBOT[3] = { 0x5CD830, 0x5CC6C8, 0x5CB708 };
+	const int MAPPINGS_DESKBOT[3] = { 0x5E2BB8, 0x5E1A50, 0x5E0A90 };
+	const int MAPPINGS_DOORBOT[3] = { 0x5F7950, 0x5F67E8, 0x5F5828 };
+	const int MAPPINGS_LIFTBOT[3] = { 0x608660, 0x6074F8, 0x606538 };
+	const int MAPPINGS_MAITRED[3] = { 0x6125C8, 0x611460, 0x6104A0 };
+	const int MAPPINGS_PARROT[3] = { 0x615B68, 0x614A00, 0x613A40 };
+	const int MAPPINGS_SUCCUBUS[3] = { 0x6189F0, 0x617888, 0x6168C8 };
+	const int WORDS_BARBOT[3] = { 0x5BE2E0, 0x5BD178, 0x5BC1B8 };
+	const int WORDS_BELLBOT[3] = { 0x5D8230, 0x5D70C8, 0x5D6108 };
+	const int WORDS_DESKBOT[3] = { 0x5EAAA8, 0x5E9940, 0x5E8980 };
+	const int WORDS_DOORBOT[3] = { 0x601098, 0x5FFF30, 0x5FEF70 };
+	const int WORDS_LIFTBOT[3] = { 0x60C788, 0x60B620, 0x60A660 };
+	writeSentenceEntries("Sentences/Liftbot", SENTENCES_LIFTBOT[_version]);
+	writeSentenceEntries("Sentences/MaitreD", SENTENCES_MAITRED[0][_version]);
+	writeSentenceEntries("Sentences/MaitreD/1", SENTENCES_MAITRED[1][_version]);
+	writeSentenceEntries("Sentences/Parrot", SENTENCES_PARROT[_version]);
+	writeSentenceEntries("Sentences/SuccUBus", SENTENCES_SUCCUBUS[_version]);
+	writeSentenceMappings("Mappings/Barbot", MAPPINGS_BARBOT[_version], 8);
+	writeSentenceMappings("Mappings/Bellbot", MAPPINGS_BELLBOT[_version], 1);
+	writeSentenceMappings("Mappings/Deskbot", MAPPINGS_DESKBOT[_version], 4);
+	writeSentenceMappings("Mappings/Doorbot", MAPPINGS_DOORBOT[_version], 4);
+	writeSentenceMappings("Mappings/Liftbot", MAPPINGS_LIFTBOT[_version], 4);
+	writeSentenceMappings("Mappings/MaitreD", MAPPINGS_MAITRED[_version], 1);
+	writeSentenceMappings("Mappings/Parrot", MAPPINGS_PARROT[_version], 1);
+	writeSentenceMappings("Mappings/SuccUBus", MAPPINGS_SUCCUBUS[_version], 1);
+	writeWords("Words/Barbot", WORDS_BARBOT[_version]);
+	writeWords("Words/Bellbot", WORDS_BELLBOT[_version]);
+	writeWords("Words/Deskbot", WORDS_DESKBOT[_version]);
+	writeWords("Words/Doorbot", WORDS_DOORBOT[_version], 3);
+	writeWords("Words/Liftbot", WORDS_LIFTBOT[_version]);
 	writePhrases("Phrases/Bellbot", BELLBOT_COMMON_PHRASES);
 
 	writeResponseTree();
@@ -688,9 +1211,14 @@ void writeData() {
 	writeAllScriptQuotes();
 	writeAllScriptResponses();
 	writeAllScriptRanges();
+
 	writeAllTagMappings();
 	writeAllUpdateStates();
 	writeAllScriptPreResponses();
+	writeBarbotFrameRanges();
+	writeMissiveOMatMessages();
+	writeBedheadData();
+	writeParrotLobbyLinkUpdaterEntries();
 }
 
 void createScriptMap() {
@@ -717,7 +1245,7 @@ void createScriptMap() {
 				break;
 		}
 
-		int v1, v2;
+		uint v1, v2;
 		sscanf(line, "%x %x", &v1, &v2);
 
 		if (counter != 0 && (counter % 3) == 0)
@@ -734,18 +1262,38 @@ void createScriptMap() {
 }
 
 int main(int argc, char *argv[]) {
-	if (argc != 3) {
-		printf("Format: %s ST.exe titanic.dat\n", argv[0]);
+	if (argc < 2) {
+		printf("Format: %s ST.exe [ST_german.exe] [titanic.dat]\n", argv[0]);
 		exit(0);
 	}
 
 	if (!inputFile.open(argv[1])) {
 		error("Could not open input file");
 	}
-	res.loadFromEXE(argv[1]);
+	resEng.loadFromEXE(argv[1]);
 
-	if (!outputFile.open(argv[2], Common::kFileWriteMode)) {
-		error("Could not open output file");
+	if (argc >= 3) {
+		resGer.loadFromEXE(argv[2]);
+	}
+
+	if (inputFile.size() == ENGLISH_10042C_FILESIZE)
+		_version = ENGLISH_10042C;
+	else if (inputFile.size() == ENGLISH_10042B_FILESIZE)
+		_version = ENGLISH_10042B;
+	else if (inputFile.size() == ENGLISH_10042_FILESIZE)
+		_version = ENGLISH_10042;
+	else if (inputFile.size() == GERMAN_10042D_FILESIZE) {
+		printf("German version detected. You must use an English versoin "
+			"for the primary input file\n");
+		exit(0);
+	} else {
+		printf("Unknown version of ST.exe specified\n");
+		exit(0);
+	}
+
+	if (!outputFile.open(argc == 4 ? argv[3] : "titanic.dat", Common::kFileWriteMode)) {
+		printf("Could not open output file\n");
+		exit(0);
 	}
 
 	writeHeader();

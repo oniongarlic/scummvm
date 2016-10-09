@@ -23,15 +23,19 @@
 #ifndef TITANIC_GAME_OBJECT_H
 #define TITANIC_GAME_OBJECT_H
 
+#include "audio/mixer.h"
+#include "common/stream.h"
+#include "titanic/core/named_item.h"
+#include "titanic/sound/proximity.h"
 #include "titanic/support/mouse_cursor.h"
 #include "titanic/support/credit_text.h"
 #include "titanic/support/movie_range_info.h"
-#include "titanic/support/proximity.h"
 #include "titanic/support/rect.h"
+#include "titanic/support/strings.h"
 #include "titanic/support/movie_clip.h"
-#include "titanic/core/named_item.h"
 #include "titanic/pet_control/pet_section.h"
 #include "titanic/pet_control/pet_text.h"
+#include "titanic/game_state.h"
 
 namespace Titanic {
 
@@ -52,22 +56,12 @@ class CGameObject : public CNamedItem {
 	friend class OSMovie;
 	DECLARE_MESSAGE_MAP;
 private:
-	static CCreditText *_credits;
+	static int _soundHandles[4];
 private:
 	/**
 	 * Load a visual resource for the object
 	 */
 	void loadResource(const CString &name);
-
-	/**
-	 * Loads a movie
-	 */
-	void loadMovie(const CString &name, bool pendingFlag = true);
-
-	/**
-	 * Loads an image
-	 */
-	void loadImage(const CString &name, bool pendingFlag = true);
 
 	/**
 	 * Process and remove any registered movie range info
@@ -80,7 +74,8 @@ private:
 	 */
 	bool clipRect(const Rect &rect1, Rect &rect2) const;
 protected:
-	Rect _bounds;
+	static CCreditText *_credits;
+protected:
 	double _field34;
 	double _field38;
 	double _field3C;
@@ -127,6 +122,16 @@ protected:
 	 */
 	CViewItem * parseView(const CString &viewString);
 
+	/**
+	 * Loads a movie
+	 */
+	void loadMovie(const CString &name, bool pendingFlag = true);
+
+	/**
+	 * Loads an image
+	 */
+	void loadImage(const CString &name, bool pendingFlag = true);
+
 	void inc54();
 	void dec54();
 
@@ -163,7 +168,10 @@ protected:
 	void mouseLockE4();
 	void mouseUnlockE4();
 
-	void mouseSaveState(int v1, int v2, int v3);
+	/**
+	 * Sets the mouse to a new position
+	 */
+	void mouseSetPosition(const Point &pt, double rate);
 
 	/**
 	 * Lock the input handler
@@ -182,28 +190,77 @@ protected:
 
 	/**
 	 * Plays a sound
+	 * @param name		Filename of sound to play
+	 * @param volume	Volume level
+	 * @param balance	Sound balance (not actually used in original)
+	 * @param repeated	If true, sound will repeat indefinitely
 	 */
-	int playSound(const CString &name, int val2 = 100, int val3 = 0, int val4 = 0);
+	int playSound(const CString &name, uint volume = 100, int balance = 0, bool repeated = false);
 
 	/**
 	 * Plays a sound
+	 * @param name		Filename of sound to play
+	 * @param prox		Proximity object with the sound data
 	 */
 	int playSound(const CString &name, CProximity &prox);
 
 	/**
-	 * Stop a sound
+	 * Queues a sound to play after a specified one finishes
+	 * @param name			Filename of sound to play
+	 * @param priorHandle	Sound to wait until finished before playing
+	 * @param volume		Volume level
+	 * @param balance		Sound balance (not actually used by original)
+	 * @param repeated		If true, sound will repeat indefinitely
 	 */
-	void stopSound(int handle, int val2 = 0);
+	int queueSound(const CString &name, uint priorHandle, uint volume = 100,
+		int balance = 0, bool repeated = false);
 
-	bool soundFn1(int handle);
+	/**
+	 * Stop a sound
+	 * @param handle	Sound handle
+	 * @param seconds	Optional number of seconds to transition sound off
+	 */
+	void stopSound(int handle, uint seconds = 0);
 
-	void soundFn2(const CString &resName, int v1, int v2, int v3, int handleIndex);
+	/**
+	 * Returns true if a sound with the specified handle is active
+	 */
+	bool isSoundActive(int handle) const;
 
-	void soundFn3(int handle, int val2, int val3);
+	/**
+	 * Sets the volume for a sound
+	 * @param handle	Sound handle
+	 * @param volume	Volume percentage (0 to 100)
+	 * @param seconds	Number of seconds to transition to the new volume
+	 */
+	void setSoundVolume(int handle, uint percent, uint seconds);
 
-	void soundFn4(int v1, int v2, int v3);
+	/**
+	 * Plays a sound, and saves it's handle in the global sound handles list
+	 * @param resName		Filename of sound to play
+	 * @param mode			Volume mode level
+	 * @param initialMute	If set, sound transitions in from mute over 2 seconds
+	 * @param repeated		Flag for repeating sounds
+	 * @param handleIndex	Slot 0 to 3 in the shared sound handle list to store the sound's handle
+	 * @param soundType		Specifies whether the sound is a sound effect or music
+	 */
+	void playGlobalSound(const CString &resName, int mode, bool initialMute, bool repeated,
+		int handleIndex, Audio::Mixer::SoundType soundType = Audio::Mixer::kMusicSoundType);
 
-	void soundFn5(int v1, int v2, int v3);
+	/**
+	 * Stops a sound saved in the global sound handle list
+	 * @param transition	If set, the sound transitions to silent before stopping
+	 * @param handleIndex	Index of sound to stop. If -1, all global sounds are stopped
+	 */
+	void stopGlobalSound(bool transition, int handleIndex);
+
+	/**
+	 * Updates the volume for a global sound based on the specified mode's volume
+	 * @param mode			Volume level mode
+	 * @param seconds		Number of seconds to transition to new volume
+	 * @param handleIndex	Index of global sound to update. If -1, all global sounds are updated
+	 */
+	void setGlobalSoundVolume(int mode, uint seconds, int handleIndex);
 
 	void sound8(bool flag) const;
 
@@ -215,12 +272,22 @@ protected:
 	/**
 	 * Adds a timer
 	 */
-	int addTimer(uint firstDuration, uint repeatDuration);
+	int addTimer(uint firstDuration, uint repeatDuration = 0);
 
 	/**
 	 * Stops a timer
 	 */
 	void stopTimer(int id);
+
+	/**
+	 * Start an animation timer
+	 */
+	int startAnimTimer(const CString &action, uint firstDuration, uint repeatDuration = 0);
+
+	/**
+	 * Stop an animation timer
+	 */
+	void stopAnimTimer(int id);
 
 	/**
 	 * Causes the game to sleep for the specified time
@@ -289,14 +356,14 @@ protected:
 	bool changeView(const CString &viewName, const CString &clipName);
 
 	/**
-	 * Get the centre of the game object's bounds
+	 * Change the view
 	 */
-	Point getControid() const;
+	bool changeView(const CString &viewName);
 
 	/**
 	 * Play an arbitrary clip
 	 */
-	void playClip(const CString &name, uint flags);
+	void playClip(const CString &name, uint flags = 0);
 
 	/**
 	 * Play a clip
@@ -304,9 +371,14 @@ protected:
 	void playClip(uint startFrame, uint endFrame);
 
 	/**
+	 * Play a cutscene
+	 */
+	void playCutscene(uint startFrame, uint endFrame);
+
+	/**
 	 * Play a clip randomly from a passed list of names
 	 */
-	void playRandomClip(const char **names, uint flags);
+	void playRandomClip(const char *const *names, uint flags = 0);
 
 	/**
 	 * Return the current view/node/room as a single string
@@ -351,6 +423,11 @@ protected:
 	CRoomItem *getHiddenRoom() const;
 
 	/**
+	 * Locates a room with the given name
+	 */
+	CRoomItem *locateRoom(const CString &name) const;
+
+	/**
 	 * Scan the specified room for an item by name
 	 */
 	CTreeItem *findUnder(CTreeItem *parent, const CString &name) const;
@@ -370,7 +447,10 @@ protected:
 	 */
 	void setPassengerClass(int newClass);
 
-	void setMovie14(int v);
+	/**
+	 * Overrides whether the object's movie has audio timing
+	 */
+	void movieSetAudioTiming(bool flag);
 
 	void fn10(int v1, int v2, int v3);
 
@@ -382,17 +462,12 @@ protected:
 	/**
 	 * Returns the current system tick count
 	 */
-	uint32 getTickCount();
+	uint32 getTicksCount();
 
 	/**
-	 * Adds an object to the mail list
+	 * Gets a resource from the DAT file
 	 */
-	void addMail(int mailId);
-
-	/**
-	 * Sets the mail identifier for an object
-	 */
-	void setMailId(int mailId);
+	Common::SeekableReadStream *getResource(const CString &name);
 
 	/**
 	 * Returns true if a mail with a specified Id exists
@@ -403,11 +478,6 @@ protected:
 	 * Returns a specified mail, if one exists
 	 */
 	CGameObject *findMail(int id) const;
-
-	/**
-	 * Remove an object from the mail list
-	 */
-	void removeMail(int id, int v);
 
 	/**
 	 * Resets the Mail Man value
@@ -424,14 +494,6 @@ protected:
 	 */
 	void petUnlockInput();
 
-	void setState1C(bool flag);
-	void stateInc14();
-	int stateGet14() const;
-	void stateSet24();
-	int stateGet24() const;
-	void stateInc38();
-	int stateGet38() const;
-
 	/**
 	 * Flag to quit the game
 	 */
@@ -443,9 +505,9 @@ protected:
 	void setMovieFrameRate(double rate);
 
 	/**
-	 * Set up the text borders for the object
+	 * Set up the text and borders for the object
 	 */
-	void setTextBorder(const CString &str, int border = 0, int borderRight = 0);
+	void setText(const CString &str, int border = 0, int borderRight = 0);
 
 	/**
 	 * Sets whether the text will use borders
@@ -486,7 +548,13 @@ protected:
 	 * Scroll text down
 	 */
 	void scrollTextDown();
+
+	/**
+	 * Gets a new random number
+	 */
+	int getRandomNumber(int max, int *oldVal = nullptr);
 public:
+	Rect _bounds;
 	bool _isMail;
 	int _id;
 	uint _roomFlags;
@@ -570,6 +638,11 @@ public:
 	void setPosition(const Point &newPos);
 
 	/**
+	 * Get the centre of the game object's bounds
+	 */
+	Point getControid() const;
+
+	/**
 	 * Change the object's status
 	 */
 	void playMovie(uint flags);
@@ -640,6 +713,11 @@ public:
 	int getPriorClass() const;
 
 	/**
+	 * Sets the mail identifier for an object
+	 */
+	void setMailId(int mailId);
+
+	/**
 	 * Returns true if there's an attached surface which has a frame
 	 * ready for display
 	 */
@@ -666,9 +744,9 @@ public:
 	void dragMove(const Point &pt);
 	
 	/**
-	 * Returns true if an item being dragged is a game object
+	 * Returns the currently dragging item (if any) if it's a game object
 	 */
-	bool isObjectDragging() const;
+	CGameObject *getDraggingObject() const;
 
 	bool compareRoomFlags(int mode, uint flags1, uint flags2);
 
@@ -700,6 +778,16 @@ public:
 	CString getRoomNodeName() const;
 
 	/**
+	 * Adds an object to the mail list
+	 */
+	void addMail(int mailId);
+
+	/**
+	 * Remove an object from the mail list
+	 */
+	void removeMail(int id, int v);
+
+	/**
 	 * Return the full Id of the current view in a
 	 * room.node.view tuplet form
 	 */
@@ -724,6 +812,8 @@ public:
 
 	CTreeItem *petContainerRemove(CGameObject *obj);
 
+	bool petCheckNode(const CString &name);
+
 	/**
 	 * Dismiss a bot
 	 */
@@ -737,14 +827,27 @@ public:
 	/**
 	 * Display a message in the PET
 	 */
-	void petDisplayMessage(int unused, const CString &msg);
+	void petDisplayMessage(int unused, StringId stringId);
 
 	/**
 	 * Display a message in the PET
 	 */
-	void petDisplayMessage(const CString &msg);
+	void petDisplayMessage(int unused, const CString &str);
 
-	int petGetRooms1D0() const;
+	/**
+	 * Display a message in the PET
+	 */
+	void petDisplayMessage(StringId stringId, int param = 0);
+
+	/**
+	 * Display a message in the PET
+	 */
+	void petDisplayMessage(const CString &str, int param = 0);
+
+	/**
+	 * Gets the entry number used when last arriving at the well
+	 */
+	int petGetRoomsWellEntry() const;
 
 	/**
 	 * Hide the PET
@@ -786,7 +889,11 @@ public:
 	 */
 	void petSetRemoteTarget();
 
-	void petSetRooms1D0(int val);
+	/**
+	 * Sets the entry number for arriving at the well
+	 */
+	void petSetRoomsWellEntry(int entryNum);
+
 	void petSetRooms1D4(int v);
 
 
@@ -813,7 +920,7 @@ public:
 	CStarControl *getStarControl() const;
 
 	void starFn1(int v);
-	void starFn2();
+	bool starFn2();
 
 	/*--- CTrueTalkManager Methods ---*/
 
@@ -840,7 +947,7 @@ public:
 	/**
 	 * Gets a dial region for a given NPC
 	 */
-	int talkGetDIalRegion(const CString &name, int dialNum);
+	int talkGetDialRegion(const CString &name, int dialNum);
 
 	/*--- CVideoSurface Methods ---*/
 
@@ -854,6 +961,35 @@ public:
 	 * playing ranges
 	 */
 	void movieEvent();
+
+	/*--- CGameState Methods ---*/
+
+	void setState1C(bool flag);
+	
+	/**
+	 * Change to the next season
+	 */
+	void stateChangeSeason();
+	
+	/**
+	 * Returns the currently active season
+	 */
+	Season stateGetSeason() const;
+	
+	void stateSet24();
+	int stateGet24() const;
+	void stateInc38();
+	int stateGet38() const;
+
+	/**
+	 * Gets the game state node changed counter
+	 */
+	uint getNodeChangedCtr() const;
+
+	/**
+	 * Gets the game state node enter ticks
+	 */
+	uint getNodeEnterTicks() const;
 };
 
 } // End of namespace Titanic

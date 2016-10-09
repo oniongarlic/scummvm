@@ -28,15 +28,19 @@
 namespace Titanic {
 
 class CSeasonalMusicPlayer : public CAutoMusicPlayerBase {
+	DECLARE_MESSAGE_MAP;
+	bool ChangeSeasonMsg(CChangeSeasonMsg *msg);
+	bool ArboretumGateMsg(CArboretumGateMsg *msg);
+	bool ChangeMusicMsg(CChangeMusicMsg *msg);
 private:
-	int _fieldD8;
-	int _fieldDC;
-	int _fieldE0;
-	int _fieldE4;
-	int _fieldE8;
-	int _fieldEC;
-	int _fieldF0;
-	int _fieldF4;
+	bool _isSpring;
+	bool _isSummer;
+	bool _isAutumn;
+	bool _isWinter;
+	int _springMode;
+	int _summerMode;
+	int _autumnMode;
+	int _winterMode;
 public:
 	CLASSDEF;
 	CSeasonalMusicPlayer();
@@ -54,4 +58,4 @@ public:
 
 } // End of namespace Titanic
 
-#endif /* TITANIC_LINK_ITEM_H */
+#endif /* TITANIC_SEASONAL_MUSIC_PLAYER_H */

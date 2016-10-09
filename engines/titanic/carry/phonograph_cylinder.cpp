@@ -22,6 +22,7 @@
 
 #include "titanic/carry/phonograph_cylinder.h"
 #include "titanic/game/phonograph.h"
+#include "titanic/sound/music_room.h"
 
 namespace Titanic {
 
@@ -101,7 +102,7 @@ void CPhonographCylinder::load(SimpleFile *file) {
 }
 
 bool CPhonographCylinder::UseWithOtherMsg(CUseWithOtherMsg *msg) {
-	CPhonograph *phonograph = static_cast<CPhonograph *>(msg->_other);
+	CPhonograph *phonograph = dynamic_cast<CPhonograph *>(msg->_other);
 	if (phonograph) {
 		CSetVarMsg varMsg("m_RecordStatus", 1);
 		return true;
@@ -162,10 +163,33 @@ bool CPhonographCylinder::RecordOntoCylinderMsg(CRecordOntoCylinderMsg *msg) {
 }
 
 bool CPhonographCylinder::SetMusicControlsMsg(CSetMusicControlsMsg *msg) {
-	if (_itemName.left(7) == "STMusic") {
-		//todo
-		warning("TODO");
-	}
+	if (!_itemName.hasPrefix("STMusic"))
+		return true;
+
+	CMusicRoom *musicRoom = getMusicRoom();
+	musicRoom->setMuteControl(BELLS, _bellsMuteControl);
+	musicRoom->setPitchControl(BELLS, _bellsPitchControl);
+	musicRoom->setSpeedControl(BELLS, _bellsSpeedControl);
+	musicRoom->setInversionControl(BELLS, _bellsInversionControl);
+	musicRoom->setDirectionControl(BELLS, _bellsDirectionControl);
+
+	musicRoom->setMuteControl(SNAKE, _snakeMuteControl);
+	musicRoom->setPitchControl(SNAKE, _snakePitchControl);
+	musicRoom->setSpeedControl(SNAKE, _snakeSpeedControl);
+	musicRoom->setInversionControl(SNAKE, _snakeInversionControl);
+	musicRoom->setDirectionControl(SNAKE, _snakeDirectionControl);
+
+	musicRoom->setMuteControl(PIANO, _pianoMuteControl);
+	musicRoom->setPitchControl(PIANO, _pianoPitchControl);
+	musicRoom->setSpeedControl(PIANO, _pianoSpeedControl);
+	musicRoom->setInversionControl(PIANO, _pianoInversionControl);
+	musicRoom->setDirectionControl(PIANO, _pianoDirectionControl);
+
+	musicRoom->setMuteControl(BASS, _bassMuteControl);
+	musicRoom->setPitchControl(BASS, _bassPitchControl);
+	musicRoom->setSpeedControl(BASS, _bassSpeedControl);
+	musicRoom->setInversionControl(BASS, _bassInversionControl);
+	musicRoom->setDirectionControl(BASS, _bassDirectionControl);
 
 	return true;
 }

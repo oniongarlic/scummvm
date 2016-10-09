@@ -40,24 +40,22 @@ END_MESSAGE_MAP()
 CViewItem::CViewItem() : CNamedItem() {
 	Common::fill(&_buttonUpTargets[0], &_buttonUpTargets[4], (CTreeItem *)nullptr);
 	_field24 = 0;
-	_field28 = 0.0;
+	_angle = 0.0;
 	_viewNumber = 0;
-	_field50 = 0;
-	_field54 = 0;
-	setData(0.0);
+	setAngle(0.0);
 }
 
-void CViewItem::setData(double v) {
-	_field28 = v;
-	_field50 = cos(_field28) * 30.0;
-	_field54 = sin(_field28) * -30.0;
+void CViewItem::setAngle(double angle) {
+	_angle = angle;
+	_viewPos.x = (int16)(cos(_angle) * 30.0);
+	_viewPos.y = (int16)(sin(_angle) * -30.0);
 }
 
 void CViewItem::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
 	_resourceKey.save(file, indent);
 	file->writeQuotedLine("V", indent);
-	file->writeFloatLine(_field28, indent + 1);
+	file->writeFloatLine(_angle, indent + 1);
 	file->writeNumberLine(_viewNumber, indent + 1);
 
 	CNamedItem::save(file, indent);
@@ -73,7 +71,7 @@ void CViewItem::load(SimpleFile *file) {
 
 	default:
 		file->readBuffer();
-		setData(file->readFloat());
+		setAngle(file->readFloat());
 		_viewNumber = file->readNumber();
 		break;
 	}
@@ -117,19 +115,19 @@ void CViewItem::preEnterView(CViewItem *newView) {
 	// Only do the processing if we've been passed a view, and it's not the same 
 	if (newView && newView != this) {
 		CPreEnterViewMsg viewMsg(this, newView);
-		viewMsg.execute(this, nullptr, MSGFLAG_SCAN);
+		viewMsg.execute(newView, nullptr, MSGFLAG_SCAN);
 
 		CNodeItem *oldNode = findNode();
 		CNodeItem *newNode = newView->findNode();
 		if (newNode != oldNode) {
 			CPreEnterNodeMsg nodeMsg(oldNode, newNode);
-			nodeMsg.execute(oldNode, nullptr, MSGFLAG_SCAN);
+			nodeMsg.execute(newNode, nullptr, MSGFLAG_SCAN);
 
 			CRoomItem *oldRoom = oldNode->findRoom();
 			CRoomItem *newRoom = newNode->findRoom();
 			if (newRoom != oldRoom) {
 				CPreEnterRoomMsg roomMsg(oldRoom, newRoom);
-				roomMsg.execute(oldRoom, nullptr, MSGFLAG_SCAN);
+				roomMsg.execute(newRoom, nullptr, MSGFLAG_SCAN);
 			}
 		}
 	}
@@ -139,13 +137,13 @@ void CViewItem::enterView(CViewItem *newView) {
 	// Only do the processing if we've been passed a view, and it's not the same 
 	if (newView && newView != this) {
 		CEnterViewMsg viewMsg(this, newView);
-		viewMsg.execute(this, nullptr, MSGFLAG_SCAN);
+		viewMsg.execute(newView, nullptr, MSGFLAG_SCAN);
 
 		CNodeItem *oldNode = findNode();
 		CNodeItem *newNode = newView->findNode();
 		if (newNode != oldNode) {
 			CEnterNodeMsg nodeMsg(oldNode, newNode);
-			nodeMsg.execute(oldNode, nullptr, MSGFLAG_SCAN);
+			nodeMsg.execute(newNode, nullptr, MSGFLAG_SCAN);
 
 			CRoomItem *oldRoom = oldNode->findRoom();
 			CRoomItem *newRoom = newNode->findRoom();
@@ -159,7 +157,7 @@ void CViewItem::enterView(CViewItem *newView) {
 
 			if (newRoom != oldRoom) {
 				CEnterRoomMsg roomMsg(oldRoom, newRoom);
-				roomMsg.execute(oldRoom, nullptr, MSGFLAG_SCAN);
+				roomMsg.execute(newRoom, nullptr, MSGFLAG_SCAN);
 
 				if (petControl)
 					petControl->enterRoom(newRoom);
@@ -170,8 +168,8 @@ void CViewItem::enterView(CViewItem *newView) {
 
 CLinkItem *CViewItem::findLink(CViewItem *newView) {
 	for (CTreeItem *treeItem = getFirstChild(); treeItem;
-			treeItem = scan(treeItem)) {
-		CLinkItem *link = static_cast<CLinkItem *>(treeItem);
+			treeItem = treeItem->scan(this)) {
+		CLinkItem *link = dynamic_cast<CLinkItem *>(treeItem);
 		if (link && link->connectsTo(newView))
 			return link;
 	}
@@ -250,7 +248,7 @@ bool CViewItem::MouseMoveMsg(CMouseMoveMsg *msg) {
 
 bool CViewItem::handleMouseMsg(CMouseMsg *msg, bool flag) {
 	CMouseButtonUpMsg *upMsg = dynamic_cast<CMouseButtonUpMsg *>(msg);
-	if (msg->isButtonUpMsg()) {
+	if (upMsg) {
 		handleButtonUpMsg(upMsg);
 		return true;
 	}
@@ -306,8 +304,29 @@ void CViewItem::handleButtonUpMsg(CMouseButtonUpMsg *msg) {
 	}
 }
 
-void CViewItem::fn1(double val1, double val2, double val3) {
-	warning("TODO: CViewItem::fn1");
+void CViewItem::getPosition(double &xp, double &yp, double &zp) {
+	// Get the position of the owning node within the room
+	CNodeItem *node = findNode();
+	node->getPosition(xp, yp, zp);
+
+	// Adjust the position slightly to compensate for view's angle,
+	// ensuring different direction views don't all have the same position
+	xp += cos(_angle) * 0.5;
+	yp -= sin(_angle) * 0.5;
+}
+
+CString CViewItem::getFullViewName() const {
+	CNodeItem *node = findNode();
+	CRoomItem *room = node->findRoom();
+
+	return CString::format("%s.%s.%s", room->getName().c_str(),
+		node->getName().c_str(), getName().c_str());
+}
+
+CString CViewItem::getNodeViewName() const {
+	CNodeItem *node = findNode();
+
+	return CString::format("%s.%s", node->getName().c_str(), getName().c_str());
 }
 
 } // End of namespace Titanic

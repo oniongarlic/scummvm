@@ -159,9 +159,9 @@ int global_messageHandler1(ExCommand *cmd) {
 			}
 			break;
 		case 36: // keydown
-			g_fp->defHandleKeyDown(cmd->_keyCode);
+			g_fp->defHandleKeyDown(cmd->_param);
 
-			switch (cmd->_keyCode) {
+			switch (cmd->_param) {
 			case '\x1B': // ESC
 				if (g_fp->_currentScene) {
 					getGameLoaderInventory()->unselectItem(0);
@@ -197,6 +197,15 @@ int global_messageHandler1(ExCommand *cmd) {
 					g_fp->openHelp();
 				cmd->_messageKind = 0;
 				break;
+			case '8':
+				{
+					int num = 32;
+					for (uint i = 0; i < g_fp->_gameLoader->_sc2array[num]._picAniInfosCount; i++) {
+						debug("pic %d, %d:", num, i);
+						g_fp->_gameLoader->_sc2array[num]._picAniInfos[i]->print();
+					}
+				}
+				break;
 			default:
 				break;
 			}
@@ -221,7 +230,7 @@ int global_messageHandler1(ExCommand *cmd) {
 					}
 
 					if (newex) {
-						newex->_keyCode = g_fp->_aniMan->_okeyCode;
+						newex->_param = g_fp->_aniMan->_odelay;
 						newex->_excFlags |= 3;
 						newex->postMessage();
 					}
@@ -286,13 +295,13 @@ int global_messageHandler2(ExCommand *cmd) {
 		break;
 
 	case 28:
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (ani)
 			ani->_priority = cmd->_field_14;
 		break;
 
 	case 25:
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (ani) {
 			if (cmd->_field_14) {
 				ani->setFlags40(true);
@@ -305,7 +314,7 @@ int global_messageHandler2(ExCommand *cmd) {
 		break;
 
 	case 26:
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (ani) {
 			Movement *mov = ani->_movement;
 			if (mov)
@@ -330,7 +339,7 @@ int global_messageHandler2(ExCommand *cmd) {
 
 		for (int snd = 0; snd < g_fp->_currSoundListCount; snd++) {
 			SoundList *s = g_fp->_currSoundList1[snd];
-		    int ms = s->getCount();
+			int ms = s->getCount();
 			for (int i = 0; i < ms; i++) {
 				s->getSoundByIndex(i)->setPanAndVolumeByStaticAni();
 			}
@@ -364,13 +373,13 @@ int global_messageHandler3(ExCommand *cmd) {
 	case 17:
 		switch (cmd->_messageNum) {
 		case 61:
-			debugC(0, kDebugEvents, "preload: { %d, %d },", cmd->_parentId, cmd->_keyCode);
-			return g_fp->_gameLoader->preloadScene(cmd->_parentId, cmd->_keyCode);
+			debugC(0, kDebugEvents, "preload: { %d, %d },", cmd->_parentId, cmd->_param);
+			return g_fp->_gameLoader->preloadScene(cmd->_parentId, cmd->_param);
 		case 62:
-			return g_fp->_gameLoader->gotoScene(cmd->_parentId, cmd->_keyCode);
+			return g_fp->_gameLoader->gotoScene(cmd->_parentId, cmd->_param);
 		case 64:
 			if (g_fp->_currentScene && g_fp->_msgObjectId2
-					&& (!(cmd->_keyCode & 4) || g_fp->_msgObjectId2 != cmd->_field_14 || g_fp->_msgId != cmd->_field_20)) {
+					&& (!(cmd->_param & 4) || g_fp->_msgObjectId2 != cmd->_field_14 || g_fp->_msgId != cmd->_field_20)) {
 				ani = g_fp->_currentScene->getStaticANIObject1ById(g_fp->_msgObjectId2, g_fp->_msgId);
 				if (ani) {
 					ani->_flags &= 0xFF7F;
@@ -382,11 +391,11 @@ int global_messageHandler3(ExCommand *cmd) {
 			g_fp->_msgY = 0;
 			g_fp->_msgObjectId2 = 0;
 			g_fp->_msgId = 0;
-			if ((cmd->_keyCode & 1) || (cmd->_keyCode & 2)) {
+			if ((cmd->_param & 1) || (cmd->_param & 2)) {
 				g_fp->_msgX = cmd->_x;
 				g_fp->_msgY = cmd->_y;
 			}
-			if (cmd->_keyCode & 4) {
+			if (cmd->_param & 4) {
 				g_fp->_msgObjectId2 = cmd->_field_14;
 				g_fp->_msgId = cmd->_field_20;
 			}
@@ -397,31 +406,31 @@ int global_messageHandler3(ExCommand *cmd) {
 				ani2 = g_fp->_currentScene->getStaticANIObject1ById(g_fp->_gameLoader->_field_FA, -1);
 
 				if (ani) {
-					if (g_fp->_msgObjectId2 == ani->_id && g_fp->_msgId == ani->_okeyCode) {
+					if (g_fp->_msgObjectId2 == ani->_id && g_fp->_msgId == ani->_odelay) {
 						cmd->_messageKind = 0;
 						return result;
 					}
-					if (canInteractAny(ani2, ani, cmd->_keyCode)) {
-						handleObjectInteraction(ani2, ani, cmd->_keyCode);
+					if (canInteractAny(ani2, ani, cmd->_param)) {
+						handleObjectInteraction(ani2, ani, cmd->_param);
 						return 1;
 					}
 				} else {
 					int id = g_fp->_currentScene->getPictureObjectIdAtPos(cmd->_sceneClickX, cmd->_sceneClickY);
 					PictureObject *pic = g_fp->_currentScene->getPictureObjectById(id, 0);
 					if (pic) {
-						if (g_fp->_msgObjectId2 == pic->_id && g_fp->_msgId == pic->_okeyCode) {
+						if (g_fp->_msgObjectId2 == pic->_id && g_fp->_msgId == pic->_odelay) {
 							cmd->_messageKind = 0;
 							return result;
 						}
-						if (!ani2 || canInteractAny(ani2, pic, cmd->_keyCode)) {
+						if (!ani2 || canInteractAny(ani2, pic, cmd->_param)) {
 							if (!ani2 || (ani2->isIdle() && !(ani2->_flags & 0x80) && !(ani2->_flags & 0x100)))
-								handleObjectInteraction(ani2, pic, cmd->_keyCode);
+								handleObjectInteraction(ani2, pic, cmd->_param);
 							return 1;
 						}
 					}
 				}
 			}
-			if (getSc2MctlCompoundBySceneId(g_fp->_currentScene->_sceneId)->_isEnabled && cmd->_keyCode <= 0) {
+			if (getSc2MctlCompoundBySceneId(g_fp->_currentScene->_sceneId)->_isEnabled && cmd->_param <= 0) {
 				if (g_fp->_msgX != cmd->_sceneClickX || g_fp->_msgY != cmd->_sceneClickY) {
 					ani = g_fp->_currentScene->getStaticANIObject1ById(g_fp->_gameLoader->_field_FA, -1);
 					if (!ani || (ani->isIdle() && !(ani->_flags & 0x80) && !(ani->_flags & 0x100))) {
@@ -430,7 +439,7 @@ int global_messageHandler3(ExCommand *cmd) {
 						if (result) {
 							ExCommand *ex = new ExCommand(g_fp->_gameLoader->_field_FA, 17, 64, 0, 0, 0, 1, 0, 0, 0);
 
-							ex->_keyCode = 1;
+							ex->_param = 1;
 							ex->_excFlags |= 3;
 							ex->_x = cmd->_sceneClickX;
 							ex->_y = cmd->_sceneClickY;
@@ -446,7 +455,7 @@ int global_messageHandler3(ExCommand *cmd) {
 			return result;
 		}
 	case 58:
-		g_fp->setCursor(cmd->_keyCode);
+		g_fp->setCursor(cmd->_param);
 		return result;
 	case 59:
 		setInputDisabled(1);
@@ -456,7 +465,7 @@ int global_messageHandler3(ExCommand *cmd) {
 		return result;
 	case 56:
 		if (cmd->_field_2C) {
-			ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+			ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 			if (ani) {
 				getGameLoaderInventory()->addItem2(ani);
 				result = 1;
@@ -492,16 +501,16 @@ int global_messageHandler3(ExCommand *cmd) {
 				obj = g_fp->_currentScene->getStaticANIObject1ById(cmd->_x, cmd->_y);
 			else
 				obj = g_fp->_currentScene->getPictureObjectById(cmd->_x, cmd->_y);
-			handleObjectInteraction(g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode), obj, cmd->_field_20);
+			handleObjectInteraction(g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param), obj, cmd->_field_20);
 			result = 1;
 		}
 		return result;
 	case 51:
-		return startWalkTo(cmd->_parentId, cmd->_keyCode, cmd->_x, cmd->_y, cmd->_field_20);
+		return startWalkTo(cmd->_parentId, cmd->_param, cmd->_x, cmd->_y, cmd->_field_20);
 	case 52:
-		return doSomeAnimation(cmd->_parentId, cmd->_keyCode, cmd->_field_20);
+		return doSomeAnimation(cmd->_parentId, cmd->_param, cmd->_field_20);
 	case 53:
-		return doSomeAnimation2(cmd->_parentId, cmd->_keyCode);
+		return doSomeAnimation2(cmd->_parentId, cmd->_param);
 	case 63:
 		if (cmd->_objtype == kObjTypeObjstateCommand) {
 			ObjstateCommand *c = (ObjstateCommand *)cmd;
@@ -533,7 +542,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -544,7 +553,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -563,7 +572,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -574,7 +583,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -595,7 +604,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -616,7 +625,7 @@ int global_messageHandler4(ExCommand *cmd) {
 	case 19: {
 		if (!g_fp->_currentScene)
 			break;
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -634,7 +643,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -646,7 +655,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -654,7 +663,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		break;
 
 	case 27:
-		if (!g_fp->_currentScene || g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode) == 0) {
+		if (!g_fp->_currentScene || g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param) == 0) {
 			ani = g_fp->accessScene(cmd->_field_20)->getStaticANIObject1ById(cmd->_parentId, -1);
 			if (ani) {
 				ani = new StaticANIObject(ani);
@@ -665,7 +674,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		// fall through
 	case 5:
 		if (g_fp->_currentScene)
-			ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+			ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 
 		if (!ani)
 			break;
@@ -680,7 +689,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 
@@ -718,7 +727,7 @@ int global_messageHandler4(ExCommand *cmd) {
 		if (!g_fp->_currentScene)
 			break;
 
-		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_keyCode);
+		ani = g_fp->_currentScene->getStaticANIObject1ById(cmd->_parentId, cmd->_param);
 		if (!ani)
 			break;
 

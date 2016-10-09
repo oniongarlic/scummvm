@@ -36,6 +36,10 @@ CInputHandler::CInputHandler(CGameManager *owner) :
 	CScreenManager::_screenManagerPtr->_inputHandler = this;
 }
 
+CInputHandler::~CInputHandler() {
+	CScreenManager::_screenManagerPtr->_inputHandler = nullptr;
+}
+
 void CInputHandler::setTranslator(CInputTranslator *translator) {
 	_inputTranslator = translator;
 }
@@ -150,7 +154,7 @@ CGameObject *CInputHandler::dragEnd(const Point &pt, CTreeItem *dragItem) {
 	// Scan through the view items to find the item being dropped on
 	CGameObject *target = nullptr;
 	for (CTreeItem *treeItem = view->scan(view); treeItem; treeItem = treeItem->scan(view)) {
-		CGameObject *gameObject = static_cast<CGameObject *>(treeItem);
+		CGameObject *gameObject = dynamic_cast<CGameObject *>(treeItem);
 		if (gameObject && gameObject != dragItem) {
 			if (gameObject->checkPoint(pt))
 				target = gameObject;

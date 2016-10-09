@@ -21,10 +21,42 @@
  */
 
 #include "titanic/npcs/barbot.h"
+#include "titanic/titanic.h"
 
 namespace Titanic {
 
 int CBarbot::_v0;
+
+BEGIN_MESSAGE_MAP(CBarbot, CTrueTalkNPC)
+	ON_MESSAGE(ActMsg)
+	ON_MESSAGE(EnterViewMsg)
+	ON_MESSAGE(TurnOn)
+	ON_MESSAGE(TurnOff)
+	ON_MESSAGE(LeaveViewMsg)
+	ON_MESSAGE(MovieEndMsg)
+	ON_MESSAGE(TrueTalkSelfQueueAnimSetMsg)
+	ON_MESSAGE(TrueTalkQueueUpAnimSetMsg)
+	ON_MESSAGE(TrueTalkGetStateValueMsg)
+	ON_MESSAGE(TrueTalkTriggerActionMsg)
+	ON_MESSAGE(FrameMsg)
+	ON_MESSAGE(LoadSuccessMsg)
+	ON_MESSAGE(MovieFrameMsg)
+	ON_MESSAGE(EnterRoomMsg)
+	ON_MESSAGE(TimerMsg)
+END_MESSAGE_MAP()
+
+CBarbot::FrameRanges::FrameRanges() : Common::Array<FrameRange>() {
+	resize(60);
+	Common::SeekableReadStream *stream = g_vm->_filesManager->getResource("FRAMES/BARBOT");
+	for (int idx = 0; idx < 60; ++idx) {
+		(*this)[idx]._startFrame = stream->readUint32LE();
+		(*this)[idx]._endFrame = stream->readUint32LE();
+	}
+
+	delete stream;
+}
+
+/*------------------------------------------------------------------------*/
 
 CBarbot::CBarbot() : CTrueTalkNPC() {
 	_field108 = 0;
@@ -41,8 +73,8 @@ CBarbot::CBarbot() : CTrueTalkNPC() {
 	_field134 = 0;
 	_field138 = 0;
 	_field13C = -1;
-	_field140 = 30;
-	_field144 = -1;
+	_volume = 30;
+	_frameNum = -1;
 	_field148 = -1;
 	_field14C = 0;
 	_field150 = 0;
@@ -50,125 +82,6 @@ CBarbot::CBarbot() : CTrueTalkNPC() {
 	_field158 = -1;
 	_field15C = 0;
 	_field160 = 0;
-	_field164 = 558;
-	_field168 = 585;
-	_field16C = 659;
-	_field170 = 692;
-	_field174 = 802;
-	_field178 = 816;
-	_field17C = 1941;
-	_field180 = 1977;
-	_field184 = 1901;
-	_field188 = 1941;
-	_field18C = 810;
-	_field190 = 816;
-	_field194 = 857;
-	_field198 = 865;
-	_field19C = 842;
-	_field1A0 = 857;
-	_field1A4 = 821;
-	_field1A8 = 842;
-	_field1AC = 682;
-	_field1B0 = 692;
-	_field1B4 = 1977;
-	_field1B8 = 2018;
-	_field1BC = 2140;
-	_field1C0 = 2170;
-	_field1C4 = 2101;
-	_field1C8 = 2139;
-	_field1CC = 2018;
-	_field1D0 = 2099;
-	_field1D4 = 1902;
-	_field1D8 = 2015;
-	_field1E0 = 1811;
-	_field1E4 = 1901;
-	_field1E8 = 1810;
-	_field1EC = 1703;
-	_field1F0 = 1750;
-	_field1F4 = 1681;
-	_field1F8 = 1702;
-	_field1FC = 1642;
-
-	_field200 = 1702;
-	_field204 = 1571;
-	_field208 = 1641;
-	_field20C = 1499;
-	_field210 = 1570;
-	_field214 = 1403;
-	_field218 = 1463;
-	_field21C = 1464;
-	_field220 = 1499;
-	_field224 = 1288;
-	_field228 = 1295;
-	_field22C = 1266;
-	_field230 = 1287;
-	_field234 = 1245;
-	_field238 = 1265;
-	_field23C = 1208;
-	_field240 = 1244;
-	_field244 = 1171;
-	_field248 = 1207;
-	_field24C = 1120;
-	_field250 = 1170;
-	_field254 = 1092;
-	_field258 = 1120;
-	_field25C = 1092;
-	_field260 = 1092;
-	_field264 = 1044;
-	_field268 = 1091;
-	_field26C = 1011;
-	_field270 = 1043;
-	_field274 = 1001;
-	_field278 = 1010;
-	_field27C = 985;
-	_field280 = 1001;
-	_field284 = 927;
-	_field288 = 984;
-	_field28C = 912;
-	_field290 = 926;
-	_field294 = 898;
-	_field298 = 906;
-	_field29C = 802;
-	_field2A0 = 896;
-	_field2A4 = 865;
-	_field2A8 = 896;
-	_field2AC = 842;
-	_field2B0 = 865;
-	_field2B4 = 816;
-	_field2B8 = 842;
-	_field2BC = 802;
-	_field2C0 = 842;
-	_field2C4 = 740;
-	_field2C8 = 740;
-	_field2CC = 740;
-	_field2D0 = 692;
-	_field2D4 = 610;
-	_field2D8 = 558;
-	_field2E0 = 610;
-	_field2E4 = 500;
-	_field2E8 = 558;
-	_field2EC = 467;
-	_field2F0 = 500;
-	_field2F4 = 421;
-	_field2F8 = 466;
-	_field2FC = 349;
-	_field300 = 306;
-	_field304 = 306;
-	_field308 = 348;
-	_field30C = 305;
-	_field310 = 306;
-	_field314 = 281;
-	_field318 = 305;
-	_field31C = 202;
-	_field320 = 281;
-	_field324 = 182;
-	_field328 = 202;
-	_field32C = 165;
-	_field330 = 182;
-	_field334 = 96;
-	_field338 = 165;
-	_field33C = 0;
-	_field340 = 95;
 }
 
 void CBarbot::save(SimpleFile *file, int indent) {
@@ -189,8 +102,8 @@ void CBarbot::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(_field134, indent);
 	file->writeNumberLine(_field138, indent);
 	file->writeNumberLine(_field13C, indent);
-	file->writeNumberLine(_field140, indent);
-	file->writeNumberLine(_field144, indent);
+	file->writeNumberLine(_volume, indent);
+	file->writeNumberLine(_frameNum, indent);
 	file->writeNumberLine(_field148, indent);
 	file->writeNumberLine(_field14C, indent);
 	file->writeNumberLine(_field150, indent);
@@ -220,8 +133,8 @@ void CBarbot::load(SimpleFile *file) {
 	_field134 = file->readNumber();
 	_field138 = file->readNumber();
 	_field13C = file->readNumber();
-	_field140 = file->readNumber();
-	_field144 = file->readNumber();
+	_volume = file->readNumber();
+	_frameNum = file->readNumber();
 	_field148 = file->readNumber();
 	_field14C = file->readNumber();
 	_field150 = file->readNumber();
@@ -233,9 +146,588 @@ void CBarbot::load(SimpleFile *file) {
 	CTrueTalkNPC::load(file);
 }
 
-bool CBarbot::EnterRoomMsg(CEnterRoomMsg *msg) {
-	warning("TODO: Barbot::CEnterRoomMsg");
+bool CBarbot::ActMsg(CActMsg *msg) {
+	if (msg->_action == "Vodka") {
+		if (!_field12C) {
+			playRange(_frames[47], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[46]);
+			playRange(_frames[40]);
+			playRange(_frames[7]);
+			playRange(_frames[13]);
+			playRange(_frames[8]);
+			playRange(_frames[40]);
+			playRange(_frames[7]);
+			playRange(_frames[13]);
+			playRange(_frames[8]);
+			playRange(_frames[7]);
+			playRange(_frames[40]);
+			playRange(_frames[13]);
+			playRange(_frames[40]);
+			playRange(_frames[7]);
+			playRange(_frames[8]);
+			playRange(_frames[13]);
+			playRange(_frames[40], MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			_frameNum = _frames[40]._endFrame;
+		}
+	} else if (msg->_action == "GiveBackVisCentre") {
+		if (_field134) {
+			playRange(_frames[27]);
+			_frameNum = _frames[27]._endFrame;
+		}
+	} else if (msg->_action == "Bird") {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 2;
+		statusMsg.execute("PickUpGlass");
+		_field158 = 3;
+		
+		playRange(_frames[32], MOVIE_NOTIFY_OBJECT);
+		playRange(_frames[30], MOVIE_NOTIFY_OBJECT);
+		_frameNum = _frames[30]._endFrame;
+
+		if (!_field114 || !_field118 || !_field12C) {
+			playRange(_frames[42], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[42]._endFrame;
+		}
+
+		CActMsg actMsg("InTitilator");
+		actMsg.execute("BeerGlass");
+	} else if (msg->_action == "None") {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 2;
+		statusMsg.execute("PickUpGlass");
+		_field158 = 0;
+
+		playRange(_frames[55], MOVIE_NOTIFY_OBJECT);
+		playRange(_frames[54], MOVIE_NOTIFY_OBJECT);
+		_frameNum = _frames[54]._endFrame;
+	} else if (msg->_action == "Mustard" || msg->_action == "Tomato") {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 2;
+		statusMsg.execute("PickUpGlass");
+		_field158 = 1;
+
+		playRange(_frames[55], MOVIE_NOTIFY_OBJECT);
+		playRange(_frames[54], MOVIE_NOTIFY_OBJECT);
+		_frameNum = _frames[54]._endFrame;
+
+		CActMsg actMsg("InTitilator");
+		actMsg.execute("BeerGlass");
+	} else if (msg->_action == "Fruit") {
+		if (!_field114) {
+			CActMsg visibleMsg;
+			visibleMsg.execute("LemonOnBar");
+			startTalking(this, 250576);
+			_field114 = 1;
+
+			playRange(_frames[36], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[36]._endFrame;
+
+			if (!_field11C || !_field118 || _field12C) {
+				playRange(_frames[43], MOVIE_NOTIFY_OBJECT);
+				_frameNum = _frames[43]._endFrame;
+			}
+
+			CRemoveFromGameMsg removeMsg;
+			removeMsg.execute("Lemon");
+		}
+	} else if (msg->_action == "CrushedTV") {
+		if (!_field118) {
+			CVisibleMsg visibleMsg;
+			visibleMsg.execute("TVOnBar");
+			startTalking(this, 250584);
+			_field160 = 1;
+
+			playSound("c#5.wav", _volume);
+			playRange(_frames[35], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[34]);
+			playRange(_frames[33], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[33]._endFrame;
+
+			if (!_field11C || !_field114 || !_field12C) {
+				playRange(_frames[41], MOVIE_NOTIFY_OBJECT);
+				_frameNum = _frames[41]._endFrame;
+			}
+
+			CRemoveFromGameMsg removeMsg;
+			removeMsg.execute("CrushedTV");
+		}
+	} else if (msg->_action == "PlayerTakesGlass") {
+		playRange(_frames[53]);
+		_field124 = 0;
+
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 0;
+		statusMsg.execute("PickUpGlass");
+	} else if (msg->_action == "PlayerTakesVisCentre") {
+		_field128 = 0;
+		loadFrame(0);
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 0;
+		statusMsg.execute("PickUpVisCentre");
+	} else if (msg->_action == "BellRing1") {
+		startTalking(this, 251105);
+	} else if (msg->_action == "BellRing2") {
+		startTalking(this, 251107);
+	} else if (msg->_action == "BellRing3") {
+		startTalking(this, 250285);
+	} else if (msg->_action == "GoRingBell") {
+		startTalking(this, 250285);
+	} else if (msg->_action == "ClickOnVision") {
+		startTalking(this, 251858);
+	}
+
 	return true;
+}
+
+bool CBarbot::EnterViewMsg(CEnterViewMsg *msg) {
+	// I think this is a remnant of early debugging code
+	if (getName() != "Barbot")
+		playMovie(MOVIE_REPEAT);
+
+	return true;
+}
+
+bool CBarbot::EnterRoomMsg(CEnterRoomMsg *msg) {
+	// I think this is a remnant of early debugging code
+	if (getName() != "Barbot")
+		addTimer(g_vm->getRandomNumber(20000));
+
+	return true;
+}
+
+bool CBarbot::TurnOn(CTurnOn *msg) {
+	if (!_fieldC4) {
+		_field13C = -1;
+		setVisible(true);
+
+		CGameObject *glass = findInRoom("BeerGlass");
+		if (!_field130) {
+			CVisibleMsg visibleMsg(false);
+			visibleMsg.execute("BarShelfVisCentre");
+		}
+
+		if (glass && !_field11C) {
+			playRange(_frames[38], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[58], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[57], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[56], MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			_frameNum = _frames[56]._endFrame;
+		} else {
+			playRange(_frames[38]);
+			playRange(_frames[23], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[21], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[21]._endFrame;
+		
+			switch (g_vm->getRandomNumber(2)) {
+			case 0:
+				playRange(_frames[10], MOVIE_NOTIFY_OBJECT);
+				_frameNum = _frames[10]._endFrame;
+				break;
+			case 1:
+				playRange(_frames[12], MOVIE_NOTIFY_OBJECT);
+				_frameNum = _frames[12]._endFrame;
+				break;
+			default:
+				break;
+			}
+			_field124 = 0;
+		}
+
+		_fieldC4 = 1;
+		++_v0;
+		petSetArea(PET_CONVERSATION);
+		endTalking(this, true);
+	}
+
+	return true;
+}
+
+bool CBarbot::TurnOff(CTurnOff *msg) {
+	if (_fieldC4) {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 0;
+		statusMsg.execute("PickUpGlass");
+		statusMsg.execute("PickUpVisCentre");
+
+		if (_field124) {
+			playRange(_frames[17], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[17]._endFrame;
+			_field124 = 0;
+		}
+
+		if (_field128) {
+			playRange(_frames[28], MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			_frameNum = _frames[28]._endFrame;
+			_field128 = 0;
+			_field134 = 1;
+		}
+
+		playRange(_frames[29], MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+		movieEvent(_frames[29]._startFrame);
+		_frameNum = _frames[29]._endFrame;
+		_fieldC4 = 0;
+	}
+
+	return true;
+}
+
+bool CBarbot::LeaveViewMsg(CLeaveViewMsg *msg) {
+	CTurnOff offMsg;
+	offMsg.execute(this);
+	return true;
+}
+
+bool CBarbot::MovieEndMsg(CMovieEndMsg *msg) {
+	if (msg->_endFrame == _frameNum) {
+		_frameNum = -1;
+		_field14C = getTicksCount();
+	}
+
+	if (msg->_endFrame == _field148) {
+		_field148 = -1;
+		_field150 = getTicksCount();
+	}
+
+	if (msg->_endFrame == _field13C) {
+		if (_field124)
+			playMovie(_frames[53]._startFrame, _frames[53]._startFrame, 0);
+		else if (_field128)
+			playMovie(_frames[27]._endFrame, _frames[27]._endFrame, 0);
+
+		_field13C = -1;
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[58]._endFrame || msg->_endFrame == _frames[21]._endFrame) {
+		CVisibleMsg visibleMsg(true);
+		visibleMsg.execute("BarShelfVisCentre");
+	}
+
+	if (msg->_endFrame == _frames[57]._endFrame) {
+		startTalking(this, 250575);
+		playSound("c#10.wav", _volume);
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[55]._endFrame) {
+		playSound("c#10.wav", _volume);
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[56]._endFrame
+			|| msg->_endFrame == _frames[54]._endFrame) {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 1;
+		statusMsg.execute("PickUpGlass");
+		CMoveToStartPosMsg moveMsg;
+		moveMsg.execute("BeerGlass");
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[30]._endFrame) {
+		_field124 = 0;
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 0;
+		statusMsg.execute("PickUpGlass");
+	}
+
+	if (msg->_endFrame == _frames[45]._endFrame) {
+		if (!_field130) {
+			CVisibleMsg visibleMsg(false);
+			visibleMsg.execute("BarShelfVisCentre");
+		}
+
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[44]._endFrame) {
+		_field128 = _field130 = 1;
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 1;
+		statusMsg.execute("PickUpVisCentre");
+		CPuzzleSolvedMsg solvedMsg;
+		solvedMsg.execute("VisionCentre");
+	}
+
+	if (msg->_endFrame == _frames[46]._endFrame) {
+		if (!_field130 && !_field12C && _field11C && _field114 && _field118)
+			startTalking(this, 250571);
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[43]._endFrame
+			|| msg->_endFrame == _frames[42]._endFrame
+			|| msg->_endFrame == _frames[41]._endFrame) {
+		if (_field124)
+			playMovie(_frames[53]._startFrame, _frames[53]._startFrame, 0);
+		return true;
+	}
+
+	if (msg->_endFrame == _frames[38]._endFrame || msg->_endFrame == _frames[23]._endFrame) {
+		playSound("c#3.wav", _volume);
+	} else if (msg->_endFrame == _frames[36]._endFrame) {
+		playSound("c#6.wav", _volume);
+	}
+	else if (msg->_endFrame == _frames[35]._endFrame) {
+		playSound("c#8.wav", _volume);
+	}
+	else if (msg->_endFrame == _frames[33]._endFrame) {
+		playSound("c#4.wav", _volume);
+	} else if (msg->_endFrame == _frames[32]._endFrame) {
+		startTalking(this, 145);
+		playSound("c#9.wav", _volume);
+	} else if (msg->_endFrame == _frames[47]._endFrame) {
+		playSound("c#9.wav", _volume);
+		_field12C = _field15C = 1;
+	} else if (msg->_endFrame == _frames[30]._endFrame) {
+		playSound("c#4.wav", 60);
+	} else if (msg->_endFrame == _frames[29]._endFrame) {
+		if (!_fieldC4) {
+			performAction(true, nullptr);
+			setVisible(false);
+			CActMsg actMsg("ResetCount");
+			actMsg.execute("BarBell");
+		}
+	} else if (msg->_endFrame == _frames[27]._endFrame) {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 1;
+		statusMsg.execute("PickUpVisCentre");
+		_field128 = 1;
+		_field134 = 0;
+		startTalking(this, 250586);
+	}
+
+	return true;
+}
+
+bool CBarbot::TrueTalkSelfQueueAnimSetMsg(CTrueTalkSelfQueueAnimSetMsg *msg) {
+	return true;
+}
+
+bool CBarbot::TrueTalkQueueUpAnimSetMsg(CTrueTalkQueueUpAnimSetMsg *msg) {
+	return true;
+}
+
+bool CBarbot::TrueTalkGetStateValueMsg(CTrueTalkGetStateValueMsg *msg) {
+	switch (msg->_stateNum) {
+	case 2:
+		if (!_field130) {
+			if (_field15C) {
+				msg->_stateVal = _field134 | 1;
+				return true;
+			}
+		}
+
+		msg->_stateVal = _field134;
+		break;
+
+	case 3:
+		msg->_stateVal = 0;
+		if (_field114)
+			msg->_stateVal = 1;
+		if (_field11C)
+			msg->_stateVal |= 4;
+		if (_field118)
+			msg->_stateVal |= 8;
+		if (_field12C)
+			msg->_stateVal |= 2;
+		break;
+
+	case 9:
+		msg->_stateVal = _field15C ? 1 : 0;
+		break;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
+bool CBarbot::TrueTalkTriggerActionMsg(CTrueTalkTriggerActionMsg *msg) {
+	switch (msg->_action) {
+	case 6:
+		if (_field134) {
+			playRange(_frames[27], MOVIE_NOTIFY_OBJECT);
+			_frameNum = _frames[27]._endFrame;
+		} else if (!_field130 && _field15C) {
+			playRange(_frames[45], MOVIE_NOTIFY_OBJECT);
+			playRange(_frames[44], MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			_frameNum = _frames[44]._endFrame;
+		}
+		break;
+
+	case 7: {
+		CActMsg actMsg("Vodka");
+		actMsg.execute(this);
+		break;
+	}
+
+	case 30:
+		_field11C = 1;
+		break;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
+bool CBarbot::FrameMsg(CFrameMsg *msg) {
+	if (!_fieldC4 || _frameNum != -1 || _field148 != -1 
+			|| (msg->_ticks - _field14C) <= 5000
+			|| (msg->_ticks - _field150) <= 1000)
+		return true;
+
+	if (!_field15C) {
+		if (++_field154 > 2) {
+			playRange(_frames[0]);
+			playRange(_frames[1], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[1]._endFrame;
+			_field154 = 0;
+
+			return true;
+		}
+
+		switch (g_vm->getRandomNumber(5)) {
+		case 0:
+			playRange(_frames[4], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[4]._endFrame;
+			break;
+
+		case 1:
+			playRange(_frames[10], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[10]._endFrame;
+			break;
+
+		case 2:
+			playRange(_frames[7], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[7]._endFrame;
+			break;
+
+		case 3:
+			playRange(_frames[0]);
+			playRange(_frames[1], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[1]._endFrame;
+			break;
+			
+		case 4:
+			playRange(_frames[3], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[3]._endFrame;
+			break;
+
+		case 5:
+			if (!_field160 && !_field128) {
+				playRange(_frames[15], MOVIE_NOTIFY_OBJECT);
+				_field148 = _frames[15]._endFrame;
+			}
+			break;
+
+		default:
+			break;
+		}
+	} else {
+		static const int CASES[23] = {
+			0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7
+		};
+		switch (CASES[g_vm->getRandomNumber(22)]) {
+		case 0:
+			playRange(_frames[13], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[13]._endFrame;
+			break;
+
+		case 1:
+			playRange(_frames[4], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[4]._endFrame;
+			break;
+
+		case 2:
+			playRange(_frames[8], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[8]._endFrame;
+			break;
+
+		case 3:
+			playRange(_frames[7], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[7]._endFrame;
+			break;
+
+		case 4:
+			playRange(_frames[10], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[10]._endFrame;
+			break;
+
+		case 5:
+			playRange(_frames[2], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[2]._endFrame;
+			break;
+
+		case 6:
+			playRange(_frames[6], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[6]._endFrame;
+			break;
+
+		default:
+			playRange(_frames[3], MOVIE_NOTIFY_OBJECT);
+			_field148 = _frames[3]._endFrame;
+			break;
+		}
+	}
+
+	return true;
+}
+
+bool CBarbot::LoadSuccessMsg(CLoadSuccessMsg *msg) {
+	_field14C = _field150 = getTicksCount();
+	_frameNum = -1;
+	_field148 = -1;
+
+	return true;
+}
+
+bool CBarbot::MovieFrameMsg(CMovieFrameMsg *msg) {
+	if (msg->_frameNumber == _frames[29]._startFrame) {
+		playSound("c#2.wav", _volume);
+
+	} else if (msg->_frameNumber == _frames[55]._startFrame
+			|| msg->_frameNumber == _frames[32]._startFrame) {
+		CStatusChangeMsg statusMsg;
+		statusMsg._newStatus = 0;
+		statusMsg.execute("PickUpGlass");
+
+		if (_field158 == 0) {
+			startTalking(this, 250574);
+		} else if (_field158 > 0 && _field158 <= 3) {
+			startTalking(this, 250580);
+			petSetArea(PET_CONVERSATION);
+		}
+
+		_field158 = -1;
+
+	} else if (msg->_frameNumber == _frames[36]._startFrame) {
+		CVisibleMsg visibleMsg(false);
+		visibleMsg.execute("LemonOnBar");
+
+	} else if (msg->_frameNumber == _frames[35]._startFrame) {
+		CVisibleMsg visibleMsg(false);
+		visibleMsg.execute("TVOnBar");
+	}
+
+	return true;
+}
+
+bool CBarbot::TimerMsg(CTimerMsg *msg) {
+	if (!_fieldC4 && compareRoomNameTo("Bar")) {
+		CParrotSpeakMsg speakMsg("Barbot", "AskForDrink");
+		speakMsg.execute("PerchedParrot");
+		addTimer(10000 + getRandomNumber(20000));
+	}
+
+	return true;
+}
+
+void CBarbot::playRange(const FrameRange &range, uint flags) {
+	playMovie(range._startFrame, range._endFrame, flags);
 }
 
 } // End of namespace Titanic

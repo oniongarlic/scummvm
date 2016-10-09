@@ -114,7 +114,7 @@ void CTrueTalkManager::loadStatics(SimpleFile *file) {
 	_v9 = file->readNumber();
 	_v10 = file->readNumber() != 0;
 
-	for (int idx = count; count > 10; --idx)
+	for (int idx = count; idx > 10; --idx)
 		file->readNumber();
 
 	int count2 = file->readNumber();
@@ -217,10 +217,6 @@ void CTrueTalkManager::removeCompleted() {
 			++i;
 		}
 	}
-}
-
-void CTrueTalkManager::update2() {
-	//warning("CTrueTalkManager::update2");
 }
 
 void CTrueTalkManager::start(CTrueTalkNPC *npc, uint id, CViewItem *view) {
@@ -351,14 +347,14 @@ void CTrueTalkManager::setDialogue(CTrueTalkNPC *npc, TTroomScript *roomScript, 
 	if (dialogueStr.empty())
 		return;
 
-	int soundId = readDialogSound();
+	uint speechDuration = readDialogueSpeech();
 	TTtalker *talker = new TTtalker(this, npc);
 	_talkers.push_back(talker);
 
 	bool isParrot = npc->getName().contains("parrot");
 	triggerNPC(npc);
 	playSpeech(talker, roomScript, view, isParrot);
-	talker->speechStarted(dialogueStr, _titleEngine._indexes[0], soundId);
+	talker->speechStarted(dialogueStr, _titleEngine._indexes[0], speechDuration);
 }
 
 #define STRING_BUFFER_SIZE 2048
@@ -404,30 +400,30 @@ CString CTrueTalkManager::readDialogueString() {
 	return result;
 }
 
-int CTrueTalkManager::readDialogSound() {
-	_field18 = 0;
+uint CTrueTalkManager::readDialogueSpeech() {
+	_speechDuration = 0;
 
 	for (uint idx = 0; idx < _titleEngine._indexes.size(); ++idx) {
-		CSoundItem *soundItem = _gameManager->_sound.getTrueTalkSound(
+		CWaveFile *waveFile = _gameManager->_sound.getTrueTalkSound(
 			_dialogueFile, _titleEngine._indexes[idx] - _dialogueId);
-		if (soundItem) {			
-			_field18 = soundItem->fn1();
+		if (waveFile) {			
+			_speechDuration += waveFile->getDuration();
 		}
 	}
 
-	return _field18;
+	return _speechDuration;
 }
 
 void CTrueTalkManager::triggerNPC(CTrueTalkNPC *npc) {
 	CTrueTalkSelfQueueAnimSetMsg queueSetMsg;
 	if (queueSetMsg.execute(npc)) {
-		if (_field18 > 300) {
-			CTrueTalkQueueUpAnimSetMsg upMsg(_field18);
+		if (_speechDuration > 300) {
+			CTrueTalkQueueUpAnimSetMsg upMsg(_speechDuration);
 			upMsg.execute(npc);
 		}
 	} else {
 		CTrueTalkGetAnimSetMsg getAnimMsg;
-		if (_field18 > 300) {
+		if (_speechDuration > 300) {
 			do {
 				getAnimMsg.execute(npc);
 				if (!getAnimMsg._endFrame)
@@ -439,10 +435,10 @@ void CTrueTalkManager::triggerNPC(CTrueTalkNPC *npc) {
 				uint numFrames = getAnimMsg._endFrame - getAnimMsg._startFrame;
 				int64 val = (numFrames * 1000) * 0x88888889;
 				uint diff = (val >> (32 + 5)) - 500;
-				_field18 += diff;
+				_speechDuration += diff;
 
 				getAnimMsg._index++;
-			} while (_field18 > 0);
+			} while (_speechDuration > 0);
 		}
 	}
 }
@@ -494,35 +490,38 @@ void CTrueTalkManager::playSpeech(TTtalker *talker, TTroomScript *roomScript, CV
 	// Setup proximities
 	CProximity p1, p2, p3;
 	if (isParrot) {
-		p1._field24 = 3;
-		p2._field24 = 5;
-		p3._field24 = 4;
+		p1._channelMode = 3;
+		p2._channelMode = 5;
+		p3._channelMode = 4;
 	} else {
-		p1._field24 = 0;
-		p2._field24 = 1;
-		p3._field24 = 2;
+		p1._channelMode = 0;
+		p2._channelMode = 1;
+		p3._channelMode = 2;
 	}
 
 	if (milli > 0) {
-		p3._field8 = (index * 3) / 2;
-		p3._field28 = 1;
-		p3._field2C = 0xC3070000;
-		p3._field30 = 0x3F800000;
-		p3._field34 = 0;
+		p3._channelVolume = (index * 3) / 2;
+		p3._positioningMode = POSMODE_POLAR;
+		p3._azimuth = -135.0;
+		p3._range = 1.0;
+		p3._elevation = 0;
 
-		p3._field8 = (index * 3) / 4;
-		p2._field28 = 0;
-		p2._field2C = 0x43070000;
-		p2._field30 = 0x3F800000;
-		p2._field34 = 0;
+		p2._channelVolume = (index * 3) / 4;
+		p2._positioningMode = POSMODE_NONE;
+		p2._azimuth = 135.0;
+		p2._range = 1.0;
+		p2._elevation = 0;
 	}
 
-	_gameManager->_sound.managerProc8(p1._field24);
+	_gameManager->_sound.stopChannel(p1._channelMode);
 	if (view) {
-		p1._field28 = 2;
-		view->fn1(p1._double1, p1._double2, p1._double3);	
+		p1._positioningMode = POSMODE_VECTOR;
+		view->getPosition(p1._posX, p1._posY, p1._posZ);
 	}
 
+	// Loop through adding each of the speech portions in. We use the
+	// _priorSoundHandle of CProximity to chain each successive speech
+	// to start when the prior one finishes
 	for (uint idx = 0; idx < _titleEngine._indexes.size(); ++idx) {
 		uint id = _titleEngine._indexes[idx];
 		if (id > 100000)
@@ -530,23 +529,23 @@ void CTrueTalkManager::playSpeech(TTtalker *talker, TTroomScript *roomScript, CV
 
 		if (idx == (_titleEngine._indexes.size() - 1)) {
 			// Final iteration of speech segments to play
-			p1._method1 = &proximityMethod1;
+			p1._endTalkerFn = &talkerEnd;
 			p1._talker = talker;
 		}
 
-		// Start the 
-		p1._speechHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p1);
+		// Start the speech
+		p1._priorSoundHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p1);
 		if (!milli)
 			continue;
 
 		if (idx == 0)
 			g_vm->_events->sleep(milli);
 
-		p3._speechHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p3);
+		p3._priorSoundHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p3);
 		if (idx == 0)
 			g_vm->_events->sleep(milli);
 
-		p2._speechHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p2);
+		p2._priorSoundHandle = _gameManager->_sound.playSpeech(_dialogueFile, id - _dialogueId, p2);
 	}
 }
 
@@ -568,9 +567,9 @@ bool CTrueTalkManager::triggerAction(int action, int param) {
 	return true;
 }
 
-bool CTrueTalkManager::proximityMethod1(int val) {
-	// TODO
-	return false;
+void CTrueTalkManager::talkerEnd(TTtalker *talker) {
+	if (talker)
+		talker->endSpeech(0);
 }
 
 CGameManager *CTrueTalkManager::getGameManager() const {
@@ -586,9 +585,9 @@ int CTrueTalkManager::getPassengerClass() const {
 	return gameState ? gameState->_passengerClass : 4;
 }
 
-int CTrueTalkManager::getState14() const {
+Season CTrueTalkManager::getCurrentSeason() const {
 	CGameState *gameState = getGameState();
-	return gameState ? gameState->_field14 : 0;
+	return gameState ? gameState->_seasonNum : SEASON_SUMMER;
 }
 
 } // End of namespace Titanic

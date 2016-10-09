@@ -20,10 +20,12 @@
  *
  */
 
-#include "titanic/titanic.h"
 #include "titanic/game/television.h"
-#include "titanic/pet_control/pet_control.h"
 #include "titanic/game/get_lift_eye2.h"
+#include "titanic/core/project_item.h"
+#include "titanic/carry/magazine.h"
+#include "titanic/pet_control/pet_control.h"
+#include "titanic/titanic.h"
 
 namespace Titanic {
 
@@ -103,7 +105,7 @@ void CTelevision::load(SimpleFile *file) {
 bool CTelevision::LeaveViewMsg(CLeaveViewMsg *msg) {
 	petClear();
 	if (_isOn) {
-		if (soundFn1(_soundHandle))
+		if (isSoundActive(_soundHandle))
 			stopSound(_soundHandle, 0);
 
 		loadFrame(622);
@@ -121,16 +123,16 @@ bool CTelevision::LeaveViewMsg(CLeaveViewMsg *msg) {
 }
 
 bool CTelevision::ChangeSeasonMsg(CChangeSeasonMsg *msg) {
-	if (msg->_season.compareTo("Autumn")) {
+	if (msg->_season == "Autumn") {
 		_v1 = 545;
 		_v3 = 0;
-	} else if (msg->_season.compareTo("Winter")) {
+	} else if (msg->_season == "Winter") {
 		_v1 = 503;
 		_v3 = 0;
-	} else if (msg->_season.compareTo("Spring")) {
+	} else if (msg->_season == "Spring") {
 		_v1 = 517;
 		_v3 = 0;
-	} else if (msg->_season.compareTo("Winter")) {
+	} else if (msg->_season == "Summer") {
 		_v1 = 531;
 		_v3 = 0;
 	}
@@ -153,7 +155,7 @@ static const int END_FRAMES[8] = { 0, 55, 111, 167, 223, 279, 335, 391 };
 
 bool CTelevision::PETUpMsg(CPETUpMsg *msg) {
 	if (msg->_name == "Television" && _isOn) {
-		if (soundFn1(_soundHandle))
+		if (isSoundActive(_soundHandle))
 			stopSound(_soundHandle, 0);
 
 		_fieldE0 = _fieldE0 % _fieldE4 + 1;
@@ -166,7 +168,7 @@ bool CTelevision::PETUpMsg(CPETUpMsg *msg) {
 
 bool CTelevision::PETDownMsg(CPETDownMsg *msg) {
 	if (msg->_name == "Television" && _isOn) {
-		if (soundFn1(_soundHandle))
+		if (isSoundActive(_soundHandle))
 			stopSound(_soundHandle, 0);
 		if (--_fieldE0 < 1)
 			_fieldE0 += _fieldE4;
@@ -215,7 +217,7 @@ bool CTelevision::PETActivateMsg(CPETActivateMsg *msg) {
 			_fieldE0 = 1;
 		} else {
 			stopMovie();
-			if (soundFn1(_soundHandle))
+			if (isSoundActive(_soundHandle))
 				stopSound(_soundHandle, 0);
 			
 			setVisible(false);
@@ -229,18 +231,23 @@ bool CTelevision::PETActivateMsg(CPETActivateMsg *msg) {
 }
 
 bool CTelevision::MovieEndMsg(CMovieEndMsg *msg) {
-	if (g_vm->getRandomNumber(6) == 0) {
+	if (getRandomNumber(6) == 0) {
 		CParrotSpeakMsg parrotMsg("Television", "");
 		parrotMsg.execute("PerchedParrot");
 	}
 
 	if (_fieldE0 == 3 && compareRoomNameTo("SGTState") && !getPassengerClass()) {
-		playSound("z#47.wav", 100, 0, 0);
-		_soundHandle = playSound("b#20.wav", 100, 0, 0);
-		CTreeItem *magazine = getRoot()->findByName("Magazine");
+		playSound("z#47.wav");
+		_soundHandle = playSound("b#20.wav");
+		CMagazine *magazine = dynamic_cast<CMagazine *>(getRoot()->findByName("Magazine"));
 
 		if (magazine) {
-			warning("TODO: CTelevision::MovieEndMsg");
+			CPetControl *pet = getPetControl();
+			uint roomFlags = pet->getRoomFlags();
+
+			debugC(kDebugScripts, "Assigned room - %d", roomFlags);
+			magazine->addMail(roomFlags);
+			magazine->removeMail(roomFlags, roomFlags);
 		}
 
 		loadFrame(561);
@@ -251,7 +258,7 @@ bool CTelevision::MovieEndMsg(CMovieEndMsg *msg) {
 			loadFrame(502);
 		else
 			warning("There is currently nothing available for your viewing pleasure on this channel.");
-	} else if (_fieldE0 == 5 && *CGetLiftEye2::_v1 != "NULL") {
+	} else if (_fieldE0 == 5 && *CGetLiftEye2::_destObject != "NULL") {
 		loadFrame(393 + _v4);
 	} else {
 		warning("There is currently nothing available for your viewing pleasure on this channel.");
@@ -282,7 +289,7 @@ bool CTelevision::LightsMsg(CLightsMsg *msg) {
 	if (pet)
 		flag = pet->isRoom59706();
 
-	if (msg->_field8 || !flag)
+	if (msg->_flag2 || !flag)
 		_turnOn = true;
 
 	return true;

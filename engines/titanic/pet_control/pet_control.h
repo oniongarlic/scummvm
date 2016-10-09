@@ -31,11 +31,12 @@
 #include "titanic/pet_control/pet_conversations.h"
 #include "titanic/pet_control/pet_frame.h"
 #include "titanic/pet_control/pet_inventory.h"
-#include "titanic/pet_control/pet_message.h"
+#include "titanic/pet_control/pet_translation.h"
 #include "titanic/pet_control/pet_starfield.h"
 #include "titanic/pet_control/pet_real_life.h"
 #include "titanic/pet_control/pet_remote.h"
 #include "titanic/pet_control/pet_rooms.h"
+#include "titanic/support/strings.h"
 #include "titanic/room_flags.h"
 
 namespace Titanic {
@@ -60,13 +61,14 @@ private:
 	CPetRemote _remote;
 	CPetRooms _rooms;
 	CPetRealLife _realLife;
-	CPetMessage _message;
+	CPetTranslation _translation;
 	CPetFrame _frame;
 	CString _activeNPCName;
 	CString _remoteTargetName;
 	CRoomItem *_hiddenRoom;
 	Rect _drawBounds;
 	PetEventInfo _timers[2];
+	Strings _strings;
 private:
 	/**
 	 * Returns true if the control is in a valid state
@@ -232,7 +234,22 @@ public:
 	/**
 	 * Display a message
 	 */
-	void displayMessage(const CString &msg) const;
+	void displayMessage(StringId stringId, int param = 0) const;
+
+	/**
+	 * Display a message
+	 */
+	void displayMessage(const CString &str, int param = 0) const;
+
+	/**
+	 * Switches to the Translation display, and adds a line to it's content
+	 */
+	void addTranslation(StringId id1, StringId id2);
+
+	/**
+	 * Clears the translation display
+	 */
+	void clearTranslation();
 
 	/**
 	 * Get the first game object stored in the PET
@@ -358,9 +375,7 @@ public:
 	/**
 	 * Sets the active NPC
 	 */
-	void setActiveNPC(const CString &name) {
-		_conversations.setActiveNPC(name);
-	}
+	void setActiveNPC(const CString &name);
 
 	/**
 	 * Sets the actie NPC
@@ -387,7 +402,7 @@ public:
 	/**
 	 * Resets the conversation dials back to 0 position
 	 */
-	void resetDials0() { _conversations.resetDials0(); }
+	void resetDials0();
 
 	/**
 	 * Resets the dial display in the conversation tab to reflect new values
@@ -470,12 +485,20 @@ public:
 		return _rooms.getRoomNum();
 	}
 
-	void setRooms1D0(int v) {
-		_rooms.set1D0(v);
+	/**
+	 * Sets the entry number for arriving at the well
+	 */
+	void setRoomsWellEntry(int entryNum) {
+		_rooms.setWellEntry(entryNum);
 	}
-	int getRooms1D0() const {
-		return _rooms.get1D0();
+
+	/**
+	 * Gets the entry number used when last arriving at the well
+	 */
+	int getRoomsWellEntry() const {
+		return _rooms.getWellEntry();
 	}
+
 	void setRooms1CC(int v) {
 		_rooms.set1CC(v);
 	}

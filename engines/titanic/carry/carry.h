@@ -44,11 +44,7 @@ class CCarry : public CGameObject {
 	bool EnterViewMsg(CEnterViewMsg *msg);
 	bool PassOnDragStartMsg(CPassOnDragStartMsg *msg);
 protected:
-	CString _string1;
-	Point _origPos;
-	CString _fullViewName;
 	int _fieldDC;
-	int _fieldE0;
 	CString _string3;
 	CString _string4;
 	Point _tempPos;
@@ -61,6 +57,11 @@ protected:
 	int _enterFrame;
 	bool _enterFrameSet;
 	int _visibleFrame;
+public:
+	CString _string1;
+	int _fieldE0;
+	Point _origPos;
+	CString _fullViewName;
 public:
 	CLASSDEF;
 	CCarry();

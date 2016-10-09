@@ -48,13 +48,17 @@ namespace Fullpipe {
 enum FullpipeGameFeatures {
 };
 
-enum AccessDebugChannels {
-	kDebugPathfinding = 1 << 0,
-	kDebugDrawing     = 1 << 1,
-	kDebugLoading     = 1 << 2,
-	kDebugAnimation   = 1 << 3,
-	kDebugMemory      = 1 << 4,
-	kDebugEvents      = 1 << 5
+enum {
+	kDebugPathfinding	= 1 << 0,
+	kDebugDrawing		= 1 << 1,
+	kDebugLoading		= 1 << 2,
+	kDebugAnimation		= 1 << 3,
+	kDebugMemory		= 1 << 4,
+	kDebugEvents		= 1 << 5,
+	kDebugBehavior		= 1 << 6,
+	kDebugInventory		= 1 << 7,
+	kDebugSceneLogic	= 1 << 8,
+	kDebugInteractions	= 1 << 9
 };
 
 class BehaviorManager;
@@ -73,7 +77,7 @@ class GlobalMessageQueueList;
 struct MessageHandler;
 class MessageQueue;
 struct MovTable;
-class MGM;
+class AniHandler;
 class NGIArchive;
 class PictureObject;
 struct PreloadItem;
@@ -209,7 +213,7 @@ public:
 	MovTable *_movTable;
 
 	Floaters *_floaters;
-	MGM *_mgm;
+	AniHandler *_aniHandler;
 
 	Common::Array<Common::Point *> _arcadeKeys;
 
@@ -329,8 +333,12 @@ public:
 
 	bool _isSaveAllowed;
 
-	bool canLoadGameStateCurrently() { return _isSaveAllowed; }
-	bool canSaveGameStateCurrently() { return _isSaveAllowed; }
+	Common::Error loadGameState(int slot);
+	Common::Error saveGameState(int slot, const Common::String &description);
+
+	virtual bool canLoadGameStateCurrently() { return true; }
+	virtual bool canSaveGameStateCurrently() { return _isSaveAllowed; }
+	virtual bool hasFeature(EngineFeature f) const;
 
 };
 

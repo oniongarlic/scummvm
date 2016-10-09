@@ -28,11 +28,18 @@
 namespace Titanic {
 
 class CBrainSlot : public CGameObject {
+	DECLARE_MESSAGE_MAP;
+	bool SetFrameMsg(CSetFrameMsg *msg);
+	bool AddHeadPieceMsg(CAddHeadPieceMsg *msg);
+	bool EnterViewMsg(CEnterViewMsg *msg);
+	bool ActMsg(CActMsg *msg);
+	bool MouseDragStartMsg(CMouseDragStartMsg *msg);
 public:
-	static int _v1, _v2;
+	static int _added;
+	static bool _woken;
 public:
 	int _value1;
-	CString _value2;
+	CString _target;
 public:
 	CLASSDEF;
 	CBrainSlot() : CGameObject(), _value1(0) {}

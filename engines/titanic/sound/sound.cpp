@@ -26,12 +26,8 @@
 
 namespace Titanic {
 
-int CSoundItem::fn1() {
-	// TODO
-	return 0;
-}
-
-CSound::CSound(CGameManager *owner) : _gameManager(owner) {
+CSound::CSound(CGameManager *owner, Audio::Mixer *mixer) : 
+		_gameManager(owner), _soundManager(mixer) {
 	g_vm->_movieManager.setSoundManager(&_soundManager);
 }
 
@@ -47,36 +43,83 @@ void CSound::preLoad() {
 	_soundManager.preLoad();
 
 	if (_gameManager)
-		_gameManager->_musicRoom.preLoad();
+		_gameManager->_musicRoom.destroyMusicHandler();
 }
 
 void CSound::preEnterView(CViewItem *newView, bool isNewRoom) {
-	warning("CSound::preEnterView");
+	CNodeItem *node = newView->findNode();
+	double xp, yp, zp;
+	node->getPosition(xp, yp, zp);
+
+	double cosVal = cos(newView->_angle);
+	double sinVal = -sin(newView->_angle);
+
+	_soundManager.setListenerPosition(xp, yp, zp, cosVal, sinVal, 0, isNewRoom);
 }
 
-bool CSound::fn1(int val) {
-	if (val == 0 || val == -1) {
-		if (!_soundManager.proc14())
-			return true;
-	}
+bool CSound::isActive(int handle) const {
+	if (handle != 0 && handle != -1)
+		return _soundManager.isActive(handle);
 
 	return false;
 }
 
-void CSound::fn2(int handle) {
-	warning("TODO: CSound::fn3");
+void CSound::setVolume(uint handle, uint volume, uint seconds) {
+	_soundManager.setVolume(handle, volume, seconds);
 }
 
-void CSound::fn3(int handle, int val2, int val3) {
-	warning("TODO: CSound::fn3");
+void CSound::activateSound(CWaveFile *waveFile, DisposeAfterUse::Flag disposeAfterUse) {
+	for (CSoundItemList::iterator i = _sounds.begin(); i != _sounds.end(); ++i) {
+		CSoundItem *sound = *i;
+		if (sound->_waveFile == waveFile) {
+			sound->_active = true;
+			sound->_disposeAfterUse = disposeAfterUse;
+
+			// Anything bigger than 50Kb is automatically flagged to be free when finished
+			if (waveFile->size() > (50 * 1024))
+				sound->_disposeAfterUse = DisposeAfterUse::YES;
+			break;
+		}
+	}
 }
 
-int CSound::playSpeech(CDialogueFile *dialogueFile, int speechId, const CProximity &prox) {
-	warning("TODO: CSound::playSpeech");
-	return 0;
+void CSound::stopChannel(int channel) {
+	_soundManager.stopChannel(channel);
 }
 
-uint CSound::loadSound(const CString &name) {
+void CSound::checkSounds() {
+	for (CSoundItemList::iterator i = _sounds.begin(); i != _sounds.end(); ) {
+		CSoundItem *soundItem = *i;
+
+		if (soundItem->_active && soundItem->_disposeAfterUse == DisposeAfterUse::YES) {
+			if (!_soundManager.isActive(soundItem->_waveFile)) {
+				i = _sounds.erase(i);
+				delete soundItem;
+				continue;
+			}
+		}
+
+		++i;
+	}
+}
+
+void CSound::removeOldest() {
+	for (CSoundItemList::iterator i = _sounds.reverse_begin();
+			i != _sounds.end(); --i) {
+		CSoundItem *soundItem = *i;
+		if (soundItem->_active && !_soundManager.isActive(soundItem->_waveFile)) {
+			_sounds.remove(soundItem);
+			delete soundItem;
+			break;
+		}
+	}
+}
+
+CWaveFile *CSound::getTrueTalkSound(CDialogueFile *dialogueFile, int index) {
+	return loadSpeech(dialogueFile, index);
+}
+
+CWaveFile *CSound::loadSound(const CString &name) {
 	checkSounds();
 
 	// Check whether an entry for the given name is already active
@@ -86,16 +129,16 @@ uint CSound::loadSound(const CString &name) {
 			// Found it, so move it to the front of the list and return
 			_sounds.remove(soundItem);
 			_sounds.push_front(soundItem);
-			return soundItem->_soundHandle;
+			return soundItem->_waveFile;
 		}
 	}
 
 	// Create new sound item
 	CSoundItem *soundItem = new CSoundItem(name);
-	soundItem->_soundHandle = _soundManager.loadSound(name);
+	soundItem->_waveFile = _soundManager.loadSound(name);
 
-	if (!soundItem->_soundHandle) {
-		// Could load sound, so destroy new item and return
+	if (!soundItem->_waveFile) {
+		// Couldn't load sound, so destroy new item and return
 		delete soundItem;
 		return 0;
 	}
@@ -108,36 +151,81 @@ uint CSound::loadSound(const CString &name) {
 	if (_sounds.size() > 10)
 		removeOldest();
 
-	return soundItem->_soundHandle;
+	return soundItem->_waveFile;
 }
 
-void CSound::checkSounds() {
+int CSound::playSound(const CString &name, CProximity &prox) {
+	CWaveFile *waveFile  = loadSound(name);
+	if (!waveFile)
+		return -1;
+
+	prox._soundDuration = waveFile->getDuration();
+	if (prox._soundType != Audio::Mixer::kPlainSoundType)
+		waveFile->_soundType = prox._soundType;
+
+	activateSound(waveFile, prox._disposeAfterUse);
+
+	return _soundManager.playSound(*waveFile, prox);
+}
+
+CWaveFile *CSound::loadSpeech(CDialogueFile *dialogueFile, int speechId) {
+	checkSounds();
+
+	// Check whether an entry for the given name is already active
 	for (CSoundItemList::iterator i = _sounds.begin(); i != _sounds.end(); ++i) {
 		CSoundItem *soundItem = *i;
-		if (soundItem->_field24 && soundItem->_field28) {
-			if (_soundManager.isActive(soundItem->_soundHandle)) {
-				_sounds.remove(soundItem);
-				delete soundItem;
-			}
-		}
-	}
-}
-
-void CSound::removeOldest() {
-	for (CSoundItemList::iterator i = _sounds.reverse_begin();
-			i != _sounds.end(); --i) {
-		CSoundItem *soundItem = *i;
-		if (soundItem->_field28 && !_soundManager.isActive(soundItem->_soundHandle)) {
+		if (soundItem->_dialogueFileHandle == dialogueFile->getFile()
+				&& soundItem->_speechId == speechId) {
+			// Found it, so move it to the front of the list and return
 			_sounds.remove(soundItem);
-			delete soundItem;
-			break;
+			_sounds.push_front(soundItem);
+			return soundItem->_waveFile;
 		}
 	}
+
+	// Create new sound item
+	CSoundItem *soundItem = new CSoundItem(dialogueFile->getFile(), speechId);
+	soundItem->_waveFile = _soundManager.loadSpeech(dialogueFile, speechId);
+
+	if (!soundItem->_waveFile) {
+		// Couldn't load speech, so destroy new item and return
+		delete soundItem;
+		return 0;
+	}
+
+	// Add the item to the list of sounds
+	_sounds.push_front(soundItem);
+
+	// If there are more than 10 sounds loaded, remove the last one,
+	// which is the least recently used of all of them
+	if (_sounds.size() > 10)
+		removeOldest();
+
+	return soundItem->_waveFile;
 }
 
-CSoundItem *CSound::getTrueTalkSound(CDialogueFile *dialogueFile, int index) {
-	warning("TODO: CSound::getTrueTalkSound");
-	return nullptr;
+int CSound::playSpeech(CDialogueFile *dialogueFile, int speechId, CProximity &prox) {
+	CWaveFile *waveFile = loadSpeech(dialogueFile, speechId);
+	if (!waveFile)
+		return -1;
+
+	prox._soundDuration = waveFile->getDuration();
+	activateSound(waveFile, prox._disposeAfterUse);
+
+	return _soundManager.playSound(*waveFile, prox);
 }
 
-} // End of namespace Titanic z
+void CSound::stopSound(uint handle) {
+	_soundManager.stopSound(handle);
+}
+
+void CSound::setCanFree(int handle) {
+	if (handle != 0 && handle != -1)
+		_soundManager.setCanFree(handle);
+}
+
+void CSound::updateMixer() {
+	_soundManager.waveMixPump();
+}
+
+} // End of namespace Titanic

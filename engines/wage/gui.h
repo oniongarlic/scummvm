@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -51,20 +51,68 @@
 #include "common/str-array.h"
 #include "graphics/font.h"
 #include "graphics/managed_surface.h"
+#include "graphics/macgui/macwindowmanager.h"
+#include "graphics/macgui/macwindow.h"
+#include "graphics/macgui/macmenu.h"
+#include "graphics/macgui/macwindowborder.h"
+
 #include "common/events.h"
 #include "common/rect.h"
 
-#include "wage/macwindow.h"
-#include "wage/macwindowmanager.h"
+#include "common/file.h"
+#include "graphics/pixelformat.h"
+#include "image/bmp.h"
+
+#include "graphics/palette.h"
+
 
 namespace Wage {
 
-class Menu;
+using namespace Graphics::MacWindowConstants;
+
 class Scene;
 class WageEngine;
 
 enum {
 	kCursorHeight = 12
+};
+
+enum {
+	kFontStyleBold = 1,
+	kFontStyleItalic = 2,
+	kFontStyleUnderline = 4,
+	kFontStyleOutline = 8,
+	kFontStyleShadow = 16,
+	kFontStyleCondensed = 32,
+	kFontStyleExtended = 64
+};
+
+enum {
+	kMenuHighLevel = -1,
+	kMenuAbout = 0,
+	kMenuFile = 1,
+	kMenuEdit = 2,
+	kMenuCommands = 3,
+	kMenuWeapons = 4
+};
+
+enum {
+	kMenuActionAbout,
+	kMenuActionNew,
+	kMenuActionOpen,
+	kMenuActionClose,
+	kMenuActionSave,
+	kMenuActionSaveAs,
+	kMenuActionRevert,
+	kMenuActionQuit,
+
+	kMenuActionUndo,
+	kMenuActionCut,
+	kMenuActionCopy,
+	kMenuActionPaste,
+	kMenuActionClear,
+
+	kMenuActionCommand
 };
 
 class Gui {
@@ -108,6 +156,9 @@ private:
 	int calcTextY(int y);
 	void updateTextSelection(int x, int y);
 
+	void loadBorders();
+	void loadBorder(Graphics::MacWindow *target, Common::String filename, bool active);
+
 public:
 	Graphics::ManagedSurface _screen;
 	int _cursorX, _cursorY;
@@ -121,13 +172,14 @@ public:
 
 	Scene *_scene;
 
-	MacWindowManager _wm;
-	MacWindow *_sceneWindow;
-	MacWindow *_consoleWindow;
+	Graphics::MacWindowManager _wm;
+	Graphics::MacWindow *_sceneWindow;
+	Graphics::MacWindow *_consoleWindow;
 
 private:
+
 	Graphics::ManagedSurface _console;
-	Menu *_menu;
+	Graphics::Menu *_menu;
 	bool _sceneDirty;
 	bool _consoleDirty;
 

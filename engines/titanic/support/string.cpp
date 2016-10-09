@@ -58,6 +58,10 @@ CString CString::mid(uint start) const {
 	return mid(start, strSize - start);
 }
 
+CString CString::deleteRight(uint count) const {
+	return (count >= size()) ? CString() : left(size() - count);
+}
+
 int CString::indexOf(char c) const {
 	const char *charP = strchr(c_str(), c);
 	return charP ? charP - c_str() : -1;
@@ -120,6 +124,22 @@ CString CString::format(const char *fmt, ...) {
 	va_end(va);
 
 	return output;
+}
+
+bool CString::operator==(const CString &x) const {
+	return compareToIgnoreCase(x) == 0;
+}
+
+bool CString::operator==(const char *x) const {
+	return compareToIgnoreCase(x) == 0;
+}
+
+bool CString::operator!=(const CString &x) const {
+	return compareToIgnoreCase(x) != 0;
+}
+
+bool CString::operator!=(const char *x) const {
+	return compareToIgnoreCase(x) != 0;
 }
 
 } // End of namespace Titanic

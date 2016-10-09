@@ -79,9 +79,9 @@ void AdlEngine_v2::setupOpcodeTables() {
 	Opcode(o1_listInv);
 	Opcode(o2_moveItem);
 	Opcode(o1_setRoom);
-	Opcode(o1_setCurPic);
+	Opcode(o2_setCurPic);
 	// 0x08
-	Opcode(o1_setPic);
+	Opcode(o2_setPic);
 	Opcode(o1_printMsg);
 	Opcode(o1_setLight);
 	Opcode(o1_setDark);
@@ -250,6 +250,8 @@ void AdlEngine_v2::loadRoom(byte roomNr) {
 void AdlEngine_v2::showRoom() {
 	bool redrawPic = false;
 
+	_state.curPicture = getCurRoom().curPicture;
+
 	if (_state.room != _roomOnScreen) {
 		loadRoom(_state.room);
 		clearScreen();
@@ -257,15 +259,15 @@ void AdlEngine_v2::showRoom() {
 		if (!_state.isDark)
 			redrawPic = true;
 	} else {
-		if (getCurRoom().curPicture != _picOnScreen || _itemRemoved)
+		if (_state.curPicture != _picOnScreen || _itemRemoved)
 			redrawPic = true;
 	}
 
 	if (redrawPic) {
 		_roomOnScreen = _state.room;
-		_picOnScreen = getCurRoom().curPicture;
+		_picOnScreen = _state.curPicture;
 
-		drawPic(getCurRoom().curPicture);
+		drawPic(_state.curPicture);
 		_itemRemoved = false;
 		_itemsOnScreen = 0;
 
@@ -336,7 +338,7 @@ void AdlEngine_v2::drawItems() {
 			Common::Array<byte>::const_iterator pic;
 
 			for (pic = item->roomPictures.begin(); pic != item->roomPictures.end(); ++pic) {
-				if (*pic == getCurRoom().curPicture || *pic == IDI_ANY) {
+				if (*pic == _state.curPicture || *pic == IDI_ANY) {
 					drawItem(*item, item->position);
 					break;
 				}
@@ -357,7 +359,81 @@ DataBlockPtr AdlEngine_v2::readDataBlockPtr(Common::ReadStream &f) const {
 	if (track == 0 && sector == 0 && offset == 0 && size == 0)
 		return DataBlockPtr();
 
+	adjustDataBlockPtr(track, sector, offset, size);
+
 	return _disk->getDataBlock(track, sector, offset, size);
+}
+
+void AdlEngine_v2::loadItems(Common::ReadStream &stream) {
+	byte id;
+	while ((id = stream.readByte()) != 0xff && !stream.eos() && !stream.err()) {
+		Item item = Item();
+		item.id = id;
+		item.noun = stream.readByte();
+		item.room = stream.readByte();
+		item.picture = stream.readByte();
+		item.isLineArt = stream.readByte(); // Disk number in later games
+		item.position.x = stream.readByte();
+		item.position.y = stream.readByte();
+		item.state = stream.readByte();
+		item.description = stream.readByte();
+
+		stream.readByte(); // Struct size
+
+		byte picListSize = stream.readByte();
+
+		// Flag to keep track of what has been drawn on the screen
+		stream.readByte();
+
+		for (uint i = 0; i < picListSize; ++i)
+			item.roomPictures.push_back(stream.readByte());
+
+		_state.items.push_back(item);
+	}
+
+	if (stream.eos() || stream.err())
+		error("Error loading items");
+}
+
+void AdlEngine_v2::loadRooms(Common::ReadStream &stream, byte count) {
+	for (uint i = 0; i < count; ++i) {
+		Room room;
+
+		stream.readByte(); // number
+		for (uint j = 0; j < 6; ++j)
+			room.connections[j] = stream.readByte();
+		room.data = readDataBlockPtr(stream);
+		room.picture = stream.readByte();
+		room.curPicture = stream.readByte();
+		room.isFirstTime = stream.readByte();
+
+		_state.rooms.push_back(room);
+	}
+
+	if (stream.eos() || stream.err())
+		error("Error loading rooms");
+}
+
+void AdlEngine_v2::loadMessages(Common::ReadStream &stream, byte count) {
+	for (uint i = 0; i < count; ++i)
+		_messages.push_back(readDataBlockPtr(stream));
+}
+
+void AdlEngine_v2::loadPictures(Common::ReadStream &stream) {
+	byte picNr;
+	while ((picNr = stream.readByte()) != 0xff) {
+		if (stream.eos() || stream.err())
+			error("Error reading global pic list");
+
+		_pictures[picNr] = readDataBlockPtr(stream);
+	}
+}
+
+void AdlEngine_v2::loadItemPictures(Common::ReadStream &stream, byte count) {
+	for (uint i = 0; i < count; ++i) {
+		stream.readByte(); // number
+		_itemPics.push_back(readDataBlockPtr(stream));
+	}
 }
 
 int AdlEngine_v2::o2_isFirstTime(ScriptEnv &e) {
@@ -423,6 +499,20 @@ int AdlEngine_v2::o2_moveItem(ScriptEnv &e) {
 
 	item.room = room;
 	return 2;
+}
+
+int AdlEngine_v2::o2_setCurPic(ScriptEnv &e) {
+	OP_DEBUG_1("\tSET_CURPIC(%d)", e.arg(1));
+
+	getCurRoom().curPicture = _state.curPicture = e.arg(1);
+	return 1;
+}
+
+int AdlEngine_v2::o2_setPic(ScriptEnv &e) {
+	OP_DEBUG_1("\tSET_PIC(%d)", e.arg(1));
+
+	getCurRoom().picture = getCurRoom().curPicture = _state.curPicture = e.arg(1);
+	return 1;
 }
 
 int AdlEngine_v2::o2_moveAllItems(ScriptEnv &e) {

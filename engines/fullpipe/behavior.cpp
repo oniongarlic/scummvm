@@ -49,6 +49,8 @@ void BehaviorManager::clear() {
 }
 
 void BehaviorManager::initBehavior(Scene *sc, GameVar *var) {
+	debugC(2, kDebugBehavior, "BehaviorManager::initBehavior(%d, %s)", sc->_sceneId, transCyrillic((byte *)var->_varName));
+
 	clear();
 	_scene = sc;
 
@@ -58,7 +60,10 @@ void BehaviorManager::initBehavior(Scene *sc, GameVar *var) {
 	if (!behvar)
 		return;
 
+	debugC(3, kDebugBehavior, "BehaviorManager::initBehavior. have Variable");
+
 	for (GameVar *subvar = behvar->_subVars; subvar; subvar = subvar->_nextVarObj) {
+		debugC(3, kDebugBehavior, "BehaviorManager::initBehavior. subVar %s", transCyrillic((byte *)subvar->_varName));
 		if (!strcmp(subvar->_varName, "AMBIENT")) {
 			behinfo = new BehaviorInfo;
 			behinfo->initAmbientBehavior(subvar, sc);
@@ -66,8 +71,8 @@ void BehaviorManager::initBehavior(Scene *sc, GameVar *var) {
 			_behaviors.push_back(behinfo);
 		} else {
 			StaticANIObject *ani = sc->getStaticANIObject1ByName(subvar->_varName, -1);
-			if (ani)
-				for (uint i = 0; i < sc->_staticANIObjectList1.size(); i++)
+			if (ani) {
+				for (uint i = 0; i < sc->_staticANIObjectList1.size(); i++) {
 					if (((StaticANIObject *)sc->_staticANIObjectList1[i])->_id == ani->_id) {
 						behinfo = new BehaviorInfo;
 						behinfo->initObjectBehavior(subvar, sc, ani);
@@ -75,6 +80,8 @@ void BehaviorManager::initBehavior(Scene *sc, GameVar *var) {
 
 						_behaviors.push_back(behinfo);
 					}
+				}
+			}
 		}
 	}
 }
@@ -83,7 +90,7 @@ void BehaviorManager::updateBehaviors() {
 	if (!_isActive)
 		return;
 
-	debugC(4, kDebugAnimation, "BehaviorManager::updateBehaviors()");
+	debugC(6, kDebugBehavior, "BehaviorManager::updateBehaviors()");
 	for (uint i = 0; i < _behaviors.size(); i++) {
 		BehaviorInfo *beh = _behaviors[i];
 
@@ -122,7 +129,7 @@ void BehaviorManager::updateBehaviors() {
 }
 
 void BehaviorManager::updateBehavior(BehaviorInfo *behaviorInfo, BehaviorAnim *entry) {
-	debugC(4, kDebugAnimation, "BehaviorManager::updateBehavior() %d", entry->_movesCount);
+	debugC(7, kDebugBehavior, "BehaviorManager::updateBehavior() moves: %d", entry->_movesCount);
 	for (int i = 0; i < entry->_movesCount; i++) {
 		BehaviorMove *bhi = entry->_behaviorMoves[i];
 		if (!(bhi->_flags & 1)) {
@@ -144,7 +151,7 @@ void BehaviorManager::updateBehavior(BehaviorInfo *behaviorInfo, BehaviorAnim *e
 }
 
 void BehaviorManager::updateStaticAniBehavior(StaticANIObject *ani, int delay, BehaviorAnim *bhe) {
-	debugC(4, kDebugAnimation, "BehaviorManager::updateStaticAniBehavior(%s)", transCyrillic((byte *)ani->_objectName));
+	debugC(6, kDebugBehavior, "BehaviorManager::updateStaticAniBehavior(%s)", transCyrillic((byte *)ani->_objectName));
 
 	MessageQueue *mq = 0;
 
@@ -174,7 +181,7 @@ void BehaviorManager::updateStaticAniBehavior(StaticANIObject *ani, int delay, B
 	}
 
 	if (mq) {
-		mq->replaceKeyCode(-1, ani->_okeyCode);
+		mq->setParamInt(-1, ani->_odelay);
 		mq->chain(ani);
 	}
 }
@@ -199,7 +206,7 @@ void BehaviorManager::setFlagByStaticAniObject(StaticANIObject *ani, int flag) {
 
 		if (ani == beh->_ani) {
 			if (flag)
-				beh->_flags &= 0xfe;
+				beh->_flags &= 0xfffffffe;
 			else
 				beh->_flags |= 1;
 		}
@@ -224,7 +231,7 @@ BehaviorMove *BehaviorManager::getBehaviorMoveByMessageQueueDataId(StaticANIObje
 }
 
 void BehaviorInfo::clear() {
-	_ani = 0;
+	_ani = NULL;
 	_staticsId = 0;
 	_counter = 0;
 	_counterMax = 0;
@@ -236,7 +243,7 @@ void BehaviorInfo::clear() {
 }
 
 void BehaviorInfo::initAmbientBehavior(GameVar *var, Scene *sc) {
-	debugC(4, kDebugAnimation, "BehaviorInfo::initAmbientBehavior(%s)", transCyrillic((byte *)var->_varName));
+	debugC(4, kDebugBehavior, "BehaviorInfo::initAmbientBehavior(%s)", transCyrillic((byte *)var->_varName));
 
 	clear();
 	_animsCount = 1;
@@ -260,7 +267,8 @@ void BehaviorInfo::initAmbientBehavior(GameVar *var, Scene *sc) {
 }
 
 void BehaviorInfo::initObjectBehavior(GameVar *var, Scene *sc, StaticANIObject *ani) {
-	debugC(4, kDebugAnimation, "BehaviorInfo::initObjectBehavior(%s)", transCyrillic((byte *)var->_varName));
+	Common::String s((char *)transCyrillic((byte *)var->_varName));
+	debugC(4, kDebugBehavior, "BehaviorInfo::initObjectBehavior(%s, %d, %s)", s.c_str(), sc->_sceneId, transCyrillic((byte *)ani->_objectName));
 
 	clear();
 
@@ -303,7 +311,7 @@ BehaviorAnim::BehaviorAnim(GameVar *var, Scene *sc, StaticANIObject *ani, int *m
 	_staticsId = 0;
 	_movesCount = 0;
 
-	*minDelay = 100000000;
+	*minDelay = 0xffffffff;
 
 	int totalPercent = 0;
 	_flags = 0;

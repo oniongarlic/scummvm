@@ -33,6 +33,7 @@
 #include "titanic/carry/hose.h"
 #include "titanic/core/saveable_object.h"
 #include "titanic/game/get_lift_eye2.h"
+#include "titanic/game/lemon_dispensor.h"
 #include "titanic/game/television.h"
 #include "titanic/game/parrot/parrot_lobby_object.h"
 #include "titanic/game/sgt/sgt_navigation.h"
@@ -58,6 +59,7 @@ TitanicEngine::TitanicEngine(OSystem *syst, const TitanicGameDescription *gameDe
 	_screenManager = nullptr;
 	_scriptHandler = nullptr;
 	_script = nullptr;
+	CMusicRoom::_musicHandler = nullptr;
 }
 
 TitanicEngine::~TitanicEngine() {
@@ -83,13 +85,14 @@ void TitanicEngine::initialize() {
 	DebugMan.addDebugChannel(kDebugSound, "sound", "Sound and Music handling");
 
 	_debugger = new Debugger(this);
-	_filesManager = new CFilesManager();
+	_filesManager = new CFilesManager(this);
 
 	CSaveableObject::initClassList();
 	CEnterExitFirstClassState::init();
 	CGameObject::init();
 	CGetLiftEye2::init();
 	CHose::init();
+	CLemonDispensor::init();
 	CMovie::init();
 	CParrotLobbyObject::init();
 	CSGTNavigation::init();
@@ -97,8 +100,8 @@ void TitanicEngine::initialize() {
 	CExitPellerator::init();
 	CEnterExitSecClassMiniLift::init();
 	CTelevision::init();
+	CVideoSurface::setup();
 	TTnpcScript::init();
-	OSVideoSurface::setup();
 
 	_events = new Events(this);
 	_screen = new Graphics::Screen(0, 0);

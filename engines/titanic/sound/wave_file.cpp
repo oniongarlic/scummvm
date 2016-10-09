@@ -20,8 +20,81 @@
  *
  */
 
+#include "audio/decoders/wave.h"
+#include "common/memstream.h"
 #include "titanic/sound/wave_file.h"
+#include "titanic/sound/sound_manager.h"
+#include "titanic/support/simple_file.h"
 
 namespace Titanic {
+
+CWaveFile::CWaveFile() : _owner(nullptr), _stream(nullptr),
+		_soundType(Audio::Mixer::kPlainSoundType) {
+}
+
+CWaveFile::CWaveFile(QSoundManager *owner) : _owner(owner), _stream(nullptr),
+		_soundType(Audio::Mixer::kPlainSoundType) {
+}
+
+CWaveFile::~CWaveFile() {
+	if (_stream) {
+		_owner->soundFreed(_soundHandle);
+		delete _stream;
+	}
+}
+
+uint CWaveFile::getDuration() const {
+	return _stream ? _stream->getLength().secs() : 0;
+}
+
+bool CWaveFile::loadSound(const CString &name) {
+	assert(!_stream);
+
+	StdCWadFile file;
+	if (!file.open(name))
+		return false;
+
+	Common::SeekableReadStream *stream = file.readStream();
+	_size = stream->size();
+	_stream = Audio::makeWAVStream(stream->readStream(_size), DisposeAfterUse::YES);
+	_soundType = Audio::Mixer::kSFXSoundType;
+
+	return true;
+}
+
+bool CWaveFile::loadSpeech(CDialogueFile *dialogueFile, int speechIndex) {
+	DialogueResource *res = dialogueFile->openWaveEntry(speechIndex);
+	if (!res)
+		return false;
+
+	byte *data = (byte *)malloc(res->_size);
+	dialogueFile->read(res, data, res->_size);
+
+	_size = res->_size;
+	_stream = Audio::makeWAVStream(new Common::MemoryReadStream(data, _size, DisposeAfterUse::YES),
+		DisposeAfterUse::YES);
+	_soundType = Audio::Mixer::kSpeechSoundType;
+
+	return true;
+}
+
+bool CWaveFile::loadMusic(const CString &name) {
+	assert(!_stream);
+
+	StdCWadFile file;
+	if (!file.open(name))
+		return false;
+
+	Common::SeekableReadStream *stream = file.readStream();
+	_size = stream->size();
+	_stream = Audio::makeWAVStream(stream->readStream(_size), DisposeAfterUse::YES);
+	_soundType = Audio::Mixer::kMusicSoundType;
+
+	return true;
+}
+
+uint CWaveFile::getFrequency() const {
+	return _stream->getRate();
+}
 
 } // End of namespace Titanic z

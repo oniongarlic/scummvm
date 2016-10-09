@@ -84,7 +84,7 @@ bool DWordArray::load(MfcArchive &file) {
 	resize(count);
 
 	for (int i = 0; i < count; i++) {
-		int32 t = file.readUint32LE();
+		int32 t = file.readSint32LE();
 
 		push_back(t);
 	}
@@ -107,6 +107,17 @@ char *MfcArchive::readPascalString(bool twoByte) {
 	debugC(9, kDebugLoading, "readPascalString: %d <%s>", len, transCyrillic((byte *)tmp));
 
 	return tmp;
+}
+
+void MfcArchive::writePascalString(const char *str, bool twoByte) {
+	int len = strlen(str);
+
+	if (twoByte)
+		writeUint16LE(len);
+	else
+		writeByte(len);
+
+	write(str, len);
 }
 
 MemoryObject::MemoryObject() {
@@ -347,14 +358,26 @@ static CObject *createObject(int objectId) {
 }
 
 MfcArchive::MfcArchive(Common::SeekableReadStream *stream) {
+	_stream = stream;
+	_wstream = 0;
+
+	init();
+}
+
+MfcArchive::MfcArchive(Common::WriteStream *stream) {
+	_wstream = stream;
+	_stream = 0;
+
+	init();
+}
+
+void MfcArchive::init() {
 	for (int i = 0; classMap[i].name; i++) {
 		_classMap[classMap[i].name] = classMap[i].id;
 	}
 
 	_lastIndex = 1;
 	_level = 0;
-
-	_stream = stream;
 
 	_objectMap.push_back(0);
 	_objectIdMap.push_back(kNullObject);
@@ -379,7 +402,9 @@ CObject *MfcArchive::parseClass(bool *isCopyReturned) {
 
 	debugC(7, kDebugLoading, "parseClass::obTag = %d (%04x)  at 0x%08x", obTag, obTag, pos() - 2);
 
-	if (obTag == 0xffff) {
+	if (obTag == 0x0000) {
+		return NULL;
+	} else if (obTag == 0xffff) {
 		int schema = readUint16LE();
 
 		debugC(7, kDebugLoading, "parseClass::schema = %d", schema);
@@ -434,6 +459,36 @@ CObject *MfcArchive::parseClass(bool *isCopyReturned) {
 	return res;
 }
 
+void MfcArchive::writeObject(CObject *obj) {
+	if (obj == NULL) {
+		writeUint16LE(0);
+	} else if (_objectHash.contains(obj)) {
+		int32 idx = _objectHash[obj];
+
+		if (idx < 0x7fff) {
+			writeUint16LE(idx);
+		} else {
+			writeUint16LE(0x7fff);
+			writeUint32LE(idx);
+		}
+	} else {
+		writeUint16LE(0xffff); // New class
+		_objectHash[obj] = _lastIndex++;
+
+		writeUint16LE(1); // schema
+
+		switch (obj->_objtype) {
+		case kObjTypeGameVar:
+			writePascalString(lookupObjectId(kGameVar), true); // Two byte counter
+			break;
+		default:
+			error("Unhandled save for object type: %d", obj->_objtype);
+		}
+
+		obj->save(*this);
+	}
+}
+
 char *genFileName(int superId, int sceneId, const char *ext) {
 	char *s = (char *)calloc(256, 1);
 
@@ -473,6 +528,19 @@ byte *transCyrillic(byte *s) {
 	int i = 0;
 
 	for (byte *p = s; *p; p++) {
+#ifdef WIN32
+		// translate from cp1251 to cp866
+		byte c = *p;
+		if (c >= 0xC0 && c <= 0xEF)
+			c = c - 0xC0 + 0x80;
+		else if (c >= 0xF0 && c <= 0xFF)
+			c = c - 0xF0 + 0xE0;
+		else if (c == 0xA8)
+			c = 0xF0;
+		else if (c == 0xB8)
+			c = 0xF1;
+		tmp[i++] = c;
+#else
 		if (*p < 128) {
 			tmp[i++] = *p;
 		} else {
@@ -487,6 +555,7 @@ byte *transCyrillic(byte *s) {
 
 			assert(trans[j]);
 		}
+#endif
 	}
 
 	tmp[i] = 0;

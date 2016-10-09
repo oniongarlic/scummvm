@@ -159,7 +159,7 @@ static const ResourceType s_resTypeMapSci21[] = {
 	kResourceTypeView, kResourceTypePic, kResourceTypeScript, kResourceTypeAnimation,     // 0x00-0x03
 	kResourceTypeSound, kResourceTypeEtc, kResourceTypeVocab, kResourceTypeFont,          // 0x04-0x07
 	kResourceTypeCursor, kResourceTypePatch, kResourceTypeBitmap, kResourceTypePalette,   // 0x08-0x0B
-	kResourceTypeInvalid, kResourceTypeAudio, kResourceTypeSync, kResourceTypeMessage,    // 0x0C-0x0F
+	kResourceTypeAudio, kResourceTypeAudio, kResourceTypeSync, kResourceTypeMessage,      // 0x0C-0x0F
 	kResourceTypeMap, kResourceTypeHeap, kResourceTypeChunk, kResourceTypeAudio36,        // 0x10-0x13
 	kResourceTypeSync36, kResourceTypeTranslation, kResourceTypeRobot, kResourceTypeVMD,  // 0x14-0x17
 	kResourceTypeDuck, kResourceTypeClut, kResourceTypeTGA, kResourceTypeZZZ              // 0x18-0x1B
@@ -573,6 +573,9 @@ Resource *ResourceManager::testResource(ResourceId id) {
 }
 
 int ResourceManager::addAppropriateSources() {
+#ifdef ENABLE_SCI32
+	_multiDiscAudio = false;
+#endif
 	if (Common::File::exists("resource.map")) {
 		// SCI0-SCI2 file naming scheme
 		ResourceSource *map = addExternalMap("resource.map");
@@ -614,6 +617,10 @@ int ResourceManager::addAppropriateSources() {
 		// We need to have the same number of maps as resource archives
 		if (mapFiles.empty() || files.empty() || mapFiles.size() != files.size())
 			return 0;
+
+		if (Common::File::exists("resaud.001")) {
+			_multiDiscAudio = true;
+		}
 
 		for (Common::ArchiveMemberList::const_iterator mapIterator = mapFiles.begin(); mapIterator != mapFiles.end(); ++mapIterator) {
 			Common::String mapName = (*mapIterator)->getName();
@@ -659,6 +666,7 @@ int ResourceManager::addAppropriateSourcesForDetection(const Common::FSList &fsl
 #ifdef ENABLE_SCI32
 	ResourceSource *sci21PatchMap = 0;
 	const Common::FSNode *sci21PatchRes = 0;
+	_multiDiscAudio = false;
 #endif
 
 	// First, find resource.map
@@ -859,6 +867,13 @@ void ResourceManager::addResourcesFromChunk(uint16 id) {
 	scanNewSources();
 }
 
+void ResourceManager::findDisc(const int16 discNo) {
+	// Since all resources are expected to be copied from the original discs
+	// into a single game directory, this call just records the number of the CD
+	// that the game has requested
+	_currentDiscNo = discNo;
+}
+
 #endif
 
 void ResourceManager::freeResourceSources() {
@@ -878,7 +893,9 @@ void ResourceManager::init() {
 	_LRU.clear();
 	_resMap.clear();
 	_audioMapSCI1 = NULL;
-
+#ifdef ENABLE_SCI32
+	_currentDiscNo = 1;
+#endif
 	// FIXME: put this in an Init() function, so that we can error out if detection fails completely
 
 	_mapVersion = detectMapVersion();
@@ -931,7 +948,7 @@ void ResourceManager::init() {
 	// cache, leading to constant decompression of picture resources
 	// and making the renderer very slow.
 	if (getSciVersion() >= SCI_VERSION_2) {
-		_maxMemoryLRU = 2048 * 1024; // 2MiB
+		_maxMemoryLRU = 4096 * 1024; // 4MiB
 	}
 
 	switch (_viewType) {
@@ -1477,6 +1494,12 @@ void ResourceManager::readResourcePatchesBase36() {
 		for (Common::ArchiveMemberList::const_iterator x = files.begin(); x != files.end(); ++x) {
 			name = (*x)->getName();
 
+			// The S/T prefixes often conflict with non-patch files and generate
+			// spurious warnings about invalid patches
+			if (name.hasSuffix(".DLL") || name.hasSuffix(".EXE") || name.hasSuffix(".TXT")) {
+				continue;
+			}
+
 			ResourceId resource36 = convertPatchNameBase36((ResourceType)i, name);
 
 			/*
@@ -1738,11 +1761,42 @@ int ResourceManager::readResourceMapSCI1(ResourceSource *map) {
 				// if we use the first entries in the resource file, half of the
 				// game will be English and umlauts will also be missing :P
 				if (resource->_source->getSourceType() == kSourceVolume) {
+					// Maps are read during the scanning process (below), so
+					// need to be treated as unallocated in order for the new
+					// data from this volume to be picked up and used
+					if (resId.getType() == kResourceTypeMap) {
+						resource->_status = kResStatusNoMalloc;
+					}
 					resource->_source = source;
 					resource->_fileOffset = fileOffset;
 					resource->size = 0;
 				}
 			}
+
+#ifdef ENABLE_SCI32
+			// Different CDs may have different audio maps on each disc. The
+			// ResourceManager does not know how to deal with this; it expects
+			// each resource ID to be unique across an entire game. To work
+			// around this problem, all audio maps from this disc must be
+			// processed immediately, since they will be replaced by the audio
+			// map from the next disc on the next call to readResourceMapSCI1
+			if (_multiDiscAudio && resId.getType() == kResourceTypeMap) {
+				IntMapResourceSource *audioMap = static_cast<IntMapResourceSource *>(addSource(new IntMapResourceSource("MAP", mapVolumeNr, resId.getNumber())));
+				Common::String volumeName;
+				if (resId.getNumber() == 65535) {
+					volumeName = Common::String::format("RESSFX.%03d", mapVolumeNr);
+				} else {
+					volumeName = Common::String::format("RESAUD.%03d", mapVolumeNr);
+				}
+
+				ResourceSource *audioVolume = addSource(new AudioVolumeResourceSource(this, volumeName, audioMap, mapVolumeNr));
+				if (!audioMap->_scanned) {
+					audioVolume->_scanned = true;
+					audioMap->_scanned = true;
+					audioMap->scanSource(this);
+				}
+			}
+#endif
 		}
 	}
 

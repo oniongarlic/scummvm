@@ -49,18 +49,23 @@ CMainGameWindow::CMainGameWindow(TitanicEngine *vm): _vm(vm),
 CMainGameWindow::~CMainGameWindow() {
 }
 
-bool CMainGameWindow::Create() {
-	Image image;
-	image.load("TITANIC");
-
-	// TODO: Stuff
-	return true;
-}
-
 void CMainGameWindow::applicationStarting() {
 	// Set the video mode
 	CScreenManager *screenManager = CScreenManager::setCurrent();
 	screenManager->setMode(640, 480, 16, 0, true);
+
+#if 0
+	// Show the initial copyright & info screen for the game
+	if (gDebugLevel <= 0) {
+		Image image;
+		image.load("Bitmap/TITANIC");
+		_vm->_screen->blitFrom(image, Point(
+			SCREEN_WIDTH / 2 - image.w / 2,
+			SCREEN_HEIGHT / 2 - image.h / 2
+		));
+		_vm->_events->sleep(5000);
+	}
+#endif
 
 	// Set up the game project, and get game slot
 	int saveSlot = getSavegameSlot();
@@ -69,15 +74,13 @@ void CMainGameWindow::applicationStarting() {
 
 	// Create game view and manager
 	_gameView = new CSTGameView(this);
-	_gameManager = new CGameManager(_project, _gameView);
+	_gameManager = new CGameManager(_project, _gameView, g_vm->_mixer);
 	_gameView->setGameManager(_gameManager);
 
 	// Load either a new game or selected existing save
 	_project->loadGame(saveSlot);
 	_inputAllowed = true;
 	_gameManager->_gameState.setMode(GSMODE_INTERACTIVE);
-
-	// TODO: Cursor/image
 
 	// Generate starting messages for entering the view, node, and room.
 	// Note the old fields are nullptr, since there's no previous view/node/room
@@ -157,8 +160,9 @@ void CMainGameWindow::draw() {
 			scrManager->drawCursors();
 			break;
 
-		case GSMODE_5:
-			g_vm->_filesManager->debug(scrManager);
+		case GSMODE_INSERT_CD:
+			scrManager->drawCursors();
+			_vm->_filesManager->insertCD(scrManager);
 			break;
 
 		case GSMODE_PENDING_LOAD:
@@ -216,7 +220,7 @@ void CMainGameWindow::drawViewContents(CScreenManager *screenManager) {
 }
 
 void CMainGameWindow::mouseChanged() {
-	if (_gameManager->_gameState._mode != GSMODE_5)
+	if (_gameManager->_gameState._mode != GSMODE_INSERT_CD)
 		_gameManager->update();
 }
 

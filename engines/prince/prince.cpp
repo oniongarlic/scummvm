@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -219,33 +219,40 @@ void PrinceEngine::init() {
 
 	debugEngine("Adding all path: %s", gameDataDir.getPath().c_str());
 
-	PtcArchive *all = new PtcArchive();
-	if (!all->open("all/databank.ptc"))
-		error("Can't open all/databank.ptc");
+	if (getLanguage() != Common::RU_RUS) {
+		PtcArchive *all = new PtcArchive();
+		if (!all->open("all/databank.ptc"))
+			error("Can't open all/databank.ptc");
 
-	PtcArchive *voices = new PtcArchive();
-	if (!voices->open("voices/databank.ptc"))
-		error("Can't open voices/databank.ptc");
+		PtcArchive *voices = new PtcArchive();
+		if (!voices->open("voices/databank.ptc"))
+			error("Can't open voices/databank.ptc");
 
-	PtcArchive *sound = new PtcArchive();
-	if (!sound->open("sound/databank.ptc"))
-		error("Can't open sound/databank.ptc");
+		PtcArchive *sound = new PtcArchive();
+		if (!sound->open("sound/databank.ptc"))
+			error("Can't open sound/databank.ptc");
 
-	PtcArchive *translation = new PtcArchive();
-	if (getLanguage() != Common::PL_POL && getLanguage() != Common::DE_DEU) {
-		if (!translation->openTranslation("all/prince_translation.dat"))
-			error("Can't open prince_translation.dat");
+		SearchMan.addSubDirectoryMatching(gameDataDir, "all");
+
+		// Prefix the archive names, so that "all" doesn't conflict with the
+		// "all" directory, if that happens to be named in all lower case.
+		// It isn't on the CD, but we should try to stay case-insensitive.
+		SearchMan.add("_all", all);
+		SearchMan.add("_voices", voices);
+		SearchMan.add("_sound", sound);
+	} else {
+		SearchMan.addSubDirectoryMatching(gameDataDir, "all");
+		SearchMan.addSubDirectoryMatching(gameDataDir, "voices");
+		SearchMan.addSubDirectoryMatching(gameDataDir, "sound");
 	}
 
-	SearchMan.addSubDirectoryMatching(gameDataDir, "all");
+	if (getFeatures() & GF_TRANSLATED) {
+		PtcArchive *translation = new PtcArchive();
+		if (getFeatures() & GF_TRANSLATED) {
+			if (!translation->openTranslation("all/prince_translation.dat"))
+				error("Can't open prince_translation.dat");
+		}
 
-	// Prefix the archive names, so that "all" doesn't conflict with the
-	// "all" directory, if that happens to be named in all lower case.
-	// It isn't on the CD, but we should try to stay case-insensitive.
-	SearchMan.add("_all", all);
-	SearchMan.add("_voices", voices);
-	SearchMan.add("_sound", sound);
-	if (getLanguage() != Common::PL_POL && getLanguage() != Common::DE_DEU) {
 		SearchMan.add("translation", translation);
 	}
 
@@ -275,10 +282,10 @@ void PrinceEngine::init() {
 	_debugger = new Debugger(this, _flags);
 
 	_variaTxt = new VariaTxt();
-	if (getLanguage() == Common::PL_POL || getLanguage() == Common::DE_DEU) {
-		Resource::loadResource(_variaTxt, "variatxt.dat", true);
-	} else {
+	if (getFeatures() & GF_TRANSLATED) {
 		Resource::loadResource(_variaTxt, "variatxt_translate.dat", true);
+	} else {
+		Resource::loadResource(_variaTxt, "variatxt.dat", true);
 	}
 
 	_cursor1 = new Cursor();
@@ -288,10 +295,10 @@ void PrinceEngine::init() {
 	Resource::loadResource(_cursor3, "mouse2.cur", true);
 
 	Common::SeekableReadStream *talkTxtStream;
-	if (getLanguage() == Common::PL_POL || getLanguage() == Common::DE_DEU) {
-		talkTxtStream = SearchMan.createReadStreamForMember("talktxt.dat");
-	} else {
+	if (getFeatures() & GF_TRANSLATED) {
 		talkTxtStream = SearchMan.createReadStreamForMember("talktxt_translate.dat");
+	} else {
+		talkTxtStream = SearchMan.createReadStreamForMember("talktxt.dat");
 	}
 	if (!talkTxtStream) {
 		error("Can't load talkTxtStream");
@@ -304,10 +311,10 @@ void PrinceEngine::init() {
 	delete talkTxtStream;
 
 	Common::SeekableReadStream *invTxtStream;
-	if (getLanguage() == Common::PL_POL || getLanguage() == Common::DE_DEU) {
-		invTxtStream = SearchMan.createReadStreamForMember("invtxt.dat");
-	} else {
+	if (getFeatures() & GF_TRANSLATED) {
 		invTxtStream = SearchMan.createReadStreamForMember("invtxt_translate.dat");
+	} else {
+		invTxtStream = SearchMan.createReadStreamForMember("invtxt.dat");
 	}
 	if (!invTxtStream) {
 		error("Can't load invTxtStream");
@@ -384,10 +391,10 @@ void PrinceEngine::init() {
 	_shadowLine = (byte *)malloc(kShadowLineArraySize);
 
 	Common::SeekableReadStream *creditsDataStream;
-	if (getLanguage() == Common::PL_POL || getLanguage() == Common::DE_DEU) {
-		creditsDataStream = SearchMan.createReadStreamForMember("credits.dat");
-	} else {
+	if (getFeatures() & GF_TRANSLATED) {
 		creditsDataStream = SearchMan.createReadStreamForMember("credits_translate.dat");
+	} else {
+		creditsDataStream = SearchMan.createReadStreamForMember("credits.dat");
 	}
 	if (!creditsDataStream) {
 		error("Can't load creditsDataStream");
@@ -398,7 +405,7 @@ void PrinceEngine::init() {
 	creditsDataStream->read(_creditsData, _creditsDataSize);
 	delete creditsDataStream;
 
-	if (getLanguage() != Common::PL_POL && getLanguage() != Common::DE_DEU) {
+	if (getFeatures() & GF_TRANSLATED) {
 		loadMobTranslationTexts();
 	}
 }
@@ -551,7 +558,7 @@ bool PrinceEngine::loadLocation(uint16 locationNr) {
 	} else if (getGameType() == kPrinceDataPL) {
 		Resource::loadResource(_mobList, "mob.lst", false);
 	}
-	if (getLanguage() != Common::PL_POL && getLanguage() != Common::DE_DEU) {
+	if (getFeatures() & GF_TRANSLATED) {
 		// update Mob texts for translated version
 		setMobTranslationTexts();
 	}

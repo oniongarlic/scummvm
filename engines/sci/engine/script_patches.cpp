@@ -103,6 +103,9 @@ static const char *const selectorNameTable[] = {
 	"modNum",       // King's Quest 6 CD / Laura Bow 2 CD for audio+text support
 	"cycler",       // Space Quest 4 / system selector
 	"setLoop",      // Laura Bow 1 Colonel's Bequest
+#ifdef ENABLE_SCI32
+	"newWith",      // SCI2 array script
+#endif
 	NULL
 };
 
@@ -132,7 +135,85 @@ enum ScriptPatcherSelectors {
 	SELECTOR_modNum,
 	SELECTOR_cycler,
 	SELECTOR_setLoop
+#ifdef ENABLE_SCI32
+	,
+	SELECTOR_newWith
+#endif
 };
+
+#ifdef ENABLE_SCI32
+// It is not possible to change the directory for ScummVM save games, so disable
+// the "change directory" button in the standard save dialogue
+static const uint16 sci2ChangeDirSignature[] = {
+	0x72, SIG_ADDTOOFFSET(+2), // lofsa changeDirI
+	0x4a, SIG_UINT16(0x04),    // send 4
+	SIG_MAGICDWORD,
+	0x36,                      // push
+	0x35, 0xF7,                // ldi $f7
+	0x12,                      // and
+	0x36,                      // push
+	SIG_END
+};
+
+static const uint16 sci2ChangeDirPatch[] = {
+	PATCH_ADDTOOFFSET(+3),    // lofsa changeDirI
+	PATCH_ADDTOOFFSET(+3),    // send 4
+	PATCH_ADDTOOFFSET(+1),    // push
+	0x35, 0x00,               // ldi 0
+	PATCH_END
+};
+
+// Save game script hardcodes the maximum number of save games to 20, but
+// this is an artificial constraint that does not apply to ScummVM
+static const uint16 sci2NumSavesSignature1[] = {
+	SIG_MAGICDWORD,
+	0x8b, 0x02,                    // lsl local[2]
+	0x35, 0x14,                    // ldi 20
+	0x22,                          // lt?
+	SIG_END
+};
+
+static const uint16 sci2NumSavesPatch1[] = {
+	PATCH_ADDTOOFFSET(+2),         // lsl local[2]
+	0x35, 0x63,                    // ldi 99
+	PATCH_END
+};
+
+static const uint16 sci2NumSavesSignature2[] = {
+	SIG_MAGICDWORD,
+	0x8b, 0x02,                    // lsl local[2]
+	0x35, 0x14,                    // ldi 20
+	0x1a,                          // eq?
+	SIG_END
+};
+
+static const uint16 sci2NumSavesPatch2[] = {
+	PATCH_ADDTOOFFSET(+2),         // lsl local[2]
+	0x35, 0x63,                    // ldi 99
+	PATCH_END
+};
+
+// Phantasmagoria & SQ6 try to initialize the first entry of an int16 array
+// using an empty string, which is not valid (it should be a number)
+static const uint16 sci21IntArraySignature[] = {
+	0x38, SIG_SELECTOR16(newWith), // pushi newWith
+	0x7a,                          // push2
+	0x39, 0x04,                    // pushi $4
+	0x72, SIG_ADDTOOFFSET(+2),     // lofsa string ""
+	SIG_MAGICDWORD,
+	0x36,                          // push
+	0x51, 0x0b,                    // class IntArray
+	0x4a, 0x8,                     // send $8
+	SIG_END
+};
+
+static const uint16 sci21IntArrayPatch[] = {
+	PATCH_ADDTOOFFSET(+6),      // push $b9; push2; pushi $4
+	0x76,                       // push0
+	0x34, PATCH_UINT16(0x0001), // ldi 0001 (waste bytes)
+	PATCH_END
+};
+#endif
 
 // ===========================================================================
 // Conquests of Camelot
@@ -614,6 +695,10 @@ static const SciScriptPatcherEntry freddypharkasSignatures[] = {
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
 
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Gabriel Knight 1
+
 // ===========================================================================
 // daySixBeignet::changeState (4) is called when the cop goes out and sets cycles to 220.
 //  this is not enough time to get to the door, so we patch that to 23 seconds
@@ -660,6 +745,68 @@ static const uint16 gk1PatchDay6PoliceSleep[] = {
 	PATCH_ADDTOOFFSET(+5),
 	0x34, PATCH_UINT16(0x002a),         // ldi 42
 	0x65, PATCH_GETORIGINALBYTEADJUST(+9, +2), // aTop seconds (1c for PC, 1e for Mac)
+	PATCH_END
+};
+
+// At the start of day 5, there is like always some dialogue with Grace.
+//
+// The dialogue script code about the drum book + veve newspaper clip is a bit broken.
+//
+// In case the player already has the veve, but is supposed to get the drum book, then the drum book
+// dialogue is repeated twice and the veve newspaper dialogue is also repeated (although it was played on day 4
+// in such case already).
+//
+// Drum book dialogue is called twice.
+// Once via GetTheVeve::changeState(0) and a second time via GetTheVeve::changeState(11).
+//
+// GetTheVeve::changeState(0) would also play the first line of the veve pattern newspaper and that's skipped,
+// when the player is supposed to get the drum book.
+// GetTheVeve::changeState(1) up to state 10 will do the dialogue about the veve newspaper.
+// At the start of state 1 though, the player will get the drum book in case he ask for research.
+// Right after that the scripts check, if the player has the drum book and then go the veve newspaper route.
+//
+// We fix this by skipping the drum book check in case the player just got the drum book.
+// The scripts will then skip to state 12, skipping over the second drum book dialogue call.
+//
+// More notes: The veve newspaper item is inventory 9. The drum book is inventory 14.
+//             The flag for veve research is 36, the flag for drum research is 73.
+//
+// This bug of course also occurs, when using the original interpreter.
+//
+// Special thanks, credits and kudos to sluicebox on IRC, who did a ton of research on this and even found this game bug originally.
+//
+// Applies to at least: English PC-CD, German PC-CD
+// Responsible method: getTheVeve::changeState(1) - script 212
+static const uint16 gk1SignatureDay5DrumBookDialogue[] = {
+	0x31, 0x0b,                         // bnt [skip giving player drum book code]
+	0x38, SIG_UINT16(0x0200),           // pushi 0200h
+	0x78,                               // push1
+	SIG_MAGICDWORD,
+	0x39, 0x0e,                         // pushi 0Eh
+	0x81, 0x00,                         // lag global[0]
+	0x4a, 0x06, 0x00,                   // send 06 - GKEgo::get(0Eh)
+	// end of giving player drum book code
+	0x38, SIG_UINT16(0x0202),           // pushi 0202h
+	0x78,                               // push1
+	0x39, 0x0e,                         // pushi 0Eh
+	0x81, 0x00,                         // lag global[0]
+	0x4a, 0x06, 0x00,                   // send 06 - GKEgo::has(0Eh)
+	0x18,                               // not
+	0x30, SIG_UINT16(0x0025),           // bnt [veve newspaper code]
+	SIG_END
+};
+
+static const uint16 gk1PatchDay5DrumBookDialogue[] = {
+	0x31, 0x0d,                         // bnt [skip giving player drum book code] adjusted
+	PATCH_ADDTOOFFSET(+11),             // skip give player drum book original code
+	0x33, 0x0D,                         // jmp [over the check inventory for drum book code]
+	// check inventory for drum book
+	0x38, SIG_UINT16(0x0202),           // pushi 0202h
+	0x78,                               // push1
+	0x39, 0x0e,                         // pushi 0Eh
+	0x81, 0x00,                         // lag global[0]
+	0x4a, 0x06, 0x00,                   // send 06 - GKEgo::has(0Eh)
+	0x2f, 0x23,                         // bt [veve newspaper code] (adjusted, saves 2 bytes)
 	PATCH_END
 };
 
@@ -729,7 +876,7 @@ static const uint16 gk1PatchInterrogationBug[] = {
 	0x76,                            // push0
 	0x4a, 0x04, 0x00,                // send 0004
 	0xa5, 0x00,                      // sat 00
-	0x38, SIG_SELECTOR16(dispose),   // pushi dispose
+	0x38, PATCH_SELECTOR16(dispose), // pushi dispose
 	0x76,                            // push0
 	0x63, 0x50,                      // pToa 50
 	0x4a, 0x04, 0x00,                // send 0004
@@ -746,14 +893,158 @@ static const uint16 gk1PatchInterrogationBug[] = {
 	PATCH_END
 };
 
-//          script, description,                                      signature                     patch
+// On day 10 nearly at the end of the game, Gabriel Knight dresses up and right after that
+// someone will be at the door. Gabriel turns around to see what's going on.
+//
+// In ScummVM Gabriel turning around plays endlessly. This is caused by the loop of Gabriel
+// being kept at 1, but view + cel were changed accordingly. The view used - which is view 859 -
+// does not have a loop 1. kNumCels is called on that, BUT kNumCels in SSCI is broken in that
+// regard. It checks for loop > count and not loop >= count and will return basically random data
+// in case loop == count.
+//
+// In SSCI this simply worked by accident. kNumCels returned 0x53 in this case, but later script code
+// fixed that up somehow, so it worked out in the end.
+//
+// The setup for this is done in SDJEnters::changeState(0). The cycler will never reach the goal
+// because the goal will be cel -1, so it loops endlessly.
+//
+// We fix this by adding a setLoop(0).
+//
+// Applies to at least: English PC-CD, German PC-CD
+// Responsible method: sDJEnters::changeState
+static const uint16 gk1SignatureDay10GabrielDressUp[] = {
+	0x87, 0x01,                         // lap param[1]
+	0x65, 0x14,                         // aTop state
+	0x36,                               // push
+	0x3c,                               // dup
+	0x35, 0x00,                         // ldi 0
+	0x1a,                               // eq?
+	0x30, SIG_UINT16(0x006f),           // bnt [next state 1]
+	SIG_ADDTOOFFSET(+84),
+	0x39, 0x0e,                         // pushi 0Eh (view)
+	0x78,                               // push1
+	SIG_MAGICDWORD,
+	0x38, SIG_UINT16(0x035B),           // pushi 035Bh (859d)
+	0x38, SIG_UINT16(0x0141),           // pushi 0141h (setCel)
+	0x78,                               // push1
+	0x76,                               // push0
+	0x38, SIG_UINT16(0x00E9),           // pushi 00E9h (setCycle)
+	0x7a,                               // push2
+	0x51, 0x18,                         // class End
+	0x36,                               // push
+	0x7c,                               // pushSelf
+	0x81, 0x00,                         // lag global[0]
+	0x4a, 0x14, 0x00,                   // send 14h
+										// GKEgo::view(859)
+										// GKEgo::setCel(0)
+										// GKEgo::setCycle(End, sDJEnters)
+	0x32, SIG_UINT16(0x0233),           // jmp [ret]
+	// next state
+	0x3c,                               // dup
+	0x35, 0x01,                         // ldi 01
+	0x1a,                               // eq?
+	0x31, 0x07,                         // bnt [next state 2]
+	0x35, 0x02,                         // ldi 02
+	0x65, 0x1a,                         // aTop cycles
+	0x32, SIG_UINT16(0x0226),           // jmp [ret]
+	// next state
+	0x3c,                               // dup
+	0x35, 0x02,                         // ldi 02
+	0x1a,                               // eq?
+	0x31, 0x2a,                         // bnt [next state 3]
+	0x78,                               // push1
+	SIG_ADDTOOFFSET(+34),
+	// part of state 2 code, delays for 1 cycle
+	0x35, 0x01,                         // ldi 1
+	0x65, 0x1a,                         // aTop cycles
+	SIG_END
+};
+
+static const uint16 gk1PatchDay10GabrielDressUp[] = {
+	PATCH_ADDTOOFFSET(+9),
+	0x30, SIG_UINT16(0x0073),           // bnt [next state 1] - offset adjusted
+	SIG_ADDTOOFFSET(+84 + 11),
+	// added by us: setting loop to 0 (5 bytes needed)
+	0x38, SIG_UINT16(0x00FB),           // pushi 00FBh (setLoop)
+	0x78,                               // push1
+	0x76,                               // push0
+	// original code, but offset changed
+	0x38, SIG_UINT16(0x00E9),           // pushi 00E9h (setCycle)
+	0x7a,                               // push2
+	0x51, 0x18,                         // class End
+	0x36,                               // push
+	0x7c,                               // pushSelf
+	0x81, 0x00,                         // lag global[0]
+	0x4a, 0x1a, 0x00,                   // send 1Ah - adjusted
+										// GKEgo::view(859)
+										// GKEgo::setCel(0)
+										// GKEgo::setLoop(0) <-- new, by us
+										// GKEgo::setCycle(End, sDJEnters)
+	// end of original code
+	0x3a,                               // toss
+	0x48,                               // ret (saves 1 byte)
+	// state 1 code
+	0x3c,                               // dup
+	0x34, SIG_UINT16(0x0001),           // ldi 0001 (waste 1 byte)
+	0x1a,                               // eq?
+	0x31, 2,                            // bnt [next state 2]
+	0x33, 41,                           // jmp to state 2 delay code
+	SIG_ADDTOOFFSET(+41),
+	// wait 2 cycles instead of only 1
+	0x35, 0x02,                         // ldi 2
+	PATCH_END
+};
+
+// GK1 initializes the global interrogation array with an int16 array, which
+// happens to work in SSCI because object references are int16s, but in ScummVM
+// object references are reg_ts, so this array needs to be created as an IDArray
+// instead
+static const uint16 gk1SignatureInterrogationArray1[] = {
+	0x38, SIG_SELECTOR16(new), // pushi new
+	0x78,                      // push1
+	SIG_MAGICDWORD,
+	0x39, 0x0f,                // pushi 15
+	0x51, 0x0a,                // class IntArray
+	SIG_END
+};
+
+static const uint16 gk1PatchInterrogationArray1[] = {
+	PATCH_ADDTOOFFSET(+3),  // pushi new
+	PATCH_ADDTOOFFSET(+1),  // push1
+	PATCH_ADDTOOFFSET(+2),  // pushi 15
+	0x51, 0x0b,             // class IDArray
+	PATCH_END
+};
+
+//          script, description,                                      signature                         patch
 static const SciScriptPatcherEntry gk1Signatures[] = {
-	{  true,    51, "interrogation bug",                           1, gk1SignatureInterrogationBug, gk1PatchInterrogationBug },
-	{  true,   212, "day 5 phone freeze",                          1, gk1SignatureDay5PhoneFreeze, gk1PatchDay5PhoneFreeze },
-	{  true,   230, "day 6 police beignet timer issue",            1, gk1SignatureDay6PoliceBeignet, gk1PatchDay6PoliceBeignet },
-	{  true,   230, "day 6 police sleep timer issue",              1, gk1SignatureDay6PoliceSleep, gk1PatchDay6PoliceSleep },
+	{  true,    10, "fix interrogation array type 1/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
+	{  true,    50, "fix interrogation array type 2/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
+	{  true,    93, "fix interrogation array type 3/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
+	{  true,    51, "interrogation bug",                           1, gk1SignatureInterrogationBug,     gk1PatchInterrogationBug },
+	{  true,   212, "day 5 drum book dialogue error",              1, gk1SignatureDay5DrumBookDialogue, gk1PatchDay5DrumBookDialogue },
+	{  true,   212, "day 5 phone freeze",                          1, gk1SignatureDay5PhoneFreeze,      gk1PatchDay5PhoneFreeze },
+	{  true,   230, "day 6 police beignet timer issue",            1, gk1SignatureDay6PoliceBeignet,    gk1PatchDay6PoliceBeignet },
+	{  true,   230, "day 6 police sleep timer issue",              1, gk1SignatureDay6PoliceSleep,      gk1PatchDay6PoliceSleep },
+	{  true,   808, "day 10 gabriel dress up infinite turning",    1, gk1SignatureDay10GabrielDressUp,  gk1PatchDay10GabrielDressUp },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,           sci2ChangeDirPatch },
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
+
+#pragma mark -
+#pragma mark Gabriel Knight 2
+
+//          script, description,                                      signature                         patch
+static const SciScriptPatcherEntry gk2Signatures[] = {
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,           sci2ChangeDirPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
 
 // ===========================================================================
 // at least during harpy scene export 29 of script 0 is called in kq5cd and
@@ -1452,6 +1743,10 @@ static const SciScriptPatcherEntry kq6Signatures[] = {
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
 
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Kings Quest 7
+
 // ===========================================================================
 
 // King's Quest 7 has really weird subtitles. It seems as if the subtitles were
@@ -1612,6 +1907,8 @@ static const SciScriptPatcherEntry kq7Signatures[] = {
 	{  true, 64928, "subtitle fix 3/3",                            1, kq7SignatureSubtitleFix3,                 kq7PatchSubtitleFix3 },
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
+
+#endif
 
 // ===========================================================================
 // Script 210 in the German version of Longbow handles the case where Robin
@@ -1912,6 +2209,20 @@ static const SciScriptPatcherEntry larry6Signatures[] = {
 	{  true,    82, "death dialog memory corruption",              1, larry6SignatureDeathDialog, larry6PatchDeathDialog },
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
+
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Leisure Suit Larry 6 Hires
+
+//          script, description,                                      signature                         patch
+static const SciScriptPatcherEntry larry6HiresSignatures[] = {
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,           sci2ChangeDirPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
 
 // ===========================================================================
 // Laura Bow 1 - Colonel's Bequest
@@ -2534,6 +2845,18 @@ static const SciScriptPatcherEntry mothergoose256Signatures[] = {
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
 
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Phantasmagoria
+
+//          script, description,                                      signature                        patch
+static const SciScriptPatcherEntry phantasmagoriaSignatures[] = {
+	{  true,   901, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
+
 // ===========================================================================
 // Police Quest 1 VGA
 
@@ -2674,6 +2997,20 @@ static const SciScriptPatcherEntry pq1vgaSignatures[] = {
 	{  true,   500, "map save/restore bug",                           2, pq1vgaSignatureMapSaveRestoreBug,    pq1vgaPatchMapSaveRestoreBug },
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
+
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Police Quest 4
+
+//          script, description,                                      signature                         patch
+static const SciScriptPatcherEntry pq4Signatures[] = {
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,           sci2ChangeDirPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
 
 // ===========================================================================
 //  At the healer's house there is a bird's nest up on the tree.
@@ -3015,10 +3352,41 @@ static const uint16 qfg1vgaPatchWhiteStagDagger[] = {
 	PATCH_END
 };
 
+// The dagger range has a script bug that can freeze the game or cause Brutus to kill you even after you've killed him.
+// This is a bug in the original game.
+//
+// When Bruno leaves, a 300 tick countdown starts. If you kill Brutus or leave room 73 within those 300 ticks then
+// the game is left in a broken state. For the rest of the game, if you ever return to the dagger range from the
+// east or west during the first half of the day then the game will freeze or Brutus will come back to life
+// and kill you, even if you already killed him.
+//
+// Special thanks, credits and kudos to sluicebox, who did a ton of research on this and even found this game bug originally.
+//
+// Applies to at least: English floppy, Mac floppy
+// Responsible method: brutusWaits::changeState
+// Fixes bug #9558
+static const uint16 qfg1vgaSignatureBrutusScriptFreeze[] = {
+	0x78,                               // push1
+	0x38, SIG_UINT16(0x144),            // pushi 144h (324d)
+	0x45, 0x05, 0x02,                   // call export 5 of script 0
+	SIG_MAGICDWORD,
+	0x34, SIG_UINT16(0x12c),            // ldi 12Ch (300d)
+	0x65, 0x20,                         // aTop ticks
+	SIG_END
+};
+
+static const uint16 qfg1vgaPatchBrutusScriptFreeze[] = {
+	0x34, PATCH_UINT16(0),              // ldi 0 (waste 7 bytes)
+	0x35, 0x00,                         // ldi 0
+	0x35, 0x00,                         // ldi 0
+	PATCH_END
+};
+
 //          script, description,                                      signature                            patch
 static const SciScriptPatcherEntry qfg1vgaSignatures[] = {
 	{  true,    41, "moving to castle gate",                       1, qfg1vgaSignatureMoveToCastleGate,    qfg1vgaPatchMoveToCastleGate },
 	{  true,    55, "healer's hut, no delay for buy/steal",        1, qfg1vgaSignatureHealerHutNoDelay,    qfg1vgaPatchHealerHutNoDelay },
+	{  true,    73, "brutus script freeze glitch",                 1, qfg1vgaSignatureBrutusScriptFreeze,  qfg1vgaPatchBrutusScriptFreeze },
 	{  true,    77, "white stag dagger throw animation glitch",    1, qfg1vgaSignatureWhiteStagDagger,     qfg1vgaPatchWhiteStagDagger },
 	{  true,    96, "funny room script bug fixed",                 1, qfg1vgaSignatureFunnyRoomFix,        qfg1vgaPatchFunnyRoomFix },
 	{  true,   210, "cheetaur description fixed",                  1, qfg1vgaSignatureCheetaurDescription, qfg1vgaPatchCheetaurDescription },
@@ -3611,6 +3979,20 @@ static const SciScriptPatcherEntry qfg3Signatures[] = {
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
 
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Quest for Glory 4
+
+//          script, description,                                      signature                         patch
+static const SciScriptPatcherEntry qfg4Signatures[] = {
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,           sci2ChangeDirPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
+
 // ===========================================================================
 //  script 298 of sq4/floppy has an issue. object "nest" uses another property
 //   which isn't included in property count. We return 0 in that case, the game
@@ -4174,6 +4556,76 @@ static const SciScriptPatcherEntry sq5Signatures[] = {
 	SCI_SIGNATUREENTRY_TERMINATOR
 };
 
+#ifdef ENABLE_SCI32
+#pragma mark -
+#pragma mark Space Quest 6
+
+// When pressing number buttons on the Holocabana controls, View objects are
+// put in an int16 array. This happens to work in SSCI, but ScummVM requires a
+// proper IDArray because reg_t is larger than 16 bits.
+static const uint16 sq6HoloIntArraySignature[] = {
+	0x38, SIG_SELECTOR16(new), // pushi new
+	0x76,                      // push0
+	0x51, 0x0b,                // class IntArray
+	SIG_MAGICDWORD,
+	0x4a, SIG_UINT16(0x04),    // send 4
+	0xa3, 0x06,                // sal local[6]
+	SIG_END
+};
+
+static const uint16 sq6HoloIntArrayPatch[] = {
+	PATCH_ADDTOOFFSET(+4),      // pushi new; push0
+	0x51, 0x0c,                 // class IDArray
+	PATCH_END
+};
+
+//          script, description,                                      signature                        patch
+static const SciScriptPatcherEntry sq6Signatures[] = {
+	{  true,    15, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	{  true,    22, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	{  true,   400, "invalid array type",                          1, sq6HoloIntArraySignature,        sq6HoloIntArrayPatch },
+	{  true,   460, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	{  true,   510, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,          sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,          sci2NumSavesPatch2 },
+	{  true, 64990, "disable change directory button",             1, sci2ChangeDirSignature,          sci2ChangeDirPatch },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#pragma mark -
+#pragma mark Torins Passage
+
+// Torin initializes the inventory with an int16 array, which happens to work
+// in SSCI because object references are int16s, but in ScummVM object
+// references are reg_ts, so this array needs to be created as an IDArray
+// instead
+static const uint16 torinInventItemSlotsSignature[] = {
+	0x38, SIG_SELECTOR16(new), // pushi new
+	0x78,                      // push1
+	SIG_MAGICDWORD,
+	0x67, 0x2e,                // pTos $2e (invSlotsTot)
+	0x51, 0x0b,                // class IntArray
+	SIG_END
+};
+
+static const uint16 torinInventItemSlotsPatch[] = {
+	PATCH_ADDTOOFFSET(+3),  // pushi new
+	PATCH_ADDTOOFFSET(+1),  // push1
+	PATCH_ADDTOOFFSET(+2),  // pTos $2e (invSlotsTot)
+	0x51, 0x0c,             // class IDArray
+	PATCH_END
+};
+
+//          script, description,                                      signature                         patch
+static const SciScriptPatcherEntry torinSignatures[] = {
+	{  true, 64895, "fix inventory array type",                    1, torinInventItemSlotsSignature,    torinInventItemSlotsPatch },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
+	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
+	SCI_SIGNATUREENTRY_TERMINATOR
+};
+
+#endif
+
 // =================================================================================
 
 ScriptPatcher::ScriptPatcher() {
@@ -4605,18 +5057,25 @@ void ScriptPatcher::processScript(uint16 scriptNr, byte *scriptData, const uint3
 	case GID_FREDDYPHARKAS:
 		signatureTable = freddypharkasSignatures;
 		break;
+#ifdef ENABLE_SCI32
 	case GID_GK1:
 		signatureTable = gk1Signatures;
 		break;
+	case GID_GK2:
+		signatureTable = gk2Signatures;
+		break;
+#endif
 	case GID_KQ5:
 		signatureTable = kq5Signatures;
 		break;
 	case GID_KQ6:
 		signatureTable = kq6Signatures;
 		break;
+#ifdef ENABLE_SCI32
 	case GID_KQ7:
 		signatureTable = kq7Signatures;
 		break;
+#endif
 	case GID_LAURABOW:
 		signatureTable = laurabow1Signatures;
 		break;
@@ -4635,12 +5094,27 @@ void ScriptPatcher::processScript(uint16 scriptNr, byte *scriptData, const uint3
 	case GID_LSL6:
 		signatureTable = larry6Signatures;
 		break;
+#ifdef ENABLE_SCI32
+	case GID_LSL6HIRES:
+		signatureTable = larry6HiresSignatures;
+		break;
+#endif
 	case GID_MOTHERGOOSE256:
 		signatureTable = mothergoose256Signatures;
 		break;
+#ifdef ENABLE_SCI32
+	case GID_PHANTASMAGORIA:
+		signatureTable = phantasmagoriaSignatures;
+		break;
+#endif
 	case GID_PQ1:
 		signatureTable = pq1vgaSignatures;
 		break;
+#ifdef ENABLE_SCI32
+	case GID_PQ4:
+		signatureTable = pq4Signatures;
+		break;
+#endif
 	case GID_QFG1:
 		signatureTable = qfg1egaSignatures;
 		break;
@@ -4653,6 +5127,11 @@ void ScriptPatcher::processScript(uint16 scriptNr, byte *scriptData, const uint3
 	case GID_QFG3:
 		signatureTable = qfg3Signatures;
 		break;
+#ifdef ENABLE_SCI32
+	case GID_QFG4:
+		signatureTable = qfg4Signatures;
+		break;
+#endif
 	case GID_SQ1:
 		signatureTable = sq1vgaSignatures;
 		break;
@@ -4662,6 +5141,14 @@ void ScriptPatcher::processScript(uint16 scriptNr, byte *scriptData, const uint3
 	case GID_SQ5:
 		signatureTable = sq5Signatures;
 		break;
+#ifdef ENABLE_SCI32
+	case GID_SQ6:
+		signatureTable = sq6Signatures;
+		break;
+	case GID_TORIN:
+		signatureTable = torinSignatures;
+		break;
+#endif
 	default:
 		break;
 	}

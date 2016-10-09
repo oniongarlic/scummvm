@@ -21,8 +21,8 @@
  */
 
 #include "titanic/support/screen_manager.h"
-#include "titanic/titanic.h"
 #include "titanic/support/video_surface.h"
+#include "titanic/titanic.h"
 
 namespace Titanic {
 
@@ -38,7 +38,6 @@ CScreenManager::CScreenManager(TitanicEngine *vm): _vm(vm) {
 	_textCursor = nullptr;
 	_inputHandler = nullptr;
 	_fontNumber = 0;
-	// TODO: Further initialization
 
 	_screenManagerPtr = this;
 }
@@ -240,10 +239,25 @@ int OSScreenManager::writeString(int surfaceNum, const Rect &destRect,
 		yOffset, str, textCursor);
 }
 
-int OSScreenManager::writeString(int surfaceNum, const Rect &srcRect,
-		const Rect &destRect, const CString &str, CTextCursor *textCursor) {
-	// TODO
-	return 0;
+void OSScreenManager::writeString(int surfaceNum, const Point &destPos,
+		const Rect &clipRect, const CString &str, int lineWidth) {
+	CVideoSurface *surface;
+	Rect bounds;
+
+	if (surfaceNum >= 0 && surfaceNum < (int)_backSurfaces.size()) {
+		surface = _backSurfaces[surfaceNum]._surface;
+		bounds = _backSurfaces[surfaceNum]._bounds;
+	} else if (surfaceNum == -1) {
+		surface = _frontRenderSurface;
+		bounds = Rect(0, 0, surface->getWidth(), surface->getHeight());
+	} else {
+		return;
+	}
+
+	Rect destRect = clipRect;
+	destRect.constrain(bounds);
+
+	_fonts[_fontNumber].writeString(surface, destPos, destRect, str, lineWidth);
 }
 
 void OSScreenManager::setFontColor(byte r, byte g, byte b) {

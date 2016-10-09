@@ -37,7 +37,7 @@ CMovieList *CMovie::_playingMovies;
 CVideoSurface *CMovie::_movieSurface;
 
 CMovie::CMovie() : ListItem(), _handled(false), _hasVideoFrame(false),
-		_field14(0) {
+		_hasAudioTiming(false) {
 }
 
 CMovie::~CMovie() {
@@ -122,33 +122,25 @@ void OSMovie::play(uint startFrame, uint endFrame, uint initialFrame, uint flags
 		movieStarted();
 }
 
-void OSMovie::playClip(const Point &drawPos, uint startFrame, uint endFrame) {
+void OSMovie::playCutscene(const Rect &drawRect, uint startFrame, uint endFrame) {
 	if (!_movieSurface)
 		_movieSurface = CScreenManager::_screenManagerPtr->createSurface(600, 340);
 	
 	bool widthLess = _videoSurface->getWidth() < 600;
 	bool heightLess = _videoSurface->getHeight() < 340;
-	Rect r(drawPos.x, drawPos.y,
-		drawPos.x + (widthLess ? CLIP_WIDTH_REDUCED : CLIP_WIDTH),
-		drawPos.y + (heightLess ? CLIP_HEIGHT_REDUCED : CLIP_HEIGHT)
+	Rect r(drawRect.left, drawRect.top,
+		drawRect.left + (widthLess ? CLIP_WIDTH_REDUCED : CLIP_WIDTH),
+		drawRect.top + (heightLess ? CLIP_HEIGHT_REDUCED : CLIP_HEIGHT)
 	);
 
-	uint timePerFrame = 1000 / _aviSurface._frameRate;
+	// Set a new event target whilst the clip plays, so standard scene drawing isn't called
+	CEventTarget eventTarget;
+	g_vm->_events->addTarget(&eventTarget);
 
-	for (; endFrame >= startFrame; ++startFrame) {
-		// Set the frame
-		_aviSurface.setFrame(startFrame);
+	_aviSurface.setFrame(startFrame);
+	_aviSurface.playCutscene(r, startFrame, endFrame);
 
-		// TODO: See if we need to do anything further here. The original had a bunch
-		// of calls and using of the _movieSurface; perhaps to allow scaling down
-		// videos to half-size
-		if (widthLess || heightLess)
-			warning("Not properly reducing clip size: %d %d", r.width(), r.height());
-
-		// Wait for the next frame, unless the user interrupts the clip
-		if (g_vm->_events->waitForPress(timePerFrame))
-			break;
-	}
+	g_vm->_events->removeTarget();
 }
 
 void OSMovie::stop() {
@@ -165,7 +157,7 @@ void OSMovie::addEvent(int frameNumber, CGameObject *obj) {
 
 void OSMovie::setFrame(uint frameNumber) {
 	_aviSurface.setFrame(frameNumber);
-	_videoSurface->setMovieFrameSurface(_aviSurface.getSecondarySurface());
+	_videoSurface->setTransparencySurface(_aviSurface.getSecondarySurface());
 }
 
 bool OSMovie::handleEvents(CMovieEventList &events) {
@@ -177,7 +169,7 @@ bool OSMovie::handleEvents(CMovieEventList &events) {
 	// Handle updating the frame
 	while (_aviSurface.isPlaying() && _aviSurface.isNextFrame()) {
 		_aviSurface.handleEvents(events);
-		_videoSurface->setMovieFrameSurface(_aviSurface.getSecondarySurface());
+		_videoSurface->setTransparencySurface(_aviSurface.getSecondarySurface());
 	}
 
 	// Flag there's a video frame
@@ -199,8 +191,8 @@ int OSMovie::getFrame() const {
 }
 
 void OSMovie::movieStarted() {
-	if (_aviSurface._hasAudio)
-		_aviSurface._soundManager->movieStarted();
+	//if (_aviSurface._hasAudio)
+	//	_aviSurface._soundManager->movieStarted();
 
 	// Register the movie in the playing list
 	addToPlayingMovies();
@@ -211,8 +203,8 @@ void OSMovie::setFrameRate(double rate) {
 	_aviSurface.setFrameRate(rate);
 }
 
-Graphics::ManagedSurface *OSMovie::duplicateFrame() const {
-	return _aviSurface.duplicateSecondaryFrame();
+Graphics::ManagedSurface *OSMovie::duplicateTransparency() const {
+	return _aviSurface.duplicateTransparency();
 }
 
 } // End of namespace Titanic

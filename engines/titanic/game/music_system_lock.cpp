@@ -21,8 +21,15 @@
  */
 
 #include "titanic/game/music_system_lock.h"
+#include "titanic/core/room_item.h"
+#include "titanic/carry/carry.h"
 
 namespace Titanic {
+
+BEGIN_MESSAGE_MAP(CMusicSystemLock, CDropTarget)
+	ON_MESSAGE(DropObjectMsg)
+	ON_MESSAGE(MovieEndMsg)
+END_MESSAGE_MAP()
 
 void CMusicSystemLock::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
@@ -34,6 +41,27 @@ void CMusicSystemLock::load(SimpleFile *file) {
 	file->readNumber();
 	_value = file->readNumber();
 	CDropTarget::load(file);
+}
+
+bool CMusicSystemLock::DropObjectMsg(CDropObjectMsg *msg) {
+	CTreeItem *key = msg->_item->findByName("Music System Key");
+	if (key) {
+		setVisible(true);
+		playMovie(MOVIE_NOTIFY_OBJECT);
+	}
+
+	return true;
+}
+
+bool CMusicSystemLock::MovieEndMsg(CMovieEndMsg *msg) {
+	CTreeItem *phonograph = findRoom()->findByName("Restaurant Phonograph");
+	CQueryPhonographState queryMsg;
+	queryMsg.execute(phonograph);
+	CLockPhonographMsg lockMsg(queryMsg._value);
+	lockMsg.execute(phonograph, nullptr, MSGFLAG_SCAN);
+
+	setVisible(false);
+	return true;
 }
 
 } // End of namespace Titanic

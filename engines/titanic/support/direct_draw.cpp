@@ -23,14 +23,13 @@
 #include "common/debug.h"
 #include "engines/util.h"
 #include "graphics/pixelformat.h"
-#include "titanic/titanic.h"
 #include "titanic/support/direct_draw.h"
+#include "titanic/titanic.h"
 
 namespace Titanic {
 
-DirectDraw::DirectDraw(TitanicEngine *vm) : _vm(vm),
-		_windowed(false), _fieldC(0), _width(0), _height(0),
-		_bpp(0), _numBackSurfaces(0), _field24(0) {
+DirectDraw::DirectDraw() : _windowed(false), _width(0), _height(0),
+		_bpp(0), _numBackSurfaces(0) {
 }
 
 void DirectDraw::setDisplayMode(int width, int height, int bpp, int refreshRate) {
@@ -55,7 +54,7 @@ DirectDrawSurface *DirectDraw::createSurfaceFromDesc(const DDSurfaceDesc &desc) 
 
 /*------------------------------------------------------------------------*/
 
-DirectDrawManager::DirectDrawManager(TitanicEngine *vm, bool windowed) : _directDraw(vm) {
+DirectDrawManager::DirectDrawManager(TitanicEngine *vm, bool windowed) {
 	_mainSurface = nullptr;
 	_backSurfaces[0] = _backSurfaces[1] = nullptr;
 	_directDraw._windowed = windowed;
@@ -73,18 +72,6 @@ void DirectDrawManager::initVideo(int width, int height, int bpp, int numBackSur
 	} else {
 		initFullScreen();
 	}
-}
-
-void DirectDrawManager::setResolution() {
-	// TODO
-}
-
-void DirectDrawManager::proc2() {
-
-}
-
-void DirectDrawManager::proc3() {
-
 }
 
 void DirectDrawManager::initFullScreen() {

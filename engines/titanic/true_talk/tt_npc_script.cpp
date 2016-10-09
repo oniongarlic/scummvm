@@ -332,7 +332,7 @@ int TTnpcScript::handleQuote(const TTroomScript *roomScript, const TTsentence *s
 uint TTnpcScript::getRangeValue(uint id) {
 	TTscriptRange *range = findRange(id);
 	if (!range)
-		return 0;
+		return id;
 
 	switch (range->_mode) {
 	case SF_RANDOM: {
@@ -579,14 +579,14 @@ int TTnpcScript::getValue(int testNum) const {
 
 	case 4:
 		if (g_vm->_trueTalkManager) {
-			switch (g_vm->_trueTalkManager->getState14()) {
-			case 1:
+			switch (g_vm->_trueTalkManager->getCurrentSeason()) {
+			case SEASON_AUTUMN:
 				CTrueTalkManager::_v6 = 3;
 				break;
-			case 2:
+			case SEASON_WINTER:
 				CTrueTalkManager::_v6 = 0;
 				break;
-			case 3:
+			case SEASON_SPRING:
 				CTrueTalkManager::_v6 = 1;
 				break;
 			default:
@@ -634,13 +634,12 @@ uint TTnpcScript::getDialogueId(uint tagId) {
 		}
 	}
 
-	uint oldTagId = tagId;
 	tagId = getRangeValue(tagId);
-	if (tagId != oldTagId)
+	if (tagId != origId)
 		tagId = getRangeValue(tagId);
 
-	oldTagId = getDialsBitset();
-	uint newId = updateState(origId, tagId, oldTagId);
+	uint dialBits = getDialsBitset();
+	uint newId = updateState(origId, tagId, dialBits);
 	if (!newId)
 		return 0;
 
@@ -654,7 +653,7 @@ uint TTnpcScript::getDialogueId(uint tagId) {
 		if (tableP->_id == newId)
 			break;
 	}
-	uint newVal = tableP->_values[oldTagId];
+	uint newVal = tableP->_values[dialBits];
 
 	// First slot dialogue Ids
 	idx = 0;

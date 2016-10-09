@@ -402,6 +402,15 @@ byte AdlEngine::roomArg(byte room) const {
 	return room;
 }
 
+void AdlEngine::loadDroppedItemOffsets(Common::ReadStream &stream, byte count) {
+	for (uint i = 0; i < count; ++i) {
+		Common::Point p;
+		p.x = stream.readByte();
+		p.y = stream.readByte();
+		_itemOffsets.push_back(p);
+	}
+}
+
 void AdlEngine::clearScreen() const {
 	_display->setMode(DISPLAY_MODE_MIXED);
 	_display->clear(0x00);
@@ -520,6 +529,8 @@ void AdlEngine::dropItem(byte noun) {
 }
 
 Common::Error AdlEngine::run() {
+	initGraphics(DISPLAY_WIDTH * 2, DISPLAY_HEIGHT * 2, true);
+
 	_console = new Console(this);
 	_speaker = new Speaker();
 	_display = new Display();
@@ -658,6 +669,11 @@ Common::Error AdlEngine::loadGameState(int slot) {
 		_state.rooms[i].curPicture = inFile->readByte();
 		_state.rooms[i].isFirstTime = inFile->readByte();
 	}
+
+	// NOTE: _state.curPicture is part of the save state in the original engine. We
+	// reconstruct it instead. This is believed to be safe for at least hires 0-2, but
+	// this may need to be re-evaluated for later games.
+	_state.curPicture = getCurRoom().curPicture;
 
 	size = inFile->readUint32BE();
 	if (size != _state.items.size())
@@ -949,7 +965,7 @@ int AdlEngine::o1_isVarEQ(ScriptEnv &e) {
 int AdlEngine::o1_isCurPicEQ(ScriptEnv &e) {
 	OP_DEBUG_1("\t&& GET_CURPIC() == %d", e.arg(1));
 
-	if (getCurRoom().curPicture == e.arg(1))
+	if (_state.curPicture == e.arg(1))
 		return 1;
 
 	return -1;
@@ -1256,16 +1272,17 @@ Common::String AdlEngine::toAscii(const Common::String &str) {
 }
 
 Common::String AdlEngine::itemStr(uint i) const {
-	byte desc = getItem(i).description;
-	byte noun = getItem(i).noun;
+	const Item &item(getItem(i));
+
 	Common::String name = Common::String::format("%d", i);
-	if (noun > 0) {
+	if (item.noun > 0) {
 		name += "/";
-		name += _priNouns[noun - 1];
+		name += _priNouns[item.noun - 1];
 	}
-	if (desc > 0) {
+	Common::String desc = getItemDescription(item);
+	if (!desc.empty()) {
 		name += "/";
-		name += toAscii(loadMessage(desc));
+		name += toAscii(desc);
 	}
 	return name;
 }

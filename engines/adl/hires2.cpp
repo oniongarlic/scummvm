@@ -26,14 +26,44 @@
 #include "common/file.h"
 #include "common/stream.h"
 
-#include "adl/hires2.h"
+#include "adl/adl_v2.h"
 #include "adl/display.h"
 #include "adl/graphics.h"
 #include "adl/disk.h"
 
 namespace Adl {
 
+#define IDS_HR2_DISK_IMAGE "WIZARD.DSK"
+
+#define IDI_HR2_NUM_ROOMS 135
+#define IDI_HR2_NUM_MESSAGES 255
+#define IDI_HR2_NUM_VARS 40
+#define IDI_HR2_NUM_ITEM_PICS 38
+#define IDI_HR2_NUM_ITEM_OFFSETS 16
+
+// Messages used outside of scripts
+#define IDI_HR2_MSG_CANT_GO_THERE      123
+#define IDI_HR2_MSG_DONT_UNDERSTAND     19
+#define IDI_HR2_MSG_ITEM_DOESNT_MOVE   242
+#define IDI_HR2_MSG_ITEM_NOT_HERE        4
+#define IDI_HR2_MSG_THANKS_FOR_PLAYING 239
+
+class HiRes2Engine : public AdlEngine_v2 {
+public:
+	HiRes2Engine(OSystem *syst, const AdlGameDescription *gd) : AdlEngine_v2(syst, gd) { }
+
+private:
+	// AdlEngine
+	void runIntro() const;
+	void init();
+	void initGameState();
+};
+
 void HiRes2Engine::runIntro() const {
+	// This only works for the 16-sector re-release. The original
+	// release is not supported at this time, because we don't have
+	// access to it.
+	_disk->setSectorLimit(0);
 	StreamPtr stream(_disk->createReadStream(0x00, 0xd, 0x17, 1));
 
 	_display->setMode(DISPLAY_MODE_TEXT);
@@ -45,19 +75,21 @@ void HiRes2Engine::runIntro() const {
 
 	_display->printString(str);
 	delay(2000);
+
+	_disk->setSectorLimit(13);
 }
 
 void HiRes2Engine::init() {
 	_graphics = new Graphics_v2(*_display);
 
-	_disk = new DiskImage_DSK();
+	_disk = new DiskImage();
 	if (!_disk->open(IDS_HR2_DISK_IMAGE))
 		error("Failed to open disk image '" IDS_HR2_DISK_IMAGE "'");
 
-	StreamPtr stream(_disk->createReadStream(0x1f, 0x2, 0x00, 4));
+	_disk->setSectorLimit(13);
 
-	for (uint i = 0; i < IDI_HR2_NUM_MESSAGES; ++i)
-		_messages.push_back(readDataBlockPtr(*stream));
+	StreamPtr stream(_disk->createReadStream(0x1f, 0x2, 0x00, 4));
+	loadMessages(*stream, IDI_HR2_NUM_MESSAGES);
 
 	// Read parser messages
 	stream.reset(_disk->createReadStream(0x1a, 0x1));
@@ -90,20 +122,11 @@ void HiRes2Engine::init() {
 
 	// Load global picture data
 	stream.reset(_disk->createReadStream(0x19, 0xa, 0x80, 0));
-	byte picNr;
-	while ((picNr = stream->readByte()) != 0xff) {
-		if (stream->eos() || stream->err())
-			error("Error reading global pic list");
-
-		_pictures[picNr] = readDataBlockPtr(*stream);
-	}
+	loadPictures(*stream);
 
 	// Load item picture data
 	stream.reset(_disk->createReadStream(0x1e, 0x9, 0x05));
-	for (uint i = 0; i < IDI_HR2_NUM_ITEM_PICS; ++i) {
-		stream->readByte(); // number
-		_itemPics.push_back(readDataBlockPtr(*stream));
-	}
+	loadItemPictures(*stream, IDI_HR2_NUM_ITEM_PICS);
 
 	// Load commands from executable
 	stream.reset(_disk->createReadStream(0x1d, 0x7, 0x00, 4));
@@ -114,12 +137,7 @@ void HiRes2Engine::init() {
 
 	// Load dropped item offsets
 	stream.reset(_disk->createReadStream(0x1b, 0x4, 0x15));
-	for (uint i = 0; i < IDI_HR2_NUM_ITEM_OFFSETS; ++i) {
-		Common::Point p;
-		p.x = stream->readByte();
-		p.y = stream->readByte();
-		_itemOffsets.push_back(p);
-	}
+	loadDroppedItemOffsets(*stream, IDI_HR2_NUM_ITEM_OFFSETS);
 
 	// Load verbs
 	stream.reset(_disk->createReadStream(0x19, 0x0, 0x00, 3));
@@ -134,46 +152,10 @@ void HiRes2Engine::initGameState() {
 	_state.vars.resize(IDI_HR2_NUM_VARS);
 
 	StreamPtr stream(_disk->createReadStream(0x21, 0x5, 0x0e, 7));
-
-	for (uint i = 0; i < IDI_HR2_NUM_ROOMS; ++i) {
-		Room room;
-		stream->readByte(); // number
-		for (uint j = 0; j < 6; ++j)
-			room.connections[j] = stream->readByte();
-		room.data = readDataBlockPtr(*stream);
-		room.picture = stream->readByte();
-		room.curPicture = stream->readByte();
-		room.isFirstTime = stream->readByte();
-		_state.rooms.push_back(room);
-	}
+	loadRooms(*stream, IDI_HR2_NUM_ROOMS);
 
 	stream.reset(_disk->createReadStream(0x21, 0x0, 0x00, 2));
-
-	byte id;
-	while ((id = stream->readByte()) != 0xff) {
-		Item item = Item();
-		item.id = id;
-		item.noun = stream->readByte();
-		item.room = stream->readByte();
-		item.picture = stream->readByte();
-		item.isLineArt = stream->readByte(); // Is this still used in this way?
-		item.position.x = stream->readByte();
-		item.position.y = stream->readByte();
-		item.state = stream->readByte();
-		item.description = stream->readByte();
-
-		stream->readByte(); // Struct size
-
-		byte picListSize = stream->readByte();
-
-		// Flag to keep track of what has been drawn on the screen
-		stream->readByte();
-
-		for (uint i = 0; i < picListSize; ++i)
-			item.roomPictures.push_back(stream->readByte());
-
-		_state.items.push_back(item);
-	}
+	loadItems(*stream);
 }
 
 Engine *HiRes2Engine_create(OSystem *syst, const AdlGameDescription *gd) {

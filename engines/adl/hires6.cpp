@@ -27,12 +27,64 @@
 #include "common/stream.h"
 #include "common/memstream.h"
 
-#include "adl/hires6.h"
+#include "adl/adl_v4.h"
 #include "adl/display.h"
 #include "adl/graphics.h"
 #include "adl/disk.h"
 
 namespace Adl {
+
+#define IDI_HR6_NUM_ROOMS 35
+#define IDI_HR6_NUM_MESSAGES 256
+#define IDI_HR6_NUM_VARS 40
+#define IDI_HR6_NUM_ITEM_DESCS 15
+#define IDI_HR6_NUM_ITEM_PICS 15
+#define IDI_HR6_NUM_ITEM_OFFSETS 16
+
+// Messages used outside of scripts
+#define IDI_HR6_MSG_CANT_GO_THERE      249
+#define IDI_HR6_MSG_DONT_UNDERSTAND    247
+#define IDI_HR6_MSG_ITEM_DOESNT_MOVE   253
+#define IDI_HR6_MSG_ITEM_NOT_HERE      254
+#define IDI_HR6_MSG_THANKS_FOR_PLAYING 252
+
+struct DiskDataDesc {
+	byte track;
+	byte sector;
+	byte offset;
+	byte volume;
+};
+
+class HiRes6Engine : public AdlEngine_v4 {
+public:
+	HiRes6Engine(OSystem *syst, const AdlGameDescription *gd) :
+			AdlEngine_v4(syst, gd),
+			_boot(nullptr),
+			_currVerb(0),
+			_currNoun(0) {
+	}
+
+	~HiRes6Engine() { delete _boot; }
+
+private:
+	// AdlEngine
+	void runIntro() const;
+	void init();
+	void initGameState();
+	void printRoomDescription();
+	void showRoom();
+	Common::String formatVerbError(const Common::String &verb) const;
+	Common::String formatNounError(const Common::String &verb, const Common::String &noun) const;
+
+	// AdlEngine_v2
+	void printString(const Common::String &str);
+
+	void loadDisk(byte disk);
+
+	DiskImage *_boot;
+	byte _currVerb, _currNoun;
+	Common::Array<DiskDataDesc> _diskDataDesc;
+};
 
 static const char *disks[] = { "DARK1A.DSK", "DARK1B.NIB", "DARK2A.NIB", "DARK2B.NIB" };
 
@@ -69,7 +121,7 @@ static Common::MemoryReadStream *loadSectors(DiskImage *disk, byte track, byte s
 }
 
 void HiRes6Engine::runIntro() const {
-	DiskImage_DSK *boot(new DiskImage_DSK());
+	DiskImage *boot(new DiskImage());
 
 	if (!boot->open(disks[0]))
 		error("Failed to open disk image '%s'", disks[0]);
@@ -109,7 +161,7 @@ void HiRes6Engine::runIntro() const {
 }
 
 void HiRes6Engine::init() {
-	_boot = new DiskImage_DSK();
+	_boot = new DiskImage();
 	_graphics = new Graphics_v2(*_display);
 
 	if (!_boot->open(disks[0]))
@@ -141,18 +193,12 @@ void HiRes6Engine::init() {
 
 	// Item descriptions
 	stream.reset(loadSectors(_boot, 0x6, 0xb, 2));
-	stream->seek(0x34);
-	for (uint i = 0; i < IDI_HR6_NUM_ITEM_DESCS; ++i)
-		_itemDesc.push_back(readString(*stream, 0xff));
+	stream->seek(0x16);
+	loadItemDescriptions(*stream, IDI_HR6_NUM_ITEM_DESCS);
 
 	// Load dropped item offsets
 	stream.reset(_boot->createReadStream(0x8, 0x9, 0x16));
-	for (uint i = 0; i < IDI_HR6_NUM_ITEM_OFFSETS; ++i) {
-		Common::Point p;
-		p.x = stream->readByte();
-		p.y = stream->readByte();
-		_itemOffsets.push_back(p);
-	}
+	loadDroppedItemOffsets(*stream, IDI_HR6_NUM_ITEM_OFFSETS);
 
 	// Location of game data for each disc
 	stream.reset(_boot->createReadStream(0x5, 0xa, 0x03));
@@ -177,7 +223,7 @@ void HiRes6Engine::init() {
 
 void HiRes6Engine::loadDisk(byte disk) {
 	delete _disk;
-	_disk = new DiskImage_NIB();
+	_disk = new DiskImage();
 
 	if (!_disk->open(disks[disk]))
 		error("Failed to open disk image '%s'", disks[disk]);
@@ -187,10 +233,7 @@ void HiRes6Engine::loadDisk(byte disk) {
 	// Load item picture data (indexed on boot disk)
 	StreamPtr stream(_boot->createReadStream(0xb, 0xd, 0x08));
 	_itemPics.clear();
-	for (uint i = 0; i < IDI_HR6_NUM_ITEM_PICS; ++i) {
-		stream->readByte();
-		_itemPics.push_back(readDataBlockPtr(*stream));
-	}
+	loadItemPictures(*stream, IDI_HR6_NUM_ITEM_PICS);
 
 	_curDisk = disk;
 
@@ -214,19 +257,13 @@ void HiRes6Engine::loadDisk(byte disk) {
 			// Messages
 			_messages.clear();
 			uint count = size / 4;
-			for (uint i = 0; i < count; ++i)
-				_messages.push_back(readDataBlockPtr(*stream));
+			loadMessages(*stream, count);
 			break;
 		}
 		case 0x4a80: {
 			// Global pics
 			_pictures.clear();
-			byte picNr;
-			while ((picNr = stream->readByte()) != 0xff) {
-				if (stream->eos() || stream->err())
-					error("Error reading global pic list");
-				_pictures[picNr] = readDataBlockPtr(*stream);
-			}
+			loadPictures(*stream);
 			break;
 		}
 		case 0x4000:
@@ -243,17 +280,7 @@ void HiRes6Engine::loadDisk(byte disk) {
 			stream->skip(14); // Skip invalid room 0
 
 			_state.rooms.clear();
-			for (uint i = 0; i < count; ++i) {
-				Room room;
-				stream->readByte(); // number
-				for (uint j = 0; j < 6; ++j)
-					room.connections[j] = stream->readByte();
-				room.data = readDataBlockPtr(*stream);
-				room.picture = stream->readByte();
-				room.curPicture = stream->readByte();
-				room.isFirstTime = stream->readByte();
-				_state.rooms.push_back(room);
-			}
+			loadRooms(*stream, count);
 			break;
 		}
 		case 0x7b00:
@@ -287,36 +314,14 @@ void HiRes6Engine::initGameState() {
 
 	StreamPtr stream(_boot->createReadStream(0x3, 0xe, 0x03));
 
-	byte id;
-	while ((id = stream->readByte()) != 0xff) {
-		Item item = Item();
-		item.id = id;
-		item.noun = stream->readByte();
-		item.room = stream->readByte();
-		item.picture = stream->readByte();
-		item.isLineArt = stream->readByte(); // Now seems to be disk number
-		item.position.x = stream->readByte();
-		item.position.y = stream->readByte();
-		item.state = stream->readByte();
-		item.description = stream->readByte();
-
-		stream->readByte(); // Struct size
-
-		byte picListSize = stream->readByte();
-
-		// Flag to keep track of what has been drawn on the screen
-		stream->readByte();
-
-		for (uint i = 0; i < picListSize; ++i)
-			item.roomPictures.push_back(stream->readByte());
-
-		_state.items.push_back(item);
-	}
+	loadItems(*stream);
 
 	_currVerb = _currNoun = 0;
 }
 
 void HiRes6Engine::showRoom() {
+	_state.curPicture = getCurRoom().curPicture;
+
 	bool redrawPic = false;
 
 	if (getVar(26) == 0xfe)

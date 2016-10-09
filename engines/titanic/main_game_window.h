@@ -40,7 +40,6 @@ private:
 	TitanicEngine *_vm;
 	int _pendingLoadSlot;
 	uint _specialButtons;
-	uint32 _priorFrameTime;
 	uint32 _priorLeftDownTime;
 	uint32 _priorMiddleDownTime;
 	uint32 _priorRightDownTime;
@@ -104,11 +103,6 @@ public:
 	virtual void keyUp(Common::KeyState keyState);
 
 	/**
-	 * Creates the window
-	 */
-	bool Create();
-
-	/**
 	 * Called when the application starts
 	 */
 	void applicationStarting();
@@ -136,7 +130,9 @@ public:
 	/*
 	 * Return whether a given special key is currently pressed
 	 */
-	bool isSpecialPressed(SpecialButtons btn) const { return _specialButtons; }
+	bool isSpecialPressed(SpecialButtons btn) const {
+		return (_specialButtons & btn) != 0;
+	}
 
 	/**
 	 * Returns the bitset of the currently pressed special buttons

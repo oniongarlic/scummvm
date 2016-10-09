@@ -29,6 +29,7 @@
 #include "common/system.h"
 #include "common/textconsole.h"
 #include "engines/engine.h"
+#include "engines/util.h"
 #include "graphics/palette.h"
 #include "graphics/surface.h"
 
@@ -39,50 +40,47 @@
 #include "sci/engine/selector.h"
 #include "sci/engine/vm.h"
 #include "sci/graphics/cache.h"
-#include "sci/graphics/coordadjuster.h"
 #include "sci/graphics/compare.h"
+#include "sci/graphics/cursor32.h"
 #include "sci/graphics/font.h"
-#include "sci/graphics/screen.h"
+#include "sci/graphics/frameout.h"
 #include "sci/graphics/paint32.h"
 #include "sci/graphics/palette32.h"
 #include "sci/graphics/plane32.h"
 #include "sci/graphics/remap32.h"
+#include "sci/graphics/screen.h"
 #include "sci/graphics/screen_item32.h"
 #include "sci/graphics/text32.h"
 #include "sci/graphics/frameout.h"
-#include "sci/video/robot_decoder.h"
 #include "sci/graphics/transitions32.h"
+#include "sci/graphics/video32.h"
 
 namespace Sci {
 
-GfxFrameout::GfxFrameout(SegManager *segMan, ResourceManager *resMan, GfxCoordAdjuster *coordAdjuster, GfxScreen *screen, GfxPalette32 *palette, GfxTransitions32 *transitions) :
-	_isHiRes(false),
+GfxFrameout::GfxFrameout(SegManager *segMan, GfxPalette32 *palette, GfxTransitions32 *transitions, GfxCursor32 *cursor) :
+	_isHiRes(gameIsHiRes()),
 	_palette(palette),
-	_resMan(resMan),
-	_screen(screen),
+	_cursor(cursor),
 	_segMan(segMan),
 	_transitions(transitions),
 	_benchmarkingFinished(false),
 	_throttleFrameOut(true),
 	_throttleState(0),
-	// TODO: Stop using _gfxScreen
-	_currentBuffer(screen->getDisplayWidth(), screen->getDisplayHeight(), nullptr),
 	_remapOccurred(false),
 	_frameNowVisible(false),
-	_screenRect(screen->getDisplayWidth(), screen->getDisplayHeight()),
 	_overdrawThreshold(0),
 	_palMorphIsOn(false) {
 
-	_currentBuffer.setPixels(calloc(1, screen->getDisplayWidth() * screen->getDisplayHeight()));
-
-	// TODO: Make hires detection work uniformly across all SCI engine
-	// versions (this flag is normally passed by SCI::MakeGraphicsMgr
-	// to the GraphicsMgr constructor depending upon video configuration,
-	// so should be handled upstream based on game configuration instead
-	// of here)
-	if (getSciVersion() >= SCI_VERSION_2_1_EARLY && _resMan->detectHires()) {
-		_isHiRes = true;
+	if (g_sci->getGameId() == GID_PHANTASMAGORIA) {
+		_currentBuffer = Buffer(630, 450, nullptr);
+	} else if (_isHiRes) {
+		_currentBuffer = Buffer(640, 480, nullptr);
+	} else {
+		_currentBuffer = Buffer(320, 200, nullptr);
 	}
+	_currentBuffer.setPixels(calloc(1, _currentBuffer.screenWidth * _currentBuffer.screenHeight));
+	_screenRect = Common::Rect(_currentBuffer.screenWidth, _currentBuffer.screenHeight);
+	initGraphics(_currentBuffer.screenWidth, _currentBuffer.screenHeight, _isHiRes);
 
 	switch (g_sci->getGameId()) {
 	case GID_HOYLE5:
@@ -100,20 +98,6 @@ GfxFrameout::GfxFrameout(SegManager *segMan, ResourceManager *resMan, GfxCoordAd
 		// default script width for other games is 320x200
 		break;
 	}
-
-	// TODO: Nothing in the renderer really uses this. Currently,
-	// the cursor renderer does, and kLocalToGlobal/kGlobalToLocal
-	// do, but in the real engine (1) the cursor is handled in
-	// frameOut, and (2) functions do a very simple lookup of the
-	// plane and arithmetic with the plane's gameRect. In
-	// principle, CoordAdjuster could be reused for
-	// convertGameRectToPlaneRect, but it is not super clear yet
-	// what the benefit would be to do that.
-	_coordAdjuster = (GfxCoordAdjuster32 *)coordAdjuster;
-
-	// TODO: Script resolution is hard-coded per game;
-	// also this must be set or else the engine will crash
-	_coordAdjuster->setScriptsResolution(_currentBuffer.scriptWidth, _currentBuffer.scriptHeight);
 }
 
 GfxFrameout::~GfxFrameout() {
@@ -157,7 +141,7 @@ void GfxFrameout::syncWithScripts(bool addElements) {
 		return;
 
 	// Get planes list object
-	reg_t planesListObject = engineState->variables[VAR_GLOBAL][10];
+	reg_t planesListObject = engineState->variables[VAR_GLOBAL][kGlobalVarPlanes];
 	reg_t planesListElements = readSelector(segMan, planesListObject, SELECTOR(elements));
 
 	List *planesList = segMan->lookupList(planesListElements);
@@ -222,6 +206,26 @@ void GfxFrameout::syncWithScripts(bool addElements) {
 
 		planesNodeObject = planesNode->succ;
 	}
+}
+
+bool GfxFrameout::gameIsHiRes() const {
+	// QFG4 is always low resolution
+	if (g_sci->getGameId() == GID_QFG4) {
+		return false;
+	}
+
+	// GK1 DOS floppy is low resolution only, but GK1 Mac floppy is high
+	// resolution only
+	if (g_sci->getGameId() == GID_GK1 &&
+		!g_sci->isCD() &&
+		g_sci->getPlatform() != Common::kPlatformMacintosh) {
+
+		return false;
+	}
+
+	// All other games are either high resolution by default, or have a
+	// user-defined toggle
+	return ConfMan.getBool("enable_high_resolution_graphics");
 }
 
 #pragma mark -
@@ -497,10 +501,12 @@ void GfxFrameout::kernelAddPicAt(const reg_t planeObject, const GuiResourceId pi
 #pragma mark Rendering
 
 void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseRect) {
-// TODO: Robot
-//	if (_robot != nullptr) {
-//		_robot.doRobot();
-//	}
+	RobotDecoder &robotPlayer = g_sci->_video32->getRobotPlayer();
+	const bool robotIsActive = robotPlayer.getStatus() != RobotDecoder::kRobotStatusUninitialized;
+
+	if (robotIsActive) {
+		robotPlayer.doRobot();
+	}
 
 	// NOTE: The original engine allocated these as static arrays of 100
 	// pointers to ScreenItemList / RectList
@@ -538,10 +544,9 @@ void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseR
 		drawScreenItemList(screenItemLists[i]);
 	}
 
-// TODO: Robot
-//	if (_robot != nullptr) {
-//		_robot->frameAlmostVisible();
-//	}
+	if (robotIsActive) {
+		robotPlayer.frameAlmostVisible();
+	}
 
 	_palette->updateHardware(!shouldShowBits);
 
@@ -551,19 +556,18 @@ void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseR
 
 	_frameNowVisible = true;
 
-// TODO: Robot
-//	if (_robot != nullptr) {
-//		robot->frameNowVisible();
-//	}
+	if (robotIsActive) {
+		robotPlayer.frameNowVisible();
+	}
 }
 
 void GfxFrameout::palMorphFrameOut(const int8 *styleRanges, PlaneShowStyle *showStyle) {
 	Palette sourcePalette(_palette->getNextPalette());
 	alterVmap(sourcePalette, sourcePalette, -1, styleRanges);
 
-	int16 prevRoom = g_sci->getEngineState()->variables[VAR_GLOBAL][12].toSint16();
+	int16 prevRoom = g_sci->getEngineState()->variables[VAR_GLOBAL][kGlobalVarPreviousRoomNo].toSint16();
 
-	Common::Rect rect(_screen->getDisplayWidth(), _screen->getDisplayHeight());
+	Common::Rect rect(_currentBuffer.screenWidth, _currentBuffer.screenHeight);
 	_showList.add(rect);
 	showBits();
 
@@ -1118,6 +1122,11 @@ void GfxFrameout::mergeToShowList(const Common::Rect &drawRect, RectList &showLi
 }
 
 void GfxFrameout::showBits() {
+	if (!_showList.size()) {
+		g_system->updateScreen();
+		return;
+	}
+
 	for (RectList::const_iterator rect = _showList.begin(); rect != _showList.end(); ++rect) {
 		Common::Rect rounded(**rect);
 		// NOTE: SCI engine used BR-inclusive rects so used slightly
@@ -1125,13 +1134,10 @@ void GfxFrameout::showBits() {
 		// was always even.
 		rounded.left &= ~1;
 		rounded.right = (rounded.right + 1) & ~1;
-
-		// TODO:
-		// _cursor->GonnaPaint(rounded);
+		_cursor->gonnaPaint(rounded);
 	}
 
-	// TODO:
-	// _cursor->PaintStarting();
+	_cursor->paintStarting();
 
 	for (RectList::const_iterator rect = _showList.begin(); rect != _showList.end(); ++rect) {
 		Common::Rect rounded(**rect);
@@ -1153,10 +1159,10 @@ void GfxFrameout::showBits() {
 		g_system->copyRectToScreen(sourceBuffer, _currentBuffer.screenWidth, rounded.left, rounded.top, rounded.width(), rounded.height());
 	}
 
-	// TODO:
-	// _cursor->DonePainting();
+	_cursor->donePainting();
 
 	_showList.clear();
+	g_system->updateScreen();
 }
 
 void GfxFrameout::alterVmap(const Palette &palette1, const Palette &palette2, const int8 style, const int8 *const styleRanges) {
@@ -1270,6 +1276,30 @@ void GfxFrameout::showRect(const Common::Rect &rect) {
 	}
 }
 
+void GfxFrameout::shakeScreen(int16 numShakes, const ShakeDirection direction) {
+	if (direction & kShakeHorizontal) {
+		// Used by QFG4 room 750
+		warning("TODO: Horizontal shake not implemented");
+		return;
+	}
+
+	while (numShakes--) {
+		if (direction & kShakeVertical) {
+			g_system->setShakePos(_isHiRes ? 8 : 4);
+		}
+
+		g_system->updateScreen();
+		g_sci->getEngineState()->wait(3);
+
+		if (direction & kShakeVertical) {
+			g_system->setShakePos(0);
+		}
+
+		g_system->updateScreen();
+		g_sci->getEngineState()->wait(3);
+	}
+}
+
 #pragma mark -
 #pragma mark Mouse cursor
 
@@ -1328,7 +1358,7 @@ bool GfxFrameout::isOnMe(const ScreenItem &screenItem, const Plane &plane, const
 	return true;
 }
 
-void GfxFrameout::kernelSetNowSeen(const reg_t screenItemObject) const {
+bool GfxFrameout::kernelSetNowSeen(const reg_t screenItemObject) const {
 	const reg_t planeObject = readSelector(_segMan, screenItemObject, SELECTOR(plane));
 
 	Plane *plane = _planes.findByObject(planeObject);
@@ -1338,7 +1368,7 @@ void GfxFrameout::kernelSetNowSeen(const reg_t screenItemObject) const {
 
 	ScreenItem *screenItem = plane->_screenItemList.findByObject(screenItemObject);
 	if (screenItem == nullptr) {
-		error("kSetNowSeen: Screen item %04x:%04x not found in plane %04x:%04x", PRINT_REG(screenItemObject), PRINT_REG(planeObject));
+		return false;
 	}
 
 	Common::Rect result = screenItem->getNowSeenRect(*plane);
@@ -1346,6 +1376,7 @@ void GfxFrameout::kernelSetNowSeen(const reg_t screenItemObject) const {
 	writeSelectorValue(_segMan, screenItemObject, SELECTOR(nsTop), result.top);
 	writeSelectorValue(_segMan, screenItemObject, SELECTOR(nsRight), result.right - 1);
 	writeSelectorValue(_segMan, screenItemObject, SELECTOR(nsBottom), result.bottom - 1);
+	return true;
 }
 
 void GfxFrameout::remapMarkRedraw() {

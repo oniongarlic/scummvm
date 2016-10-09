@@ -92,7 +92,7 @@
 #include "titanic/game/bar_menu.h"
 #include "titanic/game/bar_menu_button.h"
 #include "titanic/game/belbot_get_light.h"
-#include "titanic/game/bilge_succubus.h"
+#include "titanic/npcs/bilge_succubus.h"
 #include "titanic/game/bomb.h"
 #include "titanic/game/bottom_of_well_monitor.h"
 #include "titanic/game/bowl_unlocker.h"
@@ -103,7 +103,6 @@
 #include "titanic/game/broken_pellerator.h"
 #include "titanic/game/broken_pellerator_froz.h"
 #include "titanic/game/cage.h"
-#include "titanic/game/call_pellerator.h"
 #include "titanic/game/captains_wheel.h"
 #include "titanic/game/cdrom.h"
 #include "titanic/game/cdrom_computer.h"
@@ -166,6 +165,8 @@
 #include "titanic/game/music_room_stop_phonograph_button.h"
 #include "titanic/game/music_system_lock.h"
 #include "titanic/game/nav_helmet.h"
+#include "titanic/game/nav_helmet_on.h"
+#include "titanic/game/nav_helmet_off.h"
 #include "titanic/game/navigation_computer.h"
 #include "titanic/game/no_nut_bowl.h"
 #include "titanic/game/nose_holder.h"
@@ -174,6 +175,7 @@
 #include "titanic/game/pet_disabler.h"
 #include "titanic/game/phonograph.h"
 #include "titanic/game/phonograph_lid.h"
+#include "titanic/game/place_holder_item.h"
 #include "titanic/game/play_music_button.h"
 #include "titanic/game/play_on_act.h"
 #include "titanic/game/port_hole.h"
@@ -206,6 +208,7 @@
 #include "titanic/game/tow_parrot_nav.h"
 #include "titanic/game/up_lighter.h"
 #include "titanic/game/useless_lever.h"
+#include "titanic/game/variable_list.h"
 #include "titanic/game/volume_control.h"
 #include "titanic/game/wheel_button.h"
 #include "titanic/game/wheel_hotspot.h"
@@ -228,7 +231,7 @@
 #include "titanic/game/parrot/parrot_nut_bowl_actor.h"
 #include "titanic/game/parrot/parrot_nut_eater.h"
 #include "titanic/game/parrot/parrot_perch_holder.h"
-#include "titanic/game/parrot/parrot_succubus.h"
+#include "titanic/npcs/parrot_succubus.h"
 #include "titanic/game/parrot/parrot_trigger.h"
 #include "titanic/game/parrot/player_meets_parrot.h"
 #include "titanic/game/pet/pet.h"
@@ -251,7 +254,7 @@
 #include "titanic/game/pickup/pick_up_vis_centre.h"
 #include "titanic/game/placeholder/bar_shelf_vis_centre.h"
 #include "titanic/game/placeholder/lemon_on_bar.h"
-#include "titanic/game/placeholder/place_holder_item.h"
+#include "titanic/game/placeholder/place_holder.h"
 #include "titanic/game/placeholder/tv_on_bar.h"
 #include "titanic/game/sgt/armchair.h"
 #include "titanic/game/sgt/basin.h"
@@ -285,7 +288,6 @@
 #include "titanic/gfx/chev_right_off.h"
 #include "titanic/gfx/chev_right_on.h"
 #include "titanic/gfx/chev_send_rec_switch.h"
-#include "titanic/gfx/chev_switch.h"
 #include "titanic/gfx/edit_control.h"
 #include "titanic/gfx/elevator_button.h"
 #include "titanic/gfx/get_from_succ.h"
@@ -333,6 +335,7 @@
 #include "titanic/messages/pet_messages.h"
 #include "titanic/messages/service_elevator_door.h"
 
+#include "titanic/moves/call_pellerator.h"
 #include "titanic/moves/enter_bomb_room.h"
 #include "titanic/moves/enter_bridge.h"
 #include "titanic/moves/enter_exit_first_class_state.h"
@@ -382,6 +385,8 @@
 #include "titanic/pet_control/pet_pannel1.h"
 #include "titanic/pet_control/pet_pannel2.h"
 #include "titanic/pet_control/pet_pannel3.h"
+#include "titanic/pet_control/pet_show_translation.h"
+#include "titanic/pet_control/pet_translation.h"
 
 #include "titanic/sound/auto_music_player.h"
 #include "titanic/sound/auto_music_player_base.h"
@@ -575,6 +580,8 @@ DEFFN(CMusicRoomPhonograph);
 DEFFN(CMusicRoomStopPhonographButton);
 DEFFN(CMusicSystemLock);
 DEFFN(CNavHelmet);
+DEFFN(CNavHelmetOn);
+DEFFN(CNavHelmetOff);
 DEFFN(CNavigationComputer);
 DEFFN(CNoNutBowl);
 DEFFN(CNoseHolder);
@@ -583,6 +590,7 @@ DEFFN(CNutReplacer);
 DEFFN(CPetDisabler);
 DEFFN(CPhonograph);
 DEFFN(CPhonographLid);
+DEFFN(CPlaceHolderItem);
 DEFFN(CPlayMusicButton);
 DEFFN(CPlayOnAct);
 DEFFN(CPortHole);
@@ -615,6 +623,7 @@ DEFFN(CTitaniaStillControl);
 DEFFN(CTOWParrotNav);
 DEFFN(CUpLighter);
 DEFFN(CUselessLever);
+DEFFN(CVariableListItem);
 DEFFN(CVolumeControl);
 DEFFN(CWheelButton);
 DEFFN(CWheelHotSpot);
@@ -665,7 +674,7 @@ DEFFN(CPickUpSpeechCentre);
 DEFFN(CPickUpVisCentre);
 DEFFN(CBarShelfVisCentre);
 DEFFN(CLemonOnBar);
-DEFFN(CPlaceHolderItem);
+DEFFN(CPlaceHolder);
 DEFFN(CTVOnBar);
 DEFFN(CArmchair);
 DEFFN(CBasin);
@@ -701,7 +710,6 @@ DEFFN(CChevLeftOn);
 DEFFN(CChevRightOff);
 DEFFN(CChevRightOn);
 DEFFN(CChevSendRecSwitch);
-DEFFN(CChevSwitch);
 DEFFN(CEditControl);
 DEFFN(CElevatorButton);
 DEFFN(CGetFromSucc);
@@ -732,6 +740,7 @@ DEFFN(CPetModePanel);
 DEFFN(CPetPannel1);
 DEFFN(CPetPannel2);
 DEFFN(CPetPannel3);
+DEFFN(CPETShowTranslation);
 DEFFN(CSendToSucc);
 DEFFN(CSGTSelector);
 DEFFN(CSliderButton);
@@ -757,7 +766,7 @@ DEFFN(CAutoSoundEvent);
 DEFFN(CBilgeAutoSoundEvent);
 DEFFN(CBilgeDispensorEvent);
 DEFFN(CBodyInBilgeRoomMsg);
-DEFFN(CBowlStateChange);
+DEFFN(CBowlStateChangeMsg);
 DEFFN(CCarryObjectArrivedMsg);
 DEFFN(CChangeMusicMsg);
 DEFFN(CChangeSeasonMsg);
@@ -1162,6 +1171,8 @@ void CSaveableObject::initClassList() {
 	ADDFN(CMusicRoomStopPhonographButton, CEjectPhonographButton);
 	ADDFN(CMusicSystemLock, CDropTarget);
 	ADDFN(CNavHelmet, CGameObject);
+	ADDFN(CNavHelmetOn, CGameObject);
+	ADDFN(CNavHelmetOff, CGameObject);
 	ADDFN(CNavigationComputer, CGameObject);
 	ADDFN(CNoNutBowl, CBackground);
 	ADDFN(CNoseHolder, CDropTarget);
@@ -1170,6 +1181,7 @@ void CSaveableObject::initClassList() {
 	ADDFN(CPetDisabler, CGameObject);
 	ADDFN(CPhonograph, CMusicPlayer);
 	ADDFN(CPhonographLid, CGameObject);
+	ADDFN(CPlaceHolderItem, CNamedItem);
 	ADDFN(CPlayMusicButton, CBackground);
 	ADDFN(CPlayOnAct, CBackground);
 	ADDFN(CPortHole, CGameObject);
@@ -1202,6 +1214,7 @@ void CSaveableObject::initClassList() {
 	ADDFN(CTOWParrotNav, CGameObject);
 	ADDFN(CUpLighter, CDropTarget);
 	ADDFN(CUselessLever, CToggleButton);
+	ADDFN(CVariableListItem, ListItem);
 	ADDFN(CVolumeControl, CGameObject);
 	ADDFN(CWheelButton, CBackground);
 	ADDFN(CWheelHotSpot, CBackground);
@@ -1245,10 +1258,10 @@ void CSaveableObject::initClassList() {
 	ADDFN(CPickUpLemon, CPickUp);
 	ADDFN(CPickUpSpeechCentre, CPickUp);
 	ADDFN(CPickUpVisCentre, CPickUp);
-	ADDFN(CBarShelfVisCentre, CPlaceHolderItem);
-	ADDFN(CLemonOnBar, CPlaceHolderItem);
-	ADDFN(CPlaceHolderItem, CGameObject);
-	ADDFN(CTVOnBar, CPlaceHolderItem);
+	ADDFN(CBarShelfVisCentre, CPlaceHolder);
+	ADDFN(CLemonOnBar, CPlaceHolder);
+	ADDFN(CPlaceHolder, CGameObject);
+	ADDFN(CTVOnBar, CPlaceHolder);
 	ADDFN(CArmchair, CSGTStateRoom);
 	ADDFN(CBasin, CSGTStateRoom);
 	ADDFN(CBedfoot, CSGTStateRoom);
@@ -1283,7 +1296,6 @@ void CSaveableObject::initClassList() {
 	ADDFN(CChevRightOff, CToggleSwitch);
 	ADDFN(CChevRightOn, CToggleSwitch);
 	ADDFN(CChevSendRecSwitch, CToggleSwitch);
-	ADDFN(CChevSwitch, CToggleSwitch);
 	ADDFN(CEditControl, CGameObject);
 	ADDFN(CElevatorButton, CSTButton);
 	ADDFN(CGetFromSucc, CToggleSwitch);
@@ -1319,6 +1331,7 @@ void CSaveableObject::initClassList() {
 	ADDFN(CPetPannel1, CPetGraphic);
 	ADDFN(CPetPannel2, CPetGraphic);
 	ADDFN(CPetPannel3, CPetGraphic);
+	ADDFN(CPETShowTranslation, CGameObject);
 	ADDFN(CSendToSucc, CToggleSwitch);
 	ADDFN(CSGTSelector, CPetGraphic);
 	ADDFN(CSliderButton, CSTButton);
@@ -1344,7 +1357,7 @@ void CSaveableObject::initClassList() {
 	ADDFN(CBilgeAutoSoundEvent, CAutoSoundEvent);
 	ADDFN(CBilgeDispensorEvent, CAutoSoundEvent);
 	ADDFN(CBodyInBilgeRoomMsg, CMessage);
-	ADDFN(CBowlStateChange, CMessage);
+	ADDFN(CBowlStateChangeMsg, CMessage);
 	ADDFN(CCarryObjectArrivedMsg, CMessage);
 	ADDFN(CChangeMusicMsg, CMessage);
 	ADDFN(CChangeSeasonMsg, CMessage);

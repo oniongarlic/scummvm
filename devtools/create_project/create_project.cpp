@@ -284,8 +284,8 @@ int main(int argc, char *argv[]) {
 			setup.devTools = true;
 		} else if (!std::strcmp(argv[i], "--tests")) {
 			setup.tests = true;
-		} else if (!std::strcmp(argv[i], "--sdl2")) {
-			setup.useSDL2 = true;
+		} else if (!std::strcmp(argv[i], "--sdl1")) {
+			setup.useSDL2 = false;
 		} else {
 			std::cerr << "ERROR: Unknown parameter \"" << argv[i] << "\"\n";
 			return -1;
@@ -524,6 +524,8 @@ int main(int argc, char *argv[]) {
 		// 4355 ('this' : used in base member initializer list)
 		//   only disabled for specific engines where it is used in a safe way
 		//
+		// 4373 (previous versions of the compiler did not override when parameters only differed by const/volatile qualifiers)
+		//
 		// 4510 ('class' : default constructor could not be generated)
 		//
 		// 4511 ('class' : copy constructor could not be generated)
@@ -572,6 +574,8 @@ int main(int argc, char *argv[]) {
 		projectWarnings["kyra"].push_back("4610");
 
 		projectWarnings["m4"].push_back("4355");
+
+		projectWarnings["sci"].push_back("4373");
 
 		if (msvcVersion == 9)
 			provider = new CreateProjectTool::VisualStudioProvider(globalWarnings, projectWarnings, msvcVersion);
@@ -696,7 +700,7 @@ void displayHelp(const char *exe) {
 	        " --disable-<name>         disable inclusion of the feature \"name\"\n"
 	        "\n"
 	        "SDL settings:\n"
-	        " --sdl2                   link to SDL 2.0, instead of SDL 1.2\n"
+	        " --sdl1                   link to SDL 1.2, instead of SDL 2.0\n"
 	        "\n"
 	        " There are the following features available:\n"
 	        "\n";
@@ -996,10 +1000,12 @@ const Feature s_features[] = {
 	{       "png",         "USE_PNG", "libpng16",         true,  "libpng support" },
 	{      "faad",        "USE_FAAD", "libfaad",          false, "AAC support" },
 	{     "mpeg2",       "USE_MPEG2", "libmpeg2",         false, "MPEG-2 support" },
-	{    "theora",   "USE_THEORADEC", "libtheora_static", true,  "Theora decoding support" },
-	{  "freetype",   "USE_FREETYPE2", "freetype",         true,  "FreeType support" },
-	{      "jpeg",        "USE_JPEG", "jpeg-static",      true,  "libjpeg support" },
-	{"fluidsynth",  "USE_FLUIDSYNTH", "libfluidsynth",    true,  "FluidSynth support" },
+	{    "theora",   "USE_THEORADEC", "libtheora_static", true, "Theora decoding support" },
+	{  "freetype",   "USE_FREETYPE2", "freetype",         true, "FreeType support" },
+	{      "jpeg",        "USE_JPEG", "jpeg-static",      true, "libjpeg support" },
+	{"fluidsynth",  "USE_FLUIDSYNTH", "libfluidsynth",    true, "FluidSynth support" },
+	{   "libcurl",     "USE_LIBCURL", "libcurl",          true, "libcurl support" },
+	{    "sdlnet",     "USE_SDL_NET", "SDL_net",          true, "SDL_net support" },
 
 	// Feature flags
 	{            "bink",             "USE_BINK",         "", true,  "Bink video support" },
@@ -1011,6 +1017,7 @@ const Feature s_features[] = {
 	{          "opengl",           "USE_OPENGL",         "", true,  "OpenGL support" },
 	{        "opengles",             "USE_GLES",         "", true,  "forced OpenGL ES mode" },
 	{         "taskbar",          "USE_TASKBAR",         "", true,  "Taskbar integration support" },
+	{           "cloud",            "USE_CLOUD",         "", true,  "Cloud integration support" },
 	{     "translation",      "USE_TRANSLATION",         "", true,  "Translation support" },
 	{          "vkeybd",        "ENABLE_VKEYBD",         "", false, "Virtual keyboard support"},
 	{       "keymapper",     "ENABLE_KEYMAPPER",         "", false, "Keymapper support"},

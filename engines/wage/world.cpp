@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -46,6 +46,7 @@
  */
 
 #include "common/file.h"
+#include "graphics/macgui/macfontmanager.h"
 
 #include "wage/wage.h"
 #include "wage/entities.h"
@@ -75,7 +76,7 @@ World::World(WageEngine *engine) {
 
 	_engine = engine;
 
-	_patterns = new Patterns;
+	_patterns = new Graphics::MacPatterns;
 }
 
 World::~World() {
@@ -203,8 +204,9 @@ bool World::loadWorld(Common::MacResManager *resMan) {
 		res = resMan->getResource(MKTAG('A','T','X','T'), *iter);
 		if (res != NULL) {
 			scene->_textBounds = readRect(res);
-			scene->_fontType = res->readUint16BE();
-			scene->_fontSize = res->readUint16BE();
+			int fontType = res->readUint16BE();
+			int fontSize = res->readUint16BE();
+			scene->_font = new Graphics::MacFont(fontType, fontSize, Graphics::kMacFontRegular, Graphics::FontManager::kConsoleFont);
 
 			Common::String text;
 			while (res->pos() < res->size()) {

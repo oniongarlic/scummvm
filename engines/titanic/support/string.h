@@ -49,6 +49,11 @@ public:
 	explicit CString(char c) : Common::String(c) {}
 	explicit CString(int val);
 
+	bool operator==(const CString &x) const;
+	bool operator==(const char *x) const;
+	bool operator!=(const CString &x) const;
+	bool operator!=(const char *x) const;
+
 	/**
 	 * Returns the left n characters of the string
 	 */
@@ -68,6 +73,12 @@ public:
 	 * Returns a substring from within the string
 	 */
 	CString mid(uint start) const;
+
+	/**
+	 * Returns a substring consisting of the entire string
+	 * except for a specified number of characters at the end
+	 */
+	CString deleteRight(uint count) const;
 
 	/**
 	 * Returns the index of the first occurance of a given character

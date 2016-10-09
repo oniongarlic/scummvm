@@ -33,9 +33,8 @@ namespace Titanic {
 
 CScriptHandler::CScriptHandler(CTitleEngine *owner, int val1, int val2) :
 		_owner(owner), _script(owner->_script), _resources(g_vm->_exeResources),
-		_parser(this), _field10(0), _inputCtr(0), 
-		_concept1P(nullptr), _concept2P(nullptr), _concept3P(nullptr),
-		_concept4P(nullptr), _field30(0) {
+		_parser(this), _inputCtr(0), _concept1P(nullptr),
+		_concept2P(nullptr), _concept3P(nullptr), _concept4P(nullptr) {
 	g_vm->_scriptHandler = this;
 	g_vm->_script = _script;
 	g_vm->_exeResources.reset(this, val1, val2);
@@ -60,19 +59,18 @@ ScriptChangedResult CScriptHandler::scriptChanged(TTroomScript *roomScript, TTnp
 	if (result == SCR_1)
 		result = npcScript->notifyScript(roomScript, dialogueId);
 
-	if (result != SCR_3 && result != SCR_4)
-		return result;
+	if (dialogueId == 3 || dialogueId == 4) {
+		delete _concept1P;
+		delete _concept2P;
+		delete _concept3P;
+		delete _concept4P;
+		_concept1P = nullptr;
+		_concept2P = nullptr;
+		_concept3P = nullptr;
+		_concept4P = nullptr;
+	}
 
 	++_inputCtr;
-	delete _concept1P;
-	delete _concept2P;
-	delete _concept3P;
-	delete _concept4P;
-	_concept1P = nullptr;
-	_concept2P = nullptr;
-	_concept3P = nullptr;
-	_concept4P = nullptr;
-
 	return result;
 }
 

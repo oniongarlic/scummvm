@@ -23,7 +23,7 @@
 #ifndef ADL_DISPLAY_H
 #define ADL_DISPLAY_H
 
-#include <common/types.h>
+#include "common/types.h"
 
 namespace Common {
 class ReadStream;
@@ -102,6 +102,7 @@ private:
 	Graphics::Surface *_font;
 	uint _cursorPos;
 	bool _showCursor;
+	uint32 _startMillis;
 };
 
 } // End of namespace Adl

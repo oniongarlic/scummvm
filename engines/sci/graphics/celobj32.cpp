@@ -28,6 +28,7 @@
 #include "sci/graphics/palette32.h"
 #include "sci/graphics/remap32.h"
 #include "sci/graphics/text32.h"
+#include "sci/engine/workarounds.h"
 
 namespace Sci {
 #pragma mark CelScaler
@@ -35,9 +36,6 @@ namespace Sci {
 CelScaler *CelObj::_scaler = nullptr;
 
 void CelScaler::activateScaleTables(const Ratio &scaleX, const Ratio &scaleY) {
-	const int16 screenWidth = g_sci->_gfxFrameout->getCurrentBuffer().screenWidth;
-	const int16 screenHeight = g_sci->_gfxFrameout->getCurrentBuffer().screenHeight;
-
 	for (int i = 0; i < ARRAYSIZE(_scaleTables); ++i) {
 		if (_scaleTables[i].scaleX == scaleX && _scaleTables[i].scaleY == scaleY) {
 			_activeIndex = i;
@@ -45,19 +43,17 @@ void CelScaler::activateScaleTables(const Ratio &scaleX, const Ratio &scaleY) {
 		}
 	}
 
-	int i = 1 - _activeIndex;
+	const int i = 1 - _activeIndex;
 	_activeIndex = i;
 	CelScalerTable &table = _scaleTables[i];
 
 	if (table.scaleX != scaleX) {
-		assert(screenWidth <= ARRAYSIZE(table.valuesX));
-		buildLookupTable(table.valuesX, scaleX, screenWidth);
+		buildLookupTable(table.valuesX, scaleX, kCelScalerTableSize);
 		table.scaleX = scaleX;
 	}
 
 	if (table.scaleY != scaleY) {
-		assert(screenHeight <= ARRAYSIZE(table.valuesY));
-		buildLookupTable(table.valuesY, scaleY, screenHeight);
+		buildLookupTable(table.valuesY, scaleY, kCelScalerTableSize);
 		table.scaleY = scaleY;
 	}
 }
@@ -65,7 +61,7 @@ void CelScaler::activateScaleTables(const Ratio &scaleX, const Ratio &scaleY) {
 void CelScaler::buildLookupTable(int *table, const Ratio &ratio, const int size) {
 	int value = 0;
 	int remainder = 0;
-	int num = ratio.getNumerator();
+	const int num = ratio.getNumerator();
 	for (int i = 0; i < size; ++i) {
 		*table++ = value;
 		remainder += ratio.getDenominator();
@@ -159,17 +155,19 @@ struct SCALER_NoScale {
 template<bool FLIP, typename READER>
 struct SCALER_Scale {
 #ifndef NDEBUG
+	int16 _minX;
 	int16 _maxX;
 #endif
 	const byte *_row;
 	READER _reader;
 	int16 _x;
-	static int16 _valuesX[1024];
-	static int16 _valuesY[1024];
+	static int16 _valuesX[kCelScalerTableSize];
+	static int16 _valuesY[kCelScalerTableSize];
 
 	SCALER_Scale(const CelObj &celObj, const Common::Rect &targetRect, const Common::Point &scaledPosition, const Ratio scaleX, const Ratio scaleY) :
 	_row(nullptr),
 #ifndef NDEBUG
+	_minX(targetRect.left),
 	_maxX(targetRect.right - 1),
 #endif
 	// The maximum width of the scaled object may not be as
@@ -204,7 +202,7 @@ struct SCALER_Scale {
 		if (g_sci->_gfxFrameout->getCurrentBuffer().scriptWidth == kLowResX) {
 			const int16 unscaledX = (scaledPosition.x / scaleX).toInt();
 			if (FLIP) {
-				int lastIndex = celObj._width - 1;
+				const int lastIndex = celObj._width - 1;
 				for (int16 x = targetRect.left; x < targetRect.right; ++x) {
 					_valuesX[x] = lastIndex - (table->valuesX[x] - unscaledX);
 				}
@@ -220,18 +218,18 @@ struct SCALER_Scale {
 			}
 		} else {
 			if (FLIP) {
-				int lastIndex = celObj._width - 1;
-				for (int16 x = 0; x < targetRect.width(); ++x) {
-					_valuesX[targetRect.left + x] = lastIndex - table->valuesX[x];
+				const int lastIndex = celObj._width - 1;
+				for (int16 x = targetRect.left; x < targetRect.right; ++x) {
+					_valuesX[x] = lastIndex - table->valuesX[x - scaledPosition.x];
 				}
 			} else {
-				for (int16 x = 0; x < targetRect.width(); ++x) {
-					_valuesX[targetRect.left + x] = table->valuesX[x];
+				for (int16 x = targetRect.left; x < targetRect.right; ++x) {
+					_valuesX[x] = table->valuesX[x - scaledPosition.x];
 				}
 			}
 
-			for (int16 y = 0; y < targetRect.height(); ++y) {
-				_valuesY[targetRect.top + y] = table->valuesY[y];
+			for (int16 y = targetRect.top; y < targetRect.bottom; ++y) {
+				_valuesY[y] = table->valuesY[y - scaledPosition.y];
 			}
 		}
 	}
@@ -239,19 +237,19 @@ struct SCALER_Scale {
 	inline void setTarget(const int16 x, const int16 y) {
 		_row = _reader.getRow(_valuesY[y]);
 		_x = x;
-		assert(_x >= 0 && _x <= _maxX);
+		assert(_x >= _minX && _x <= _maxX);
 	}
 
 	inline byte read() {
-		assert(_x >= 0 && _x <= _maxX);
+		assert(_x >= _minX && _x <= _maxX);
 		return _row[_valuesX[_x++]];
 	}
 };
 
 template<bool FLIP, typename READER>
-int16 SCALER_Scale<FLIP, READER>::_valuesX[1024];
+int16 SCALER_Scale<FLIP, READER>::_valuesX[kCelScalerTableSize];
 template<bool FLIP, typename READER>
-int16 SCALER_Scale<FLIP, READER>::_valuesY[1024];
+int16 SCALER_Scale<FLIP, READER>::_valuesY[kCelScalerTableSize];
 
 #pragma mark -
 #pragma mark CelObj - Resource readers
@@ -261,7 +259,7 @@ private:
 #ifndef NDEBUG
 	const int16 _sourceHeight;
 #endif
-	byte *_pixels;
+	const byte *_pixels;
 	const int16 _sourceWidth;
 
 public:
@@ -270,7 +268,7 @@ public:
 	_sourceHeight(celObj._height),
 #endif
 	_sourceWidth(celObj._width) {
-		byte *resource = celObj.getResPointer();
+		const byte *resource = celObj.getResPointer();
 		_pixels = resource + READ_SCI11ENDIAN_UINT32(resource + celObj._celHeaderOffset + 24);
 	}
 
@@ -282,8 +280,8 @@ public:
 
 struct READER_Compressed {
 private:
-	byte *_resource;
-	byte _buffer[1024];
+	const byte *const _resource;
+	byte _buffer[kCelScalerTableSize];
 	uint32 _controlOffset;
 	uint32 _dataOffset;
 	uint32 _uncompressedDataOffset;
@@ -301,7 +299,7 @@ public:
 	_maxWidth(maxWidth) {
 		assert(maxWidth <= celObj._width);
 
-		byte *celHeader = _resource + celObj._celHeaderOffset;
+		const byte *const celHeader = _resource + celObj._celHeaderOffset;
 		_dataOffset = READ_SCI11ENDIAN_UINT32(celHeader + 24);
 		_uncompressedDataOffset = READ_SCI11ENDIAN_UINT32(celHeader + 28);
 		_controlOffset = READ_SCI11ENDIAN_UINT32(celHeader + 32);
@@ -311,14 +309,14 @@ public:
 		assert(y >= 0 && y < _sourceHeight);
 		if (y != _y) {
 			// compressed data segment for row
-			byte *row = _resource + _dataOffset + READ_SCI11ENDIAN_UINT32(_resource + _controlOffset + y * 4);
+			const byte *row = _resource + _dataOffset + READ_SCI11ENDIAN_UINT32(_resource + _controlOffset + y * 4);
 
 			// uncompressed data segment for row
-			byte *literal = _resource + _uncompressedDataOffset + READ_SCI11ENDIAN_UINT32(_resource + _controlOffset + _sourceHeight * 4 + y * 4);
+			const byte *literal = _resource + _uncompressedDataOffset + READ_SCI11ENDIAN_UINT32(_resource + _controlOffset + _sourceHeight * 4 + y * 4);
 
 			uint8 length;
 			for (int16 i = 0; i < _maxWidth; i += length) {
-				byte controlByte = *row++;
+				const byte controlByte = *row++;
 				length = controlByte;
 
 				// Run-length encoded
@@ -570,7 +568,7 @@ uint8 CelObj::readPixel(uint16 x, const uint16 y, bool mirrorX) const {
 
 void CelObj::submitPalette() const {
 	if (_hunkPaletteOffset) {
-		HunkPalette palette(getResPointer() + _hunkPaletteOffset);
+		const HunkPalette palette(getResPointer() + _hunkPaletteOffset);
 		g_sci->_gfxPalette32->submit(palette);
 	}
 }
@@ -581,7 +579,7 @@ void CelObj::submitPalette() const {
 int CelObj::_nextCacheId = 1;
 CelCache *CelObj::_cache = nullptr;
 
-int CelObj::searchCache(const CelInfo32 &celInfo, int *nextInsertIndex) const {
+int CelObj::searchCache(const CelInfo32 &celInfo, int *const nextInsertIndex) const {
 	*nextInsertIndex = -1;
 	int oldestId = _nextCacheId + 1;
 	int oldestIndex = 0;
@@ -791,6 +789,73 @@ void CelObj::scaleDrawUncompNoMD(Buffer &target, const Ratio &scaleX, const Rati
 #pragma mark -
 #pragma mark CelObjView
 
+int16 CelObjView::getNumLoops(const GuiResourceId viewId) {
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, viewId), false);
+
+	if (!resource) {
+		return 0;
+	}
+
+	assert(resource->size >= 3);
+	return resource->data[2];
+}
+
+int16 CelObjView::getNumCels(const GuiResourceId viewId, const int16 loopNo) {
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, viewId), false);
+
+	if (!resource) {
+		return 0;
+	}
+
+	const byte *const data = resource->data;
+
+	const uint16 loopCount = data[2];
+
+	// Every version of SCI32 has a logic error in this function that causes
+	// random memory to be read if a script requests the cel count for one
+	// past the maximum loop index. At least GK1 room 800 does this, and gets
+	// stuck in an infinite loop because the game script expects this method
+	// to return a non-zero value.
+	// The scope of this bug means it is likely to pop up in other games, so we
+	// explicitly trap the bad condition here and report it so that any other
+	// game scripts relying on this broken behavior can be fixed as well
+	if (loopNo == loopCount) {
+		SciCallOrigin origin;
+		SciWorkaroundSolution solution = trackOriginAndFindWorkaround(0, kNumCels_workarounds, &origin);
+		switch (solution.type) {
+		case WORKAROUND_NONE:
+			error("[CelObjView::getNumCels]: loop number %d is equal to loop count in view %u, %s", loopNo, viewId, origin.toString().c_str());
+		case WORKAROUND_FAKE:
+			return (int16)solution.value;
+		case WORKAROUND_IGNORE:
+			return 0;
+		case WORKAROUND_STILLCALL:
+			break;
+		}
+	}
+
+	if (loopNo > loopCount || loopNo < 0) {
+		return 0;
+	}
+
+	const uint16 viewHeaderSize = READ_SCI11ENDIAN_UINT16(data);
+	const uint8 loopHeaderSize = data[12];
+	const uint8 viewHeaderFieldSize = 2;
+
+#ifndef NDEBUG
+	const byte *const dataMax = data + resource->size;
+#endif
+	const byte *loopHeader = data + viewHeaderFieldSize + viewHeaderSize + (loopHeaderSize * loopNo);
+	assert(loopHeader + 3 <= dataMax);
+
+	if ((int8)loopHeader[0] != -1) {
+		loopHeader = data + viewHeaderFieldSize + viewHeaderSize + (loopHeaderSize * (int8)loopHeader[0]);
+		assert(loopHeader >= data && loopHeader + 3 <= dataMax);
+	}
+
+	return loopHeader[2];
+}
+
 CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int16 celNo) {
 	_info.type = kCelTypeView;
 	_info.resourceId = viewId;
@@ -801,7 +866,7 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 	_transparent = true;
 
 	int cacheInsertIndex;
-	int cacheIndex = searchCache(_info, &cacheInsertIndex);
+	const int cacheIndex = searchCache(_info, &cacheInsertIndex);
 	if (cacheIndex != -1) {
 		CelCacheEntry &entry = (*_cache)[cacheIndex];
 		const CelObjView *const cachedCelObj = dynamic_cast<CelObjView *>(entry.celObj);
@@ -817,20 +882,19 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 	// generates view resource metadata for both SCI16 and SCI32
 	// implementations
 
-	Resource *resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, viewId), false);
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, viewId), false);
 
 	// NOTE: SCI2.1/SQ6 just silently returns here.
 	if (!resource) {
-		warning("View resource %d not loaded", viewId);
-		return;
+		error("View resource %d not found", viewId);
 	}
 
-	byte *data = resource->data;
+	const byte *const data = resource->data;
 
 	_scaledWidth = READ_SCI11ENDIAN_UINT16(data + 14);
 	_scaledHeight = READ_SCI11ENDIAN_UINT16(data + 16);
 
-	if (_scaledWidth == 0 || _scaledHeight == 0) {
+	if (_scaledWidth == 0 && _scaledHeight == 0) {
 		byte sizeFlag = data[5];
 		if (sizeFlag == 0) {
 			_scaledWidth = kLowResX;
@@ -844,7 +908,7 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 		}
 	}
 
-	uint16 loopCount = data[2];
+	const uint16 loopCount = data[2];
 	if (_info.loopNo >= loopCount) {
 		_info.loopNo = loopCount - 1;
 	}
@@ -852,14 +916,14 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 	// NOTE: This is the actual check, in the actual location,
 	// from SCI engine.
 	if (loopNo < 0) {
-		error("Loop is less than 0!");
+		error("Loop is less than 0");
 	}
 
 	const uint16 viewHeaderSize = READ_SCI11ENDIAN_UINT16(data);
 	const uint8 loopHeaderSize = data[12];
 	const uint8 viewHeaderFieldSize = 2;
 
-	byte *loopHeader = data + viewHeaderFieldSize + viewHeaderSize + (loopHeaderSize * _info.loopNo);
+	const byte *loopHeader = data + viewHeaderFieldSize + viewHeaderSize + (loopHeaderSize * _info.loopNo);
 
 	if ((int8)loopHeader[0] != -1) {
 		if (loopHeader[1] == 1) {
@@ -874,10 +938,23 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 		_info.celNo = celCount - 1;
 	}
 
+	// A celNo can be negative and still valid. At least PQ4CD uses this strange
+	// arrangement to load its high-resolution main menu resource. In PQ4CD, the
+	// low-resolution menu is at view 23, loop 9, cel 0, and the high-resolution
+	// menu is at view 2300, loop 0, cel 0. View 2300 is specially crafted to
+	// have 2 loops, with the second loop having 0 cels. When in high-resolution
+	// mode, the game scripts only change the view resource ID from 23 to 2300,
+	// leaving loop 9 and cel 0 the same. The code in CelObjView constructor
+	// auto-corrects loop 9 to loop 1, and then auto-corrects the cel number
+	// from 0 to -1, which effectively causes loop 0, cel 0 to be read.
+	if (_info.celNo < 0 && _info.loopNo == 0) {
+		error("Cel is less than 0 on loop 0");
+	}
+
 	_hunkPaletteOffset = READ_SCI11ENDIAN_UINT32(data + 8);
 	_celHeaderOffset = READ_SCI11ENDIAN_UINT32(loopHeader + 12) + (data[13] * _info.celNo);
 
-	byte *celHeader = data + _celHeaderOffset;
+	const byte *const celHeader = data + _celHeaderOffset;
 
 	_width = READ_SCI11ENDIAN_UINT16(celHeader);
 	_height = READ_SCI11ENDIAN_UINT16(celHeader + 2);
@@ -906,7 +983,7 @@ CelObjView::CelObjView(const GuiResourceId viewId, const int16 loopNo, const int
 }
 
 bool CelObjView::analyzeUncompressedForRemap() const {
-	byte *pixels = getResPointer() + READ_SCI11ENDIAN_UINT32(getResPointer() + _celHeaderOffset + 24);
+	const byte *pixels = getResPointer() + READ_SCI11ENDIAN_UINT32(getResPointer() + _celHeaderOffset + 24);
 	for (int i = 0; i < _width * _height; ++i) {
 		const byte pixel = pixels[i];
 		if (
@@ -923,7 +1000,7 @@ bool CelObjView::analyzeUncompressedForRemap() const {
 bool CelObjView::analyzeForRemap() const {
 	READER_Compressed reader(*this, _width);
 	for (int y = 0; y < _height; y++) {
-		const byte *curRow = reader.getRow(y);
+		const byte *const curRow = reader.getRow(y);
 		for (int x = 0; x < _width; x++) {
 			const byte pixel = curRow[x];
 			if (
@@ -948,7 +1025,7 @@ CelObjView *CelObjView::duplicate() const {
 }
 
 byte *CelObjView::getResPointer() const {
-	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, _info.resourceId), false);
+	Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypeView, _info.resourceId), false);
 	if (resource == nullptr) {
 		error("Failed to load view %d from resource manager", _info.resourceId);
 	}
@@ -969,7 +1046,7 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	_remap = false;
 
 	int cacheInsertIndex;
-	int cacheIndex = searchCache(_info, &cacheInsertIndex);
+	const int cacheIndex = searchCache(_info, &cacheInsertIndex);
 	if (cacheIndex != -1) {
 		CelCacheEntry &entry = (*_cache)[cacheIndex];
 		const CelObjPic *const cachedCelObj = dynamic_cast<CelObjPic *>(entry.celObj);
@@ -981,15 +1058,14 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 		return;
 	}
 
-	Resource *resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypePic, picId), false);
+	const Resource *const resource = g_sci->getResMan()->findResource(ResourceId(kResourceTypePic, picId), false);
 
 	// NOTE: SCI2.1/SQ6 just silently returns here.
 	if (!resource) {
-		warning("Pic resource %d not loaded", picId);
-		return;
+		error("Pic resource %d not found", picId);
 	}
 
-	byte *data = resource->data;
+	const byte *const data = resource->data;
 
 	_celCount = data[2];
 
@@ -1000,7 +1076,7 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	_celHeaderOffset = READ_SCI11ENDIAN_UINT16(data) + (READ_SCI11ENDIAN_UINT16(data + 4) * _info.celNo);
 	_hunkPaletteOffset = READ_SCI11ENDIAN_UINT32(data + 6);
 
-	byte *celHeader = data + _celHeaderOffset;
+	const byte *const celHeader = data + _celHeaderOffset;
 
 	_width = READ_SCI11ENDIAN_UINT16(celHeader);
 	_height = READ_SCI11ENDIAN_UINT16(celHeader + 2);
@@ -1012,8 +1088,8 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	_relativePosition.x = (int16)READ_SCI11ENDIAN_UINT16(celHeader + 38);
 	_relativePosition.y = (int16)READ_SCI11ENDIAN_UINT16(celHeader + 40);
 
-	uint16 sizeFlag1 = READ_SCI11ENDIAN_UINT16(data + 10);
-	uint16 sizeFlag2 = READ_SCI11ENDIAN_UINT16(data + 12);
+	const uint16 sizeFlag1 = READ_SCI11ENDIAN_UINT16(data + 10);
+	const uint16 sizeFlag2 = READ_SCI11ENDIAN_UINT16(data + 12);
 
 	if (sizeFlag2) {
 		_scaledWidth = sizeFlag1;
@@ -1032,7 +1108,7 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 	if (celHeader[10] & 128) {
 		// NOTE: This is correct according to SCI2.1/SQ6/DOS;
 		// the engine re-reads the byte value as a word value
-		uint16 flags = READ_SCI11ENDIAN_UINT16(celHeader + 10);
+		const uint16 flags = READ_SCI11ENDIAN_UINT16(celHeader + 10);
 		_transparent = flags & 1 ? true : false;
 		_remap = flags & 2 ? true : false;
 	} else {
@@ -1047,8 +1123,8 @@ CelObjPic::CelObjPic(const GuiResourceId picId, const int16 celNo) {
 }
 
 bool CelObjPic::analyzeUncompressedForSkip() const {
-	byte *resource = getResPointer();
-	byte *pixels = resource + READ_SCI11ENDIAN_UINT32(resource + _celHeaderOffset + 24);
+	const byte *const resource = getResPointer();
+	const byte *const pixels = resource + READ_SCI11ENDIAN_UINT32(resource + _celHeaderOffset + 24);
 	for (int i = 0; i < _width * _height; ++i) {
 		uint8 pixel = pixels[i];
 		if (pixel == _transparentColor) {
@@ -1060,7 +1136,7 @@ bool CelObjPic::analyzeUncompressedForSkip() const {
 }
 
 void CelObjPic::draw(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition, const bool mirrorX) {
-	Ratio square;
+	const Ratio square;
 	_drawMirrored = mirrorX;
 	drawTo(target, targetRect, scaledPosition, square, square);
 }
@@ -1088,15 +1164,21 @@ CelObjMem::CelObjMem(const reg_t bitmapObject) {
 	_celHeaderOffset = 0;
 	_transparent = true;
 
-	SciBitmap &bitmap = *g_sci->getEngineState()->_segMan->lookupBitmap(bitmapObject);
-	_width = bitmap.getWidth();
-	_height = bitmap.getHeight();
-	_displace = bitmap.getDisplace();
-	_transparentColor = bitmap.getSkipColor();
-	_scaledWidth = bitmap.getScaledWidth();
-	_scaledHeight = bitmap.getScaledHeight();
-	_hunkPaletteOffset = bitmap.getHunkPaletteOffset();
-	_remap = bitmap.getRemap();
+	SciBitmap *bitmap = g_sci->getEngineState()->_segMan->lookupBitmap(bitmapObject);
+
+	// NOTE: SSCI did no error checking here at all.
+	if (!bitmap) {
+		error("Bitmap %04x:%04x not found", PRINT_REG(bitmapObject));
+	}
+
+	_width = bitmap->getWidth();
+	_height = bitmap->getHeight();
+	_displace = bitmap->getDisplace();
+	_transparentColor = bitmap->getSkipColor();
+	_scaledWidth = bitmap->getScaledWidth();
+	_scaledHeight = bitmap->getScaledHeight();
+	_hunkPaletteOffset = bitmap->getHunkPaletteOffset();
+	_remap = bitmap->getRemap();
 }
 
 CelObjMem *CelObjMem::duplicate() const {
