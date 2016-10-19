@@ -2835,6 +2835,7 @@ if test -n "$_host"; then
 			_backend=sdl
 			_sdlconfig=sdl-config
 			# XXX: missing in SDK _freetypeconfig=freetype-config
+			# XXX: missing in SDK _libcurlconfig=curl-config
 			_savegame_timestamp=no
 			_eventrec=no
 			_build_scalers=no
@@ -2866,9 +2867,12 @@ if test -n "$_host"; then
 			_seq_midi=no
 			_zlib=yes
 			# append_var DEFINES "-D_XOPEN_SOURCE"
+			append_var CFLAGS "-std=c99"
+			append_var LIBS "-lsocket"
 			append_var DEFINES "-D_QNX_SOURCE"
 			append_var DEFINES "-DSYSTEM_NOT_SUPPORTING_D_TYPE"
-			append_var CFLAGS "-std=c99"
+			append_var DEFINES "-DPLUGIN_DIRECTORY=\\\"lib\\\""
+			append_var DEFINES "-DDATA_PATH=\\\"\\\""
 			;;
 		dreamcast)
 			append_var DEFINES "-DDISABLE_DEFAULT_SAVEFILEMANAGER"
