@@ -995,32 +995,8 @@ static const uint16 gk1PatchDay10GabrielDressUp[] = {
 	PATCH_END
 };
 
-// GK1 initializes the global interrogation array with an int16 array, which
-// happens to work in SSCI because object references are int16s, but in ScummVM
-// object references are reg_ts, so this array needs to be created as an IDArray
-// instead
-static const uint16 gk1SignatureInterrogationArray1[] = {
-	0x38, SIG_SELECTOR16(new), // pushi new
-	0x78,                      // push1
-	SIG_MAGICDWORD,
-	0x39, 0x0f,                // pushi 15
-	0x51, 0x0a,                // class IntArray
-	SIG_END
-};
-
-static const uint16 gk1PatchInterrogationArray1[] = {
-	PATCH_ADDTOOFFSET(+3),  // pushi new
-	PATCH_ADDTOOFFSET(+1),  // push1
-	PATCH_ADDTOOFFSET(+2),  // pushi 15
-	0x51, 0x0b,             // class IDArray
-	PATCH_END
-};
-
 //          script, description,                                      signature                         patch
 static const SciScriptPatcherEntry gk1Signatures[] = {
-	{  true,    10, "fix interrogation array type 1/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
-	{  true,    50, "fix interrogation array type 2/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
-	{  true,    93, "fix interrogation array type 3/3",            1, gk1SignatureInterrogationArray1,  gk1PatchInterrogationArray1 },
 	{  true,    51, "interrogation bug",                           1, gk1SignatureInterrogationBug,     gk1PatchInterrogationBug },
 	{  true,   212, "day 5 drum book dialogue error",              1, gk1SignatureDay5DrumBookDialogue, gk1PatchDay5DrumBookDialogue },
 	{  true,   212, "day 5 phone freeze",                          1, gk1SignatureDay5PhoneFreeze,      gk1PatchDay5PhoneFreeze },
@@ -1882,7 +1858,7 @@ static const uint16 kq7SignatureSubtitleFix3[] = {
 static const uint16 kq7PatchSubtitleFix3[] = {
 	PATCH_ADDTOOFFSET(+2),              // skip over "pToa initialized code"
 	0x2f, 0x0c,                         // bt [skip init code] - saved 1 byte
-	0x38, 
+	0x38,
 	PATCH_GETORIGINALBYTE(+6),
 	PATCH_GETORIGINALBYTE(+7),          // pushi (init)
 	0x76,                               // push0
@@ -3916,7 +3892,7 @@ static const uint16 qfg3PatchRoom750Bounds1[] = {
 static const uint16 qfg3SignatureRoom750Bounds2[] = {
 	// (ego x: 294 y: 39)
 	0x78,                               // push1 ("x")
-	0x78,                               // push1 
+	0x78,                               // push1
 	0x38, SIG_UINT16(294),              // pushi 294
 	0x76,                               // push0 ("y")
 	0x78,                               // push1
@@ -4560,31 +4536,46 @@ static const SciScriptPatcherEntry sq5Signatures[] = {
 #pragma mark -
 #pragma mark Space Quest 6
 
-// When pressing number buttons on the Holocabana controls, View objects are
-// put in an int16 array. This happens to work in SSCI, but ScummVM requires a
-// proper IDArray because reg_t is larger than 16 bits.
-static const uint16 sq6HoloIntArraySignature[] = {
-	0x38, SIG_SELECTOR16(new), // pushi new
-	0x76,                      // push0
-	0x51, 0x0b,                // class IntArray
+// After the explosion in the Quarters of Deepship 86, the game tries to perform
+// a dramatic long fade, but does this with an unreasonably large number of
+// divisions which takes tens of seconds to finish (because transitions are not
+// CPU-dependent in ScummVM).
+static const uint16 sq6SlowTransitionSignature1[] = {
 	SIG_MAGICDWORD,
-	0x4a, SIG_UINT16(0x04),    // send 4
-	0xa3, 0x06,                // sal local[6]
+	0x38, SIG_UINT16(0x578), // pushi $0578
+	0x51, 0x33,              // class Styler
 	SIG_END
 };
 
-static const uint16 sq6HoloIntArrayPatch[] = {
-	PATCH_ADDTOOFFSET(+4),      // pushi new; push0
-	0x51, 0x0c,                 // class IDArray
+static const uint16 sq6SlowTransitionPatch1[] = {
+	0x38, SIG_UINT16(180), // pushi 180
+	PATCH_END
+};
+
+// For whatever reason, SQ6 sets the default number of transition divisions to
+// be a much larger value at startup (200 vs 30) if it thinks it is running in
+// Windows. Room 410 (eulogy room) also unconditionally resets divisions to the
+// larger value.
+static const uint16 sq6SlowTransitionSignature2[] = {
+	SIG_MAGICDWORD,
+	0x38, SIG_UINT16(0xc8), // pushi $c8
+	0x51, 0x33,             // class Styler
+	SIG_END
+};
+
+static const uint16 sq6SlowTransitionPatch2[] = {
+	0x38, SIG_UINT16(30), // pushi 30
 	PATCH_END
 };
 
 //          script, description,                                      signature                        patch
 static const SciScriptPatcherEntry sq6Signatures[] = {
+	{  true,     0, "fix slow transitions",                        1, sq6SlowTransitionSignature2,     sq6SlowTransitionPatch2 },
 	{  true,    15, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
 	{  true,    22, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
-	{  true,   400, "invalid array type",                          1, sq6HoloIntArraySignature,        sq6HoloIntArrayPatch },
+	{  true,   410, "fix slow transitions",                        1, sq6SlowTransitionSignature2,     sq6SlowTransitionPatch2 },
 	{  true,   460, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
+	{  true,   500, "fix slow transitions",                        1, sq6SlowTransitionSignature1,     sq6SlowTransitionPatch1 },
 	{  true,   510, "invalid array construction",                  1, sci21IntArraySignature,          sci21IntArrayPatch },
 	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,          sci2NumSavesPatch1 },
 	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,          sci2NumSavesPatch2 },
@@ -4595,30 +4586,8 @@ static const SciScriptPatcherEntry sq6Signatures[] = {
 #pragma mark -
 #pragma mark Torins Passage
 
-// Torin initializes the inventory with an int16 array, which happens to work
-// in SSCI because object references are int16s, but in ScummVM object
-// references are reg_ts, so this array needs to be created as an IDArray
-// instead
-static const uint16 torinInventItemSlotsSignature[] = {
-	0x38, SIG_SELECTOR16(new), // pushi new
-	0x78,                      // push1
-	SIG_MAGICDWORD,
-	0x67, 0x2e,                // pTos $2e (invSlotsTot)
-	0x51, 0x0b,                // class IntArray
-	SIG_END
-};
-
-static const uint16 torinInventItemSlotsPatch[] = {
-	PATCH_ADDTOOFFSET(+3),  // pushi new
-	PATCH_ADDTOOFFSET(+1),  // push1
-	PATCH_ADDTOOFFSET(+2),  // pTos $2e (invSlotsTot)
-	0x51, 0x0c,             // class IDArray
-	PATCH_END
-};
-
 //          script, description,                                      signature                         patch
 static const SciScriptPatcherEntry torinSignatures[] = {
-	{  true, 64895, "fix inventory array type",                    1, torinInventItemSlotsSignature,    torinInventItemSlotsPatch },
 	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature1,           sci2NumSavesPatch1 },
 	{  true, 64990, "increase number of save games",               1, sci2NumSavesSignature2,           sci2NumSavesPatch2 },
 	SCI_SIGNATUREENTRY_TERMINATOR

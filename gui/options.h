@@ -114,6 +114,7 @@ private:
 	StaticTextWidget *_gfxPopUpDesc;
 	PopUpWidget *_gfxPopUp;
 	CheckboxWidget *_fullscreenCheckbox;
+	CheckboxWidget *_filteringCheckbox;
 	CheckboxWidget *_aspectCheckbox;
 	StaticTextWidget *_renderModePopUpDesc;
 	PopUpWidget *_renderModePopUp;
@@ -280,12 +281,13 @@ protected:
 #endif
 
 	void setupCloudTab();
-#endif
+
 #ifdef USE_LIBCURL
 	void storageInfoCallback(Cloud::Storage::StorageInfoResponse response);
 	void storageListDirectoryCallback(Cloud::Storage::ListDirectoryResponse response);
 	void storageErrorCallback(Networking::ErrorResponse response);
 #endif
+#endif // USE_CLOUD
 };
 
 } // End of namespace GUI

@@ -173,20 +173,18 @@ SciEvent EventManager::getScummVMEvent() {
 	if (getSciVersion() >= SCI_VERSION_2) {
 		const Buffer &screen = g_sci->_gfxFrameout->getCurrentBuffer();
 
+		// This will clamp `mousePos` according to the restricted zone,
+		// so any cursor or screen item associated with the mouse position
+		// does not bounce when it hits the edge (or ignore the edge)
+		g_sci->_gfxCursor32->deviceMoved(mousePos);
+
 		Common::Point mousePosSci = mousePos;
 		mulru(mousePosSci, Ratio(screen.scriptWidth, screen.screenWidth), Ratio(screen.scriptHeight, screen.screenHeight));
 		noEvent.mousePosSci = input.mousePosSci = mousePosSci;
 
-		if (ev.type == Common::EVENT_MOUSEMOVE) {
-			// This will clamp `mousePos` according to the restricted zone,
-			// so any cursor or screen item associated with the mouse position
-			// does not bounce when it hits the edge (or ignore the edge)
-			g_sci->_gfxCursor32->deviceMoved(mousePos);
-			if (_hotRectanglesActive) {
-				checkHotRectangles(mousePosSci);
-			}
+		if (_hotRectanglesActive) {
+			checkHotRectangles(mousePosSci);
 		}
-
 	} else {
 #endif
 		g_sci->_gfxScreen->adjustBackUpscaledCoordinates(mousePos.y, mousePos.x);
@@ -417,6 +415,7 @@ void EventManager::setHotRectanglesActive(const bool active) {
 
 void EventManager::setHotRectangles(const Common::Array<Common::Rect> &rects) {
 	_hotRects = rects;
+	_activeRectIndex = -1;
 }
 
 void EventManager::checkHotRectangles(const Common::Point &mousePosition) {

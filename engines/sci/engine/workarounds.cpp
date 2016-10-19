@@ -347,6 +347,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_QFG3,          330,   330, -1,             "Teller", "doChild",                         NULL,    -1, { WORKAROUND_FAKE,   0 } }, // when talking to King Rajah about "Rajah" (bug #5033, temp 1) or "Tarna" (temp 0), or when clicking on yourself and saying "Greet" (bug #5148, temp 1)
 	{ GID_QFG3,          700,   700, -1,      "monsterIsDead", "changeState",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // in the jungle, after winning any fight, bug #5169
 	{ GID_QFG3,          470,   470, -1,              "rm470", "notify",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // closing the character screen in the Simbani village in the room with the bridge, bug #5165
+	{ GID_QFG3,          470,   470, -1,     "<invalid name>", "notify",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // same as previous, with rm470::name used for temp storage by fan patches added by GOG
 	{ GID_QFG3,          490,   490, -1,      "computersMove", "changeState",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // when finishing awari game, bug #5167
 	{ GID_QFG3,          490,   490, -1,      "computersMove", "changeState",    sig_uninitread_qfg3_2,     4, { WORKAROUND_FAKE,   0 } }, // also when finishing awari game
 	{ GID_QFG3,          851,    32, -1,            "ProjObj", "doit",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // near the end, when throwing the spear of death, bug #5282
@@ -693,6 +694,7 @@ const SciWorkaroundEntry kNumCels_workarounds[] = {
 	{ GID_SQ6,           320, 64998, -1,          "wandererB", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 8 } }, // random background movement on Polysorbate LX street 3
 	{ GID_SQ6,           340, 64998, -1,          "wandererB", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 8 } }, // random background movement on Polysorbate LX street 1
 	{ GID_SQ6,           530, 64998, -1,           "monitors", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 5 } }, // random background movement during cutscene
+	{ GID_SQ6,           680, 64998, -1,                "ego", "lastCel",                   NULL,    -1, { WORKAROUND_FAKE, 44 } }, // when double-clicking hand icon on blockage
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -714,6 +716,24 @@ const SciWorkaroundEntry kRandom_workarounds[] = {
 const SciWorkaroundEntry kReadNumber_workarounds[] = {
 	{ GID_CNICK_LAURABOW,100,   101,  0,          "dominoes.opt", "doit",                   NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // When dominoes.opt is present, the game scripts call kReadNumber with an extra integer parameter - bug #6425
 	{ GID_HOYLE3,        100,   101,  0,          "dominoes.opt", "doit",                   NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // When dominoes.opt is present, the game scripts call kReadNumber with an extra integer parameter - bug #6425
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//                Game: Leisure Suit Larry 6 hires
+//      Calling method: myCreditText::changeState
+//   Subroutine offset: 0x8c (script 740)
+// Applies to at least: English PC CD
+static const uint16 sig_kResCheck_lsl6hires_1[] = {
+	0x3f, 0x01, // link 01
+	0x81, 0x13, // lag global[$13]
+	0xa5, 0x00, // sat 00
+	0x7a,       // push2
+	SIG_END
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name,  local-call-signature, index,                workaround
+const SciWorkaroundEntry kResCheck_workarounds[] = {
+	{ GID_LSL6HIRES,     740,   740, -1,       "myCreditText", "handleEvent", sig_kResCheck_lsl6hires_1, -1, { WORKAROUND_IGNORE, 0 } }, // when clicking quit during the final credits
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -787,6 +807,7 @@ const SciWorkaroundEntry kUnLoad_workarounds[] = {
 	{ GID_LAURABOW2,      -1,    -1,  0,           "sCartoon", "changeState",                NULL,     0, { WORKAROUND_IGNORE, 0 } }, // DEMO: during the intro, a 3rd parameter is passed by accident - bug #4966
 	{ GID_LSL6,          130,   130,  0,    "recruitLarryScr", "changeState",                NULL,     0, { WORKAROUND_IGNORE, 0 } }, // during intro, a 3rd parameter is passed by accident
 	{ GID_LSL6,          740,   740,  0,        "showCartoon", "changeState",                NULL,     0, { WORKAROUND_IGNORE, 0 } }, // during ending, 4 additional parameters are passed by accident
+	{ GID_LSL6HIRES,     740,   740,  0,        "showCartoon", "changeState",                NULL,     0, { WORKAROUND_IGNORE, 0 } }, // during ending, multiple additional parameters are passed by accident
 	{ GID_LSL6HIRES,     130,   130,  0,    "recruitLarryScr", "changeState",                NULL,     0, { WORKAROUND_IGNORE, 0 } }, // during intro, a 3rd parameter is passed by accident
 	{ GID_SQ1,            43,   303,  0,            "slotGuy", "dispose",                    NULL,     0, { WORKAROUND_IGNORE, 0 } }, // when leaving ulence flats bar, parameter 1 is not passed - script error
 	{ GID_QFG4,           -1,   110,  0,            "dreamer", "dispose",                    NULL,     0, { WORKAROUND_IGNORE, 0 } }, // during the dream sequence, a 3rd parameter is passed by accident

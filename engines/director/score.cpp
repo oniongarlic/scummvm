@@ -27,6 +27,8 @@
 #include "engines/util.h"
 #include "graphics/font.h"
 #include "graphics/palette.h"
+#include "graphics/macgui/macfontmanager.h"
+#include "graphics/macgui/macwindowmanager.h"
 
 #include "director/score.h"
 #include "director/frame.h"
@@ -86,6 +88,51 @@ static byte defaultPalette[768] = {
 	255, 153, 102, 255, 153, 153, 255, 153, 204, 255, 153, 255, 255, 204,   0, 255,
 	204,  51, 255, 204, 102, 255, 204, 153, 255, 204, 204, 255, 204, 255, 255, 255,
 	  0, 255, 255,  51, 255, 255, 102, 255, 255, 153, 255, 255, 204, 255, 255, 255 };
+
+void DirectorEngine::testFont() {
+	int x = 10;
+	int y = 10;
+	int w = 640;
+	int h = 480;
+
+	initGraphics(w, h, true);
+	g_system->getPaletteManager()->setPalette(defaultPalette, 0, 256);
+
+	Graphics::ManagedSurface surface;
+
+	surface.create(w, h);
+	surface.clear(255);
+
+	const char *text = "d";
+
+	for (int i = 9; i <= 40; i++) {
+		Graphics::MacFont macFont(Graphics::kMacFontNewYork, i);
+
+		const Graphics::Font *font = _wm->_fontMan->getFont(macFont);
+
+		int width = font->getStringWidth(text);
+
+		Common::Rect bbox = font->getBoundingBox(text, x, y, w);
+		surface.frameRect(bbox, 15);
+
+		font->drawString(&surface, text, x, y, width, 0);
+
+		x += width + 1;
+	}
+
+	g_system->copyRectToScreen(surface.getPixels(), surface.pitch, 0, 0, w, h);
+
+	Common::Event event;
+
+	while (true) {
+		if (g_system->getEventManager()->pollEvent(event))
+			if (event.type == Common::EVENT_QUIT)
+				break;
+
+		g_system->updateScreen();
+		g_system->delayMillis(10);
+	}
+}
 
 Score::Score(DirectorEngine *vm, Archive *archive) {
 	_vm = vm;
@@ -667,13 +714,15 @@ BitmapCast::BitmapCast(Common::SeekableSubReadStreamEndian &stream) {
 }
 
 TextCast::TextCast(Common::SeekableSubReadStreamEndian &stream) {
-	/*byte flags =*/ stream.readByte();
+	flags1 = stream.readByte();
 	borderSize = static_cast<SizeType>(stream.readByte());
 	gutterSize = static_cast<SizeType>(stream.readByte());
 	boxShadow = static_cast<SizeType>(stream.readByte());
 	textType = static_cast<TextType>(stream.readByte());
 	textAlign = static_cast<TextAlignType>(stream.readUint16());
-	stream.skip(6); //palinfo
+	palinfo1 = stream.readUint16();
+	palinfo2 = stream.readUint16();
+	palinfo3 = stream.readUint16();
 
 	int t = stream.readUint32();
 	assert(t == 0); // So far we saw only 0 here
@@ -687,6 +736,8 @@ TextCast::TextCast(Common::SeekableSubReadStreamEndian &stream) {
 		textFlags.push_back(kTextFlagAutoTab);
 	if (flags & 0x4)
 		textFlags.push_back(kTextFlagDoNotWrap);
+	if (flags & 0xf8)
+		warning("Unproxessed text cast flags: %x", flags & 0xf8);
 
 	// TODO: FIXME: guesswork
 	fontId = stream.readByte();

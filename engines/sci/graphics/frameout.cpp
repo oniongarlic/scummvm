@@ -1004,6 +1004,10 @@ void GfxFrameout::calcLists(ScreenItemListList &drawLists, EraseListList &eraseL
 			_visiblePlanes.add(new Plane(plane));
 			--plane._created;
 		} else if (plane._updated) {
+			if (visiblePlane == nullptr) {
+				error("[GfxFrameout::calcLists]: Attempt to update nonexistent visible plane");
+			}
+
 			*visiblePlane = plane;
 			--plane._updated;
 		}
@@ -1344,7 +1348,7 @@ bool GfxFrameout::isOnMe(const ScreenItem &screenItem, const Plane &plane, const
 		scaledPosition.x -= screenItem._scaledPosition.x;
 		scaledPosition.y -= screenItem._scaledPosition.y;
 
-		mulru(scaledPosition, Ratio(celObj._scaledWidth, _currentBuffer.screenWidth), Ratio(celObj._scaledHeight, _currentBuffer.screenHeight));
+		mulru(scaledPosition, Ratio(celObj._xResolution, _currentBuffer.screenWidth), Ratio(celObj._yResolution, _currentBuffer.screenHeight));
 
 		if (screenItem._scale.signal != kScaleSignalNone && screenItem._scale.x && screenItem._scale.y) {
 			scaledPosition.x = scaledPosition.x * 128 / screenItem._scale.x;
@@ -1352,7 +1356,7 @@ bool GfxFrameout::isOnMe(const ScreenItem &screenItem, const Plane &plane, const
 		}
 
 		uint8 pixel = celObj.readPixel(scaledPosition.x, scaledPosition.y, mirrorX);
-		return pixel != celObj._transparentColor;
+		return pixel != celObj._skipColor;
 	}
 
 	return true;

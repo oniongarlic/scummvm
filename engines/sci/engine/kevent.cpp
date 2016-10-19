@@ -73,7 +73,7 @@ reg_t kGetEvent(EngineState *s, int argc, reg_t *argv) {
 		g_debug_simulated_key = 0;
 		return make_reg(0, 1);
 	}
-	
+
 	curEvent = g_sci->getEventManager()->getSciEvent(mask);
 
 	if (s->_delayedRestoreGame) {
@@ -383,10 +383,10 @@ reg_t kSetHotRectangles(EngineState *s, int argc, reg_t *argv) {
 	rects.resize(numRects);
 
 	for (int16 i = 0; i < numRects; ++i) {
-		rects[i].left   = hotRects.int16At(i * 4);
-		rects[i].top    = hotRects.int16At(i * 4 + 1);
-		rects[i].right  = hotRects.int16At(i * 4 + 2) + 1;
-		rects[i].bottom = hotRects.int16At(i * 4 + 3) + 1;
+		rects[i].left   = hotRects.getAsInt16(i * 4);
+		rects[i].top    = hotRects.getAsInt16(i * 4 + 1);
+		rects[i].right  = hotRects.getAsInt16(i * 4 + 2) + 1;
+		rects[i].bottom = hotRects.getAsInt16(i * 4 + 3) + 1;
 	}
 
 	g_sci->getEventManager()->setHotRectanglesActive(true);

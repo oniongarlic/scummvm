@@ -278,7 +278,7 @@ static const SciKernelMapSubEntry kPalVary_subops[] = {
 	{ SIG_SCI16,           5, MAP_CALL(PalVaryChangeTicks),        "i",                    NULL },
 	{ SIG_SCI16,           6, MAP_CALL(PalVaryPauseResume),        "i",                    NULL },
 #ifdef ENABLE_SCI32
-	{ SIG_SCI32,           0, MAP_CALL(PalVarySetVary),            "i(i)(i)(ii)",          NULL },
+	{ SIG_SCI32,           0, MAP_CALL(PalVarySetVary),            "i(i)(i)(i)(i)",        NULL },
 	{ SIG_SCI32,           1, MAP_CALL(PalVarySetPercent),         "(i)(i)",               kPalVarySetPercent_workarounds },
 	{ SIG_SCI32,           2, MAP_CALL(PalVaryGetPercent),         "",                     NULL },
 	{ SIG_SCI32,           3, MAP_CALL(PalVaryOff),                "",                     NULL },
@@ -391,7 +391,7 @@ static const SciKernelMapSubEntry kBitmap_subops[] = {
 	{ SIG_SINCE_SCI21,     5, MAP_CALL(BitmapDrawColor),           "riiiii",               NULL },
 	{ SIG_SINCE_SCI21,     6, MAP_CALL(BitmapDrawBitmap),          "rr(i)(i)(i)",          NULL },
 	{ SIG_SINCE_SCI21,     7, MAP_CALL(BitmapInvert),              "riiiiii",              NULL },
-	{ SIG_SINCE_SCI21MID,  8, MAP_CALL(BitmapSetDisplace),         "rii",                  NULL },
+	{ SIG_SINCE_SCI21MID,  8, MAP_CALL(BitmapSetOrigin),           "rii",                  NULL },
 	{ SIG_SINCE_SCI21MID,  9, MAP_CALL(BitmapCreateFromView),      "iii(i)(i)(i)([r0])",   NULL },
 	{ SIG_SINCE_SCI21MID, 10, MAP_CALL(BitmapCopyPixels),          "rr",                   NULL },
 	{ SIG_SINCE_SCI21MID, 11, MAP_CALL(BitmapClone),               "r",                    NULL },
@@ -753,7 +753,7 @@ static SciKernelMapEntry s_kernelMap[] = {
 #ifdef ENABLE_SCI32
 	{ "RemapColors", kRemapColors32, SIG_SCI32, SIGFOR_ALL,  "i(i)(i)(i)(i)(i)",      kRemapColors_subops, NULL },
 #endif
-	{ MAP_CALL(ResCheck),          SIG_EVERYWHERE,           "ii(iiii)",              NULL,            NULL },
+	{ MAP_CALL(ResCheck),          SIG_EVERYWHERE,           "ii(iiii)",              NULL,            kResCheck_workarounds },
 	{ MAP_CALL(RespondsTo),        SIG_EVERYWHERE,           ".i",                    NULL,            NULL },
 	{ MAP_CALL(RestartGame),       SIG_EVERYWHERE,           "",                      NULL,            NULL },
 #ifdef ENABLE_SCI32

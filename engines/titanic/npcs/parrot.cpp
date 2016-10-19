@@ -116,13 +116,13 @@ CParrot::CParrot() : CTrueTalkNPC() {
 void CParrot::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
 	file->writeNumberLine(_assetNumber, indent);
-	
+
 	file->writeQuotedLine(_assetName, indent);
 	file->writeNumberLine(_field108, indent);
 	file->writeNumberLine(_v1, indent);
 	file->writeNumberLine(_v2, indent);
 	file->writeNumberLine(_v3, indent);
-	
+
 	file->writeQuotedLine(_string2, indent);
 	file->writeNumberLine(_field118, indent);
 	file->writeNumberLine(_field11C, indent);
@@ -410,7 +410,7 @@ bool CParrot::LeaveViewMsg(CLeaveViewMsg *msg) {
 }
 
 bool CParrot::ParrotSpeakMsg(CParrotSpeakMsg *msg) {
-	const char *const ROOM_NAMES[] = {
+	static const char *const ROOM_NAMES[] = {
 		"SGTState", "SGTLittleLift", "SecClassLittleLift", "SecClassState",
 		"Lift", "ServiceElevator", "Dome", "Home", "MoonEmbLobby", nullptr
 	};
@@ -477,7 +477,7 @@ bool CParrot::ParrotSpeakMsg(CParrotSpeakMsg *msg) {
 }
 
 bool CParrot::NPCPlayTalkingAnimationMsg(CNPCPlayTalkingAnimationMsg *msg) {
-	const char *const NAMES[] = {
+	static const char *const NAMES[] = {
 		"Talking0", "Talking1", "Talking2", "Talking3", "Talking4",
 		"Talking5", "Talking6", "Talking7", nullptr
 	};
@@ -492,7 +492,7 @@ bool CParrot::NPCPlayTalkingAnimationMsg(CNPCPlayTalkingAnimationMsg *msg) {
 }
 
 bool CParrot::NPCPlayIdleAnimationMsg(CNPCPlayIdleAnimationMsg *msg) {
-	const char *const NAMES[] = {
+	static const char *const NAMES[] = {
 		"Idle0", "Idle1", "Peck At Feet", "Peck At Feet Left"
 		"Peck At Feet Right", nullptr
 	};
@@ -581,7 +581,7 @@ bool CParrot::FrameMsg(CFrameMsg *msg) {
 				actMsg.execute(_field134);
 			}
 
-			_npcFlags &= ~(NPCFLAG_10000 | NPCFLAG_20000 | NPCFLAG_40000 
+			_npcFlags &= ~(NPCFLAG_10000 | NPCFLAG_20000 | NPCFLAG_40000
 				| NPCFLAG_80000 | NPCFLAG_100000 | NPCFLAG_200000 | NPCFLAG_400000);
 			return true;
 		}

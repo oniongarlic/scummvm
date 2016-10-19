@@ -160,7 +160,6 @@ reg_t GfxControls32::kernelEditText(const reg_t controlObject) {
 		// Original engine did not have a QUIT event but we have to handle it
 		if (event.type == SCI_EVENT_QUIT) {
 			focused = false;
-			break;
 		} else if (event.type == SCI_EVENT_MOUSE_PRESS && !editorPlaneRect.contains(event.mousePosSci)) {
 			focused = false;
 		} else if (event.type == SCI_EVENT_KEYBOARD) {
@@ -400,7 +399,7 @@ ScrollWindow::ScrollWindow(SegManager *segMan, const Common::Rect &gameRect, con
 	const uint16 scriptHeight = g_sci->_gfxFrameout->getCurrentBuffer().scriptHeight;
 
 	Common::Rect bitmapRect(gameRect);
-	mulinc(bitmapRect, Ratio(_gfxText32._scaledWidth, scriptWidth), Ratio(_gfxText32._scaledHeight, scriptHeight));
+	mulinc(bitmapRect, Ratio(_gfxText32._xResolution, scriptWidth), Ratio(_gfxText32._yResolution, scriptHeight));
 
 	_textRect.left = 2;
 	_textRect.top = 2;
