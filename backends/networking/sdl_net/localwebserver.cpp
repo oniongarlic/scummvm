@@ -33,6 +33,7 @@
 #include <common/config-manager.h>
 
 #ifdef POSIX
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
