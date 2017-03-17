@@ -2834,6 +2834,7 @@ if test -n "$_host"; then
 		playbook)
 			_backend=sdl
 			_sdlconfig=sdl-config
+			_freetypeconfig=qnx6/freetype-config
 			# XXX: missing in SDK _freetypeconfig=freetype-config
 			# XXX: missing in SDK _libcurlconfig=curl-config
 			_savegame_timestamp=no
@@ -2856,6 +2857,8 @@ if test -n "$_host"; then
 		bb10)
 			_backend=sdl
 			_sdlconfig=sdl-config
+			_freetypepath=qnx6
+			_libcurlpath=qnx6
 			_savegame_timestamp=no
 			_eventrec=no
 			_build_scalers=no
