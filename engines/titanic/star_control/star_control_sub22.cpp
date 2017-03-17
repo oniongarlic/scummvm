@@ -26,7 +26,19 @@
 namespace Titanic {
 
 CStarControlSub22::CStarControlSub22(const CStar20Data *src) :
-		CStarControlSub20(src), _sub27() {
+		CStarControlSub20(src) {
+}
+
+void CStarControlSub22::proc8(FVector &v1, FVector &v2, FMatrix &m1, FMatrix &m2) {
+	if (isLocked())
+		decLockCount();
+
+	_sub27.proc2(v1, v2, m1, m2);
+	incLockCount();
+}
+
+void CStarControlSub22::proc11(CErrorCode &errorCode, FVector &v, const FMatrix &m) {
+	// TODO
 }
 
 } // End of namespace Titanic

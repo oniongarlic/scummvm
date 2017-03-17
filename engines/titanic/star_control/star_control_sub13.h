@@ -24,6 +24,7 @@
 #define TITANIC_STAR_CONTROL_SUB13_H
 
 #include "titanic/support/simple_file.h"
+#include "titanic/star_control/base_star.h"
 #include "titanic/star_control/star_control_sub6.h"
 #include "titanic/star_control/fmatrix.h"
 
@@ -36,30 +37,31 @@ private:
 	double _field1C;
 	int _width;
 	int _height;
-	double _valArray[5];
 	FMatrix _matrix;
 	CStarControlSub6 _sub1;
 	CStarControlSub6 _sub2;
 	double _fieldC0;
 	double _fieldC4;
-	int _fieldC8;
-	int _fieldCC;
-	double _fieldD0;
-	int _fieldD4;
+	bool _flag;
 private:
-	void setup(void *ptr);
-
 	void reset();
 public:
 	FVector _position;
 	double _field10;
 	double _field14;
 	int _field24;
+	double _valArray[5];
+	double _fieldC8;
+	double _fieldCC;
+	double _fieldD0;
 public:
-	CStarControlSub13(void *ptr);
+	CStarControlSub13();
 	CStarControlSub13(CStarControlSub13 *src);
 
-	void copyFrom(const void *src);
+	/**
+	 * Copys the data from another instance
+	 */
+	void copyFrom(const CStarControlSub13 *src);
 
 	/**
 	 * Load the data for the class from file
@@ -79,7 +81,7 @@ public:
 	/**
 	 * Sets the position
 	 */
-	void setPosition(const CStarControlSub6 &sub6);
+	void setPosition(const CStarControlSub6 *sub6);
 
 	/**
 	 * Sets the matrix
@@ -88,26 +90,26 @@ public:
 
 	void fn11(const FVector &v);
 	void fn12();
-	void fn13(double v1, double v2);
-	void fn14(double v);
-	void fn15(FMatrix &matrix);
+	void fn13(StarMode mode, double v2);
+	void reposition(double factor);
+	void fn15(const FMatrix &matrix);
 	CStarControlSub6 getSub1();
 	CStarControlSub6 getSub2();
-	FVector fn16(const FVector &v);
-	FVector fn17(int index, const FVector &v);
-	FVector fn18(int index, const FVector &v);
+	void fn16(int index, const FVector &src, FVector &dest);
+	FVector fn17(int index, const FVector &src);
+	FVector fn18(int index, const FVector &src);
 	void fn19(double *v1, double *v2, double *v3, double *v4);
 
 	/**
-	 * Makes a copy of the instance's matrix into the passed matrix
+	 * Returns the instance's matrix
 	 */
-	void getMatrix(FMatrix *matrix);
+	const FMatrix &getMatrix() const;
 
-	void setC(int v);
-	void set10(int v);
-	void set14(int v);
-	void set18(int v);
-	void set1C(int v);
+	void setC(double v);
+	void set10(double v);
+	void set14(double v);
+	void set18(double v);
+	void set1C(double v);
 };
 
 } // End of namespace Titanic

@@ -23,35 +23,106 @@
 #ifndef TITANIC_STAR_CONTROL_SUB5_H
 #define TITANIC_STAR_CONTROL_SUB5_H
 
+#include "common/array.h"
 #include "titanic/star_control/star_control_sub6.h"
 #include "titanic/star_control/error_code.h"
+#include "titanic/star_control/surface_area.h"
 
 namespace Titanic {
 
+class CStarControlSub12;
+
 class CStarControlSub5 {
+	struct Data1 {
+		int _index1;
+		int _index2;
+		Data1() : _index1(0), _index2(0) {}
+	};
+
 	struct SubEntry {
+		Common::Array<Data1> _data1;
+		Common::Array<FVector> _data2;
+		~SubEntry() { clear(); }
+
+		/**
+		 * Clears the entry
+		 */
+		void clear();
+	};
+
+	struct Entry {
 		int _field0;
-		int _field4;
+		byte _pixel1;
+		byte _pixel2;
+		byte _pixel3;
 		int _field8;
 		int _fieldC;
+		double _field10;
+		double _field14;
+
+		Entry() : _field0(0), _pixel1(0), _pixel2(0), _pixel3(0), _field8(0),
+				_fieldC(0), _field10(0), _field14(0) {}
+	};
+
+	struct GridEntry : public FVector {
+		FPoint _position;
+		int _field14;
+
+		GridEntry() : FVector(), _field14(0) {}
+	};
+
+	/**
+	 * Maintains a pre-calculated table of sine values
+	 */
+	struct SineTable {
+	private:
+		Common::Array<double> _data;
+	public:
+		SineTable() {}
+
+		/**
+		 * Sets up the table
+		 */
+		bool setup();
+
+		/**
+		 * Get a value
+		 */
+		double operator[](int idx) { return _data[idx]; }
 	};
 private:
-	int _field4;
-	SubEntry _array[5];
+	bool _flag;
 	CStarControlSub6 _sub1, _sub2;
-	int _field7914;
-	int _field78AC;
-	int _field78B0;
+	SubEntry _array[5];
+	Entry _entries[1284];
+	int _multiplier;
+	SineTable _sineTable;
+	Common::Array<GridEntry> _grid;
+private:
+	/**
+	 * Sets up the data for an array entry
+	 * @return	True if success
+	 */
+	bool setupEntry(int width, int height, int index, double val);
+
+	/**
+	 * Secondary setup method
+	 * @return	True if success
+	 */
+	bool setup2(int val1, int val2);
 public:
 	CStarControlSub5();
 	virtual ~CStarControlSub5() {}
 
 	virtual bool setup();
-	virtual void proc2();
+	virtual void proc2(CStarControlSub6 *sub6, FVector *vector, double v1, double v2, double v3,
+		CSurfaceArea *surfaceArea, CStarControlSub12 *sub12);
 	virtual void proc3(CErrorCode *errorCode);
 
-	int get4() const { return _field4; }
-	void set4(int val) { _field4 = val; }
+	bool get4() const { return _flag; }
+	void set4(bool val) { _flag = val; }
+
+	void fn1();
 };
 
 } // End of namespace Titanic

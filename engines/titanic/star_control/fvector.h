@@ -23,7 +23,11 @@
 #ifndef TITANIC_FVECTOR_H
 #define TITANIC_FVECTOR_H
 
+#include "titanic/star_control/fpoint.h"
+
 namespace Titanic {
+
+enum Axis { X_AXIS, Y_AXIS, Z_AXIS };
 
 class CStarControlSub6;
 
@@ -38,16 +42,35 @@ public:
 	FVector() : _x(0), _y(0), _z(0) {}
 	FVector(double x, double y, double z) : _x(x), _y(y), _z(z) {}
 
+	/**
+	 * Clears the vector
+	 */
+	void clear() {
+		_x = _y = _z = 0.0;
+	}
+
 	void fn1(FVector *v);
-	void multiply(FVector *dest, const FVector *src);
-	void fn3();
+
+	/**
+	 * Calculates the cross-product between this matrix and a passed one
+	 */
+	void crossProduct(FVector *dest, const FVector *src);
+
+	/**
+	 * Normalizes the vector so the length from origin equals 1.0
+	 */
+	double normalize();
+
+	/**
+	 * Adds two vectors together and then normalizes the result
+	 */
+	static void addAndNormalize(FVector *dest, const FVector *v1, const FVector *v2);
 
 	/**
 	 * Returns the distance between a specified point and this one
 	 */
 	double getDistance(const FVector *src) const;
 
-	static void fn4(FVector *dest, const FVector *v1, const FVector *v2);
 	void fn5(FVector *dest, const CStarControlSub6 *sub6) const;
 
 	/**
@@ -62,6 +85,36 @@ public:
 	 */
 	bool operator!=(const FVector &src) const {
 		return !operator==(src);
+	}
+
+	FVector operator+(const FVector &delta) const {
+		return FVector(_x + delta._x, _y + delta._y, _z + delta._z);
+	}
+
+	FVector operator-(const FVector &delta) const {
+		return FVector(_x - delta._x, _y - delta._y, _z - delta._z);
+	}
+
+	void operator+=(const FVector &delta) {
+		_x += delta._x;
+		_y += delta._y;
+		_z += delta._z;
+	}
+
+	void operator-=(const FVector &delta) {
+		_x -= delta._x;
+		_y -= delta._y;
+		_z -= delta._z;
+	}
+
+	void operator+=(const FPoint &delta) {
+		_x += delta._x;
+		_y += delta._y;
+	}
+
+	void operator-=(const FPoint &delta) {
+		_x -= delta._x;
+		_y -= delta._y;
 	}
 };
 

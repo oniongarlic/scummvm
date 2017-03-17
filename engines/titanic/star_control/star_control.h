@@ -26,6 +26,7 @@
 #include "titanic/core/game_object.h"
 #include "titanic/star_control/star_field.h"
 #include "titanic/star_control/star_view.h"
+#include "titanic/pet_control/pet_control.h"
 
 namespace Titanic {
 
@@ -36,11 +37,11 @@ class CStarControl : public CGameObject {
 	bool KeyCharMsg(CKeyCharMsg *msg);
 	bool FrameMsg(CFrameMsg *msg);
 private:
-	int _fieldBC;
+	bool _enabled;
 	CStarField _starField;
 	CStarView _view;
 	Rect _starRect;
-	int _field80B0;
+	CPetControl *_petControl;
 private:
 	/**
 	 * Called for ever new game frame
@@ -66,8 +67,15 @@ public:
 	 */
 	virtual void draw(CScreenManager *screenManager);
 
-	void fn1(int action);
-	bool fn4();
+	/**
+	 * Does an action in the star control
+	 */
+	void doAction(StarControlAction action);
+
+	/**
+	 * Returns true if the starfield puzzle has been solved
+	 */
+	bool isSolved() const;
 
 	/**
 	 * Returns true if a star destination can be set

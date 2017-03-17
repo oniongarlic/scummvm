@@ -27,6 +27,8 @@
 
 namespace Chewy {
 
+struct SceneInfo;
+
 class Scene {
 public:
 	Scene(ChewyEngine *vm);
@@ -34,10 +36,18 @@ public:
 
 	void change(uint scene);
 	void draw();
+	void updateMouse(Common::Point coords);
+	void mouseClick(Common::Point coords);
+	uint getCurScene() const {
+		return _curScene;
+	}
 
 private:
+	void loadSceneInfo();
+
 	ChewyEngine *_vm;
 	uint _curScene;
+	SceneInfo *_sceneInfo;
 };
 
 } // End of namespace Chewy

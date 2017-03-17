@@ -2,15 +2,19 @@ MODULE := engines/director
 
 MODULE_OBJS = \
 	archive.o \
+	cast.o \
 	detection.o \
 	director.o \
+	events.o \
 	frame.o \
+	graphics.o \
 	images.o \
 	movie.o \
 	resource.o \
 	score.o \
 	sound.o \
 	sprite.o \
+	util.o \
 	lingo/lingo-gr.o \
 	lingo/lingo.o \
 	lingo/lingo-builtins.o \

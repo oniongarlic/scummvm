@@ -43,6 +43,11 @@
 #include "graphics/surface.h"
 #include "gui/EventRecorder.h"
 
+static const OSystem::GraphicsMode s_supportedShaders[] = {
+	{"NONE", "Normal (no shader)", 0},
+	{0, 0, 0}
+};
+
 static const OSystem::GraphicsMode s_supportedGraphicsModes[] = {
 	{"1x", _s("Normal (no scaling)"), GFX_NORMAL},
 #ifdef USE_SCALERS
@@ -194,6 +199,13 @@ SurfaceSdlGraphicsManager::SurfaceSdlGraphicsManager(SdlEventSource *sdlEventSou
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	_videoMode.filtering = ConfMan.getBool("filtering");
 #endif
+
+	// the default backend has no shaders
+	// shader number 0 is the entry NONE (no shader)
+	// for an example on shader support,
+	// consult the psp2sdl backend which inherits from this class
+	_currentShader = 0;
+	_numShaders = 1;
 }
 
 SurfaceSdlGraphicsManager::~SurfaceSdlGraphicsManager() {
@@ -345,7 +357,7 @@ OSystem::TransactionError SurfaceSdlGraphicsManager::endGFXTransaction() {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 		} else if (_videoMode.filtering != _oldVideoMode.filtering) {
 			errors |= OSystem::kTransactionFilteringFailed;
-			
+
 			_videoMode.filtering = _oldVideoMode.filtering;
 #endif
 #ifdef USE_RGB_COLOR
@@ -602,6 +614,8 @@ void SurfaceSdlGraphicsManager::setGraphicsModeIntern() {
 	Common::StackLock lock(_graphicsMutex);
 	ScalerProc *newScalerProc = 0;
 
+	updateShader();
+
 	switch (_videoMode.mode) {
 	case GFX_NORMAL:
 		newScalerProc = Normal1x;
@@ -674,6 +688,21 @@ void SurfaceSdlGraphicsManager::setGraphicsModeIntern() {
 int SurfaceSdlGraphicsManager::getGraphicsMode() const {
 	assert(_transactionMode == kTransactionNone);
 	return _videoMode.mode;
+}
+
+const OSystem::GraphicsMode *SurfaceSdlGraphicsManager::getSupportedShaders() const {
+	return s_supportedShaders;
+}
+
+int SurfaceSdlGraphicsManager::getShader() const {
+	return _currentShader;
+}
+
+bool SurfaceSdlGraphicsManager::setShader(int id) {
+	assert(id >= 0 && id < _numShaders);
+	_currentShader = id;
+	updateShader();
+	return true;
 }
 
 void SurfaceSdlGraphicsManager::initSize(uint w, uint h, const Graphics::PixelFormat *format) {
@@ -996,10 +1025,18 @@ bool SurfaceSdlGraphicsManager::hotswapGFXMode() {
 	_overlayscreen = NULL;
 
 	// Release the HW screen surface
-	SDL_FreeSurface(_hwscreen); _hwscreen = NULL;
-
-	SDL_FreeSurface(_tmpscreen); _tmpscreen = NULL;
-	SDL_FreeSurface(_tmpscreen2); _tmpscreen2 = NULL;
+	if (_hwscreen) {
+		SDL_FreeSurface(_hwscreen);
+		_hwscreen = NULL;
+	}
+	if (_tmpscreen) {
+		SDL_FreeSurface(_tmpscreen);
+		_tmpscreen = NULL;
+	}
+	if (_tmpscreen2) {
+		SDL_FreeSurface(_tmpscreen2);
+		_tmpscreen2 = NULL;
+	}
 
 	// Setup the new GFX mode
 	if (!loadGFXMode()) {
@@ -1037,6 +1074,17 @@ void SurfaceSdlGraphicsManager::updateScreen() {
 	Common::StackLock lock(_graphicsMutex);	// Lock the mutex until this function ends
 
 	internUpdateScreen();
+}
+
+void SurfaceSdlGraphicsManager::updateShader() {
+// shader init code goes here
+// currently only used on Vita port
+// the user-selected shaderID should be obtained via ConfMan.getInt("shader")
+// and the corresponding shader should then be activated here
+// this way the user can combine any software scaling (scalers)
+// with any hardware shading (shaders). The shaders could provide
+// scanline masks, overlays, but could also serve for
+// hardware-based up-scaling (sharp-bilinear-simple, etc.)
 }
 
 void SurfaceSdlGraphicsManager::internUpdateScreen() {
@@ -2350,7 +2398,7 @@ bool SurfaceSdlGraphicsManager::handleScalerHotkeys(Common::KeyCode key) {
 		internUpdateScreen();
 		return true;
 	}
-	
+
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	// Ctrl-Alt-f toggles filtering
 	if (key == 'f') {
@@ -2554,7 +2602,8 @@ void SurfaceSdlGraphicsManager::deinitializeRenderer() {
 	SDL_DestroyRenderer(_renderer);
 	_renderer = nullptr;
 
-	_window->destroyWindow();
+	if (_window)
+		_window->destroyWindow();
 }
 
 void SurfaceSdlGraphicsManager::setWindowResolution(int width, int height) {
@@ -2595,7 +2644,7 @@ void SurfaceSdlGraphicsManager::recreateScreenTexture() {
 		return;
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, _videoMode.filtering ? "linear" : "nearest");
-	
+
 	SDL_Texture *oldTexture = _screenTexture;
 	_screenTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, _videoMode.hardwareWidth, _videoMode.hardwareHeight);
 	if (_screenTexture)
@@ -2627,7 +2676,7 @@ SDL_Surface *SurfaceSdlGraphicsManager::SDL_SetVideoMode(int width, int height, 
 
 	SDL_GetWindowSize(_window->getSDLWindow(), &_windowWidth, &_windowHeight);
 	setWindowResolution(_windowWidth, _windowHeight);
-	
+
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, _videoMode.filtering ? "linear" : "nearest");
 
 	_screenTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, width, height);

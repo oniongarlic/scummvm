@@ -48,14 +48,14 @@ bool CSweetBowl::MovieEndMsg(CMovieEndMsg *msg) {
 bool CSweetBowl::EnterViewMsg(CEnterViewMsg *msg) {
 	setVisible(false);
 	loadSound("b#43.wav");
-	playSound("b#42.wav");
+	loadSound("b#42.wav");
 	return true;
 }
 
 bool CSweetBowl::ActMsg(CActMsg *msg) {
 	if (msg->_action == "Jiggle") {
 		setVisible(true);
-		playMovie(MOVIE_GAMESTATE | MOVIE_NOTIFY_OBJECT);
+		playMovie(MOVIE_WAIT_FOR_FINISH | MOVIE_NOTIFY_OBJECT);
 		playSound(getRandomNumber(1) == 1 ? "b#42.wav" : "b#43.wav");
 	}
 

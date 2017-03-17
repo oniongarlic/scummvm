@@ -27,7 +27,7 @@
 namespace Titanic {
 
 #define ARRAY_COUNT 876
-const double FACTOR = 3.1415927 * 0.0055555557;
+const double FACTOR = 2 * M_PI / 360.0;
 
 CStarPoints1::CStarPoints1() {
 }
@@ -42,26 +42,42 @@ bool CStarPoints1::initialize() {
 		FVector &entry = _data[idx];
 
 		// Get the next set of values
-		double v1 = stream->readUint32LE();
-		double v2 = stream->readUint32LE();
+		double v1 = stream->readSint32LE();
+		double v2 = stream->readSint32LE();
 		stream->readUint32LE();
 
-		v1 *= 0.0099999998 * FACTOR;
-		v2 *= 0.015 * FACTOR;
+		v1 *= 0.015 * FACTOR;
+		v2 *= 0.0099999998 * FACTOR;
 
 		entry._x = cos(v2) * 3000000.0 * cos(v1);
-		entry._y = sin(v2) * 3000000.0 * cos(v1);
-		entry._z = sin(v1) * 3000000.0;
+		entry._y = sin(v1) * 3000000.0 * cos(v2);
+		entry._z = sin(v2) * 3000000.0;
 	}
 
 	return true;
 }
 
-void CStarPoints1::draw(CSurfaceArea *surface, CStarControlSub12 *img) {
+void CStarPoints1::draw(CSurfaceArea *surface, CStarControlSub12 *sub12) {
 	if (_data.empty())
 		return;
 
+	/*CStarControlSub6 sub6 = */ sub12->proc23();
+	sub12->proc25();
+	/*
+	FVector &v0 = _data[0];
+	double vx = v0._x, vy = v0._y, vz = v0._z;
 
+	| (vx*sub6._matrix.row1._z + vy*sub6._matrix.row2._z + vy) |
+	| vz*sub6._matrix.row3._x |
+	| surface->_width |
+	| vy |
+	| vx*sub6._matrix.row1._x |
+	| vz |
+	| vy*sub6._matrix.row2._x*sub6._matrix.row1._y*sub6._matrix.row3._z |
+	| vz*sub6._matrix.row2._y |
+	| vy*sub6._matrix.row2._z + vx*sub6._matrix.row1._z + vy*sub6._matrix.row2._z |
+	| vx |
+	*/
 
 	// TODO
 }

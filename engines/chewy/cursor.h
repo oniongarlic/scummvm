@@ -30,9 +30,17 @@ namespace Chewy {
 class SpriteResource;
 class Font;
 
+enum CurrentCursor {
+	kWalk,
+	kLook,
+	kUse,
+	kTalk,
+	kOther
+};
+
 class Cursor {
 public:
-	Cursor(ChewyEngine *vm);
+	Cursor();
 	virtual ~Cursor();
 
 	void setCursor(uint num, bool newCursor = true);
@@ -40,10 +48,9 @@ public:
 	void hideCursor();
 	void animateCursor();
 	void nextCursor();
+	CurrentCursor getCurrentCursor() const;
 
 private:
-	ChewyEngine *_vm;
-
 	uint _curCursor;
 	uint _curCursorFrame;
 	SpriteResource *_cursorSprites;

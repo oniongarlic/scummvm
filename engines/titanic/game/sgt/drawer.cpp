@@ -46,14 +46,14 @@ void CDrawer::load(SimpleFile *file) {
 }
 
 bool CDrawer::TurnOn(CTurnOn *msg) {
-	if (_statics->_v7 == "Closed" && _statics->_v6 == "Open") {
-		_statics->_v7 = "Open";
-		_fieldE0 = false;
+	if (_statics->_drawer == "Closed" && _statics->_chestOfDrawers == "Open") {
+		_statics->_drawer = "Open";
+		_isClosed = false;
 		_startFrame = 50;
 		_endFrame = 75;
 		setVisible(true);
-		_statics->_v7 = "Open";
-		playMovie(_startFrame, _endFrame, MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+		_statics->_drawer = "Open";
+		playMovie(_startFrame, _endFrame, MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 		playSound("b#10.wav");
 	}
 
@@ -61,12 +61,12 @@ bool CDrawer::TurnOn(CTurnOn *msg) {
 }
 
 bool CDrawer::TurnOff(CTurnOff *msg) {
-	if (_statics->_v7 == "Open") {
-		_statics->_v7 = "Closed";
+	if (_statics->_drawer == "Open") {
+		_statics->_drawer = "Closed";
 		_startFrame = 75;
 		_endFrame = 100;
-		_fieldE0 = true;
-		playMovie(_startFrame, _endFrame, MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+		_isClosed = true;
+		playMovie(_startFrame, _endFrame, MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 		playSound("b#10.wav");
 	}
 
@@ -74,7 +74,7 @@ bool CDrawer::TurnOff(CTurnOff *msg) {
 }
 
 bool CDrawer::MovieEndMsg(CMovieEndMsg *msg) {
-	if (_statics->_v7 == "Closed")
+	if (_statics->_drawer == "Closed")
 		setVisible(false);
 
 	return true;

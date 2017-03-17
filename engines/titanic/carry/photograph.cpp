@@ -64,7 +64,7 @@ bool CPhotograph::MouseDragEndMsg(CMouseDragEndMsg *msg) {
 		moveUnder(getDontSave());
 		makeDirty();
 		playSound("a#46.wav");
-		starFn1(14);
+		starFn(STAR_SET_REFERENCE);
 		showMouse();
 		return true;
 	} else {
@@ -93,7 +93,7 @@ bool CPhotograph::PETGainedObjectMsg(CPETGainedObjectMsg *msg) {
 
 bool CPhotograph::ActMsg(CActMsg *msg) {
 	if (msg->_action == "BecomeGettable") {
-		_fieldE0 = 1;
+		_canTake = true;
 		_cursorId = CURSOR_HAND;
 	}
 

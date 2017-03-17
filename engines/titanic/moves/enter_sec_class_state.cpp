@@ -52,7 +52,7 @@ bool CEnterSecClassState::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
 		playSound("b#105.wav");
 		petDisplayMessage(1, CLASS_NOT_PERMITTED_IN_AREA);
 	} else if (!compareRoomNameTo("SecClassLittleLift") || _mode == 2)  {
-		CActMsg actMsg(getFullViewName().deleteRight(3) + ".S");
+		CActMsg actMsg(getFullViewName().deleteRight(2) + ".S");
 		actMsg.execute("SecClassRoomLeaver");
 		changeView("secClassState.Node 01.N");
 	}
@@ -85,9 +85,9 @@ bool CEnterSecClassState::StatusChangeMsg(CStatusChangeMsg *msg) {
 
 	if (msg->_newStatus != 3) {
 		if (msg->_newStatus == 2 && _mode == 1)
-			playMovie(0, 10, MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			playMovie(0, 10, MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 		else if (msg->_newStatus == 1)
-			playMovie(11, 21, MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+			playMovie(11, 21, MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 	}
 
 	_cursorId = msg->_newStatus == 2 ? CURSOR_MOVE_FORWARD : CURSOR_INVALID;

@@ -39,7 +39,8 @@ private:
 
 	bool Cmd_Dump(int argc, const char **argv);
 	bool Cmd_DumpBg(int argc, const char **argv);
-	bool Cmd_Draw(int argc, const char **argv);
+	bool Cmd_DrawImage(int argc, const char **argv);
+	bool Cmd_DrawSprite(int argc, const char **argv);
 	bool Cmd_PlaySound(int argc, const char **argv);
 	bool Cmd_PlaySpeech(int argc, const char **argv);
 	bool Cmd_PlayMusic(int argc, const char **argv);
@@ -48,6 +49,7 @@ private:
 	bool Cmd_ErrorMessage(int argc, const char **argv);
 	bool Cmd_Dialog(int argc, const char **argv);
 	bool Cmd_Text(int argc, const char **argv);
+	bool Cmd_Scene(int argc, const char **argv);
 };
 
 } // End of namespace Chewy

@@ -38,7 +38,7 @@ SetEffects::SetEffects(BladeRunnerEngine *vm) {
 	_fadeDensity = 0.0f;
 
 	_fogsCount = 0;
-	_fogs = NULL;
+	_fogs = nullptr;
 }
 
 SetEffects::~SetEffects() {
@@ -55,7 +55,7 @@ void SetEffects::read(Common::ReadStream *stream, int framesCount) {
 	int i;
 	for (i = 0; i < _fogsCount; i++) {
 		int type = stream->readUint32LE();
-		Fog *fog = NULL;
+		Fog *fog = nullptr;
 		switch (type) {
 		case 0:
 			fog = new FogCone();
@@ -69,26 +69,25 @@ void SetEffects::read(Common::ReadStream *stream, int framesCount) {
 		}
 		if (!fog) {
 			//TODO exception, unknown fog type
+		} else {
+			fog->read(stream, framesCount);
+			fog->_next = _fogs;
+			_fogs = fog;
 		}
-		fog->read(stream, framesCount);
-		fog->_next = _fogs;
-		_fogs = fog;
 	}
 }
 
 void SetEffects::reset() {
-	Fog *fog, *nextFog;
+	Fog *nextFog;
 
 	if (!_fogs)
 		return;
 
 	do {
-		fog = _fogs;
-		nextFog = fog->_next;
-		delete fog;
-		fog = nextFog;
+		nextFog = _fogs->_next;
+		delete this->_fogs;
+		this->_fogs = nextFog;
 	} while (nextFog);
-
 }
 
 void SetEffects::setupFrame(int frame) {
@@ -96,7 +95,7 @@ void SetEffects::setupFrame(int frame) {
 
 void SetEffects::setFadeColor(float r, float g, float b) {
 	_fadeColor.r = r;
-	_fadeColor.r = g;
+	_fadeColor.g = g;
 	_fadeColor.b = b;
 }
 

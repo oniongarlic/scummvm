@@ -24,11 +24,13 @@
 #define TITANIC_STAR_CONTROL_SUB3_H
 
 #include "titanic/support/simple_file.h"
-#include "titanic/star_control/star_control_sub4.h"
+#include "titanic/star_control/frange.h"
 #include "titanic/star_control/star_control_sub5.h"
 #include "titanic/star_control/surface_area.h"
 
 namespace Titanic {
+
+enum StarMode { MODE_STARFIELD = 0, MODE_PHOTO = 1 };
 
 class CStarControlSub12;
 
@@ -38,26 +40,41 @@ struct CBaseStarEntry {
 	byte _field2;
 	byte _field3;
 	double _value;
-	CBaseStarVal _val;
+	FVector _position;
 	uint _data[5];
 
 	CBaseStarEntry();
+
+	/**
+	 * Loads the data for a star
+	 */
 	void load(Common::SeekableReadStream &s);
+
+	bool operator==(const CBaseStarEntry &s) const;
+};
+
+struct CStarPosition {
+	Common::Point _position;
+	int _index1;
+	int _index2;
+	CStarPosition() : _index1(0), _index2(0) {}
 };
 
 class CBaseStar {
+private:
+	void draw1(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12, CStarControlSub5 *sub5);
+	void draw2(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12, CStarControlSub5 *sub5);
+	void draw3(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12, CStarControlSub5 *sub5);
+	void draw4(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12, CStarControlSub5 *sub5);
 protected:
 	Common::Array<CBaseStarEntry> _data;
-	CStarControlSub4 _sub4;
+	FRange _minMax;
 	double _minVal;
 	double _maxVal;
 	double _range;
+	double _value1, _value2;
+	double _value3, _value4;
 protected:
-	/**
-	 * Get a pointer to a data entry
-	 */
-	CBaseStarEntry *getDataPtr(int index);
-
 	/**
 	 * Load entry data from a passed stream
 	 */
@@ -82,10 +99,19 @@ public:
 	virtual void draw(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12, CStarControlSub5 *sub5);
 
 	virtual bool loadYale(int v1) { return true; }
-	virtual bool proc4(int v1, int v2, int v3, int v4, int v5) { return false; }
-	virtual bool proc5(int v1) { return false; }
+
+	/**
+	 * Selects a star
+	 */
+	virtual bool selectStar(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12,
+		const Common::Point &pt, void *handler = nullptr) { return false; }
+
+	/**
+	 * Adds a new star, or removes one if already present at the given co-ordinates
+	 */
+	virtual bool addStar(const CBaseStarEntry *entry) { return false; }
+
 	virtual bool loadStar() { return false; }
-	virtual bool proc7(int v1, int v2) { return true; }
 
 	/**
 	 * Load the item's data
@@ -103,6 +129,18 @@ public:
 	void clear();
 
 	void initialize();
+
+	int size() const { return _data.size(); }
+
+	/**
+	 * Get a pointer to a data entry
+	 */
+	const CBaseStarEntry *getDataPtr(int index) const;
+
+	int baseFn1(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12,
+		const Common::Point &pt);
+
+	int baseFn2(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12);
 };
 
 } // End of namespace Titanic

@@ -21,12 +21,13 @@
  */
 
 #include "titanic/star_control/star_points2.h"
+#include "titanic/star_control/star_control_sub12.h"
 #include "titanic/titanic.h"
 
 namespace Titanic {
 
 #define ARRAY_COUNT 80
-const double FACTOR = 3.1415927 * 0.0055555557;
+const double FACTOR = 2 * M_PI / 360.0;
 
 bool CStarPoints2::initialize() {
 	// Get a reference to the starfield points resource
@@ -42,18 +43,23 @@ bool CStarPoints2::initialize() {
 		RootEntry &rootEntry = _data[rootCtr];
 		rootEntry.resize(count * 2);
 		for (int idx = 0; idx < count * 2; ++idx) {
-			DataEntry &entry = rootEntry[idx];
+			FVector &entry = rootEntry[idx];
 			v1 = stream->readSint32LE();
 			v2 = stream->readSint32LE();
 			v1 *= 0.015 * FACTOR;
-			v2 *= 0.0099999998 * FACTOR;
-			entry._v1 = cos(v1) * 3000000.0 * cos(v2);
-			entry._v2 = sin(v1) * 3000000.0 * cos(v2);
-			entry._v3 = sin(v2) * 3000000.0;
+			v2 *= FACTOR / 100.0;
+
+			entry._x = cos(v1) * 3000000.0 * cos(v2);
+			entry._y = sin(v1) * 3000000.0 * cos(v2);
+			entry._z = sin(v2) * 3000000.0;
 		}
 	}
 
 	return true;
+}
+
+void CStarPoints2::draw(CSurfaceArea *surface, CStarControlSub12 *sub12) {
+	// TODO
 }
 
 } // End of namespace Titanic

@@ -58,8 +58,8 @@ bool CNavHelmet::MovieEndMsg(CMovieEndMsg *msg) {
 			pet->incAreaLocks();
 		}
 
-		starFn1(0);
-		starFn1(12);
+		starFn(STAR_SHOW);
+		starFn(STAR_12);
 	}
 
 	return true;
@@ -81,7 +81,7 @@ bool CNavHelmet::PETHelmetOnOffMsg(CPETHelmetOnOffMsg *msg) {
 	if (_flag) {
 		_flag = false;
 		setVisible(true);
-		starFn1(1);
+		starFn(STAR_HIDE);
 		playMovie(61, 120, MOVIE_NOTIFY_OBJECT);
 		playSound("a#47.wav");
 		playSound("a#48.wav");
@@ -91,9 +91,9 @@ bool CNavHelmet::PETHelmetOnOffMsg(CPETHelmetOnOffMsg *msg) {
 			pet->setArea(PET_REMOTE);
 		}
 
-		dec54();
+		decTransitions();
 	} else {
-		inc54();
+		incTransitions();
 		_flag = true;
 		setVisible(true);
 		playMovie(0, 60, MOVIE_NOTIFY_OBJECT);
@@ -106,7 +106,7 @@ bool CNavHelmet::PETHelmetOnOffMsg(CPETHelmetOnOffMsg *msg) {
 
 bool CNavHelmet::PETPhotoOnOffMsg(CPETPhotoOnOffMsg *msg) {
 	if (_flag)
-		starFn1(9);
+		starFn(STAR_TOGGLE_MODE);
 
 	return true;
 }
@@ -115,10 +115,10 @@ bool CNavHelmet::PETStarFieldLockMsg(CPETStarFieldLockMsg *msg) {
 	if (_flag) {
 		if (msg->_value) {
 			playSound("a#6.wav");
-			starFn1(17);
+			starFn(STAR_17);
 		} else {
 			playSound("a#5.wav");
-			starFn1(18);
+			starFn(STAR_18);
 		}
 	}
 

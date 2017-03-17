@@ -280,6 +280,7 @@ MODULE_OBJS := \
 	gfx/chev_right_on.o \
 	gfx/chev_send_rec_switch.o \
 	gfx/edit_control.o \
+	gfx/text_control.o \
 	gfx/elevator_button.o \
 	gfx/get_from_succ.o \
 	gfx/helmet_on_off.o \
@@ -398,7 +399,7 @@ MODULE_OBJS := \
 	pet_control/pet_show_translation.o \
 	pet_control/pet_slider.o \
 	pet_control/pet_sound.o \
-	pet_control/pet_text.o \
+	sound/audio_buffer.o \
 	sound/auto_music_player.o \
 	sound/auto_music_player_base.o \
 	sound/auto_sound_player.o \
@@ -408,10 +409,11 @@ MODULE_OBJS := \
 	sound/dome_from_top_of_well.o \
 	sound/enter_view_toggles_other_music.o \
 	sound/gondolier_song.o \
+	sound/music_player.o \
 	sound/music_room.o \
 	sound/music_room_handler.o \
-	sound/music_player.o \
-	sound/music_wave.o \
+	sound/music_room_instrument.o \
+	sound/music_song.o \
 	sound/node_auto_sound_player.o \
 	sound/proximity.o \
 	sound/qmixer.o \
@@ -434,9 +436,10 @@ MODULE_OBJS := \
 	star_control/dvector.o \
 	star_control/fmatrix.o \
 	star_control/fpoint.o \
+	star_control/frange.o \
+	star_control/frect.o \
 	star_control/fvector.o \
 	star_control/star_control_sub2.o \
-	star_control/star_control_sub4.o \
 	star_control/star_control_sub5.o \
 	star_control/star_control_sub6.o \
 	star_control/star_control_sub7.o \
@@ -454,6 +457,7 @@ MODULE_OBJS := \
 	star_control/star_field.o \
 	star_control/star_points1.o \
 	star_control/star_points2.o \
+	star_control/star_ref.o \
 	star_control/star_view.o \
 	star_control/surface_area.o \
 	star_control/surface_fader_base.o \

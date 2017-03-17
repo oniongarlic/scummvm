@@ -34,8 +34,6 @@
 #include "common/util.h"
 #include "common/memstream.h"
 
-
-
 namespace BladeRunner {
 
 #define kAESC 0x41455343
@@ -436,10 +434,9 @@ bool VQADecoder::readCINF(Common::SeekableReadStream *s, uint32 size) {
 		return false;
 
 	for (int i = 0; i != _clipInfo.clipCount; ++i) {
-		uint16 a;
-		uint32 b;
-		a = s->readUint16LE();
-		b = s->readUint32LE();
+		uint16 a = s->readUint16LE();
+		uint32 b = s->readUint32LE();
+		debug("VQADecoder::readCINF() i: %d a: 0x%04x b: 0x%08x", i, a, b);
 	}
 
 	return true;
@@ -473,13 +470,13 @@ bool VQADecoder::readLNIN(Common::SeekableReadStream *s, uint32 size) {
 	if (chd.id != kLNIH || chd.size != 10)
 		return false;
 
-	uint16 loopNamesCount, loopUnk1, loopUnk2, loopUnk3, loopUnk4;
+	uint16 loopNamesCount = s->readUint16LE();
+	uint16 loopUnk1       = s->readUint16LE();
+	uint16 loopUnk2       = s->readUint16LE();
+	uint16 loopUnk3       = s->readUint16LE();
+	uint16 loopUnk4       = s->readUint16LE();
 
-	loopNamesCount = s->readUint16LE();
-	loopUnk1       = s->readUint16LE();
-	loopUnk2       = s->readUint16LE();
-	loopUnk3       = s->readUint16LE();
-	loopUnk4       = s->readUint16LE();
+	debug("VQADecoder::readLNIN() Unknown Values: 0x%04x 0x%04x 0x%04x 0x%04x", loopUnk1, loopUnk2, loopUnk3, loopUnk4);
 
 	if (loopNamesCount != _loopInfo.loopCount)
 		return false;
@@ -488,7 +485,7 @@ bool VQADecoder::readLNIN(Common::SeekableReadStream *s, uint32 size) {
 	if (chd.id != kLNIO || chd.size != 4u * loopNamesCount)
 		return false;
 
-	uint32 *loopNameOffsets = (uint32*)alloca(loopNamesCount * sizeof(uint32));
+	uint32 *loopNameOffsets = (uint32*)malloc(loopNamesCount * sizeof(uint32));
 	for (int i = 0; i != loopNamesCount; ++i) {
 		loopNameOffsets[i] = s->readUint32LE();
 	}
@@ -497,7 +494,7 @@ bool VQADecoder::readLNIN(Common::SeekableReadStream *s, uint32 size) {
 	if (chd.id != kLNID)
 		return false;
 
-	char *names = (char*)alloca(roundup(chd.size));
+	char *names = (char*)malloc(roundup(chd.size));
 	s->read(names, roundup(chd.size));
 
 	for (int i = 0; i != loopNamesCount; ++i) {
@@ -509,6 +506,8 @@ bool VQADecoder::readLNIN(Common::SeekableReadStream *s, uint32 size) {
 		// debug("%2d: %s", i, _loopInfo.loops[i].name.c_str());
 	}
 
+	free(loopNameOffsets);
+	free(names);
 	return true;
 }
 

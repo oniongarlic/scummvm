@@ -80,6 +80,14 @@ BladeRunnerEngine::BladeRunnerEngine(OSystem *syst)
 	_obstacles = new Obstacles(this);
 	_itemPickup = new ItemPickup(this);
 
+	_playerActorIdle = false;
+	_playerDead = false;
+	_speechSkipped = false;
+	_gameOver = false;
+	_gameAutoSave = 0;
+	_gameIsLoading = false;
+	_sceneIsLoading = false;
+
 	_walkSoundId = -1;
 	_walkSoundVolume = 0;
 	_walkSoundBalance = 0;
@@ -228,12 +236,12 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 	_zBuffer2 = new uint16[640 * 480];
 
 	int actorCount = (int)_gameInfo->getActorCount();
-	assert(actorCount < 99);
+	assert(actorCount < ACTORS_COUNT);
 	for (int i = 0; i != actorCount; ++i) {
 		_actors[i] = new Actor(this, i);
 		_actors[i]->setup(i);
 	}
-	_voiceoverActor = new Actor(this, 99);
+	_actors[VOICEOVER_ACTOR] = new Actor(this, VOICEOVER_ACTOR);
 	_playerActor = _actors[_gameInfo->getPlayerId()];
 
 	_playerActor->setFPS(15);
@@ -342,7 +350,7 @@ void BladeRunnerEngine::initChapterAndScene() {
 		_aiScripts->Initialize(i);
 
 	for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i)
-		_actors[i]->changeAnimationMode(i);
+		_actors[i]->changeAnimationMode(0);
 
 	_settings->setChapter(1);
 	_settings->setNewSetAndScene(_gameInfo->getInitialSetId(), _gameInfo->getInitialSceneId());
@@ -449,6 +457,8 @@ void BladeRunnerEngine::shutdown() {
 	// TODO: Delete sine and cosine lookup tables
 
 	// TODO: Unload AI dll
+	delete _aiScripts;
+	_aiScripts = nullptr;
 
 	delete[] _gameVars;
 	_gameVars = nullptr;
@@ -473,7 +483,12 @@ void BladeRunnerEngine::shutdown() {
 
 	// TODO: Delete datetime - not used
 
-	// TODO: Delete actors
+	int actorCount = (int)_gameInfo->getActorCount();
+	for (int i = 0; i != actorCount; ++i) {
+		delete _actors[i];
+		_actors[i] = nullptr;
+	}
+	_playerActor = nullptr;
 
 	// TODO: Delete proper ZBuf class
 	delete[] _zBuffer1;
@@ -507,7 +522,7 @@ bool BladeRunnerEngine::loadSplash() {
 	_system->copyRectToScreen(_surface1.getPixels(), _surface1.pitch, 0, 0, _surface1.w, _surface1.h);
 	_system->updateScreen();
 
-	return false;
+	return true;
 }
 
 bool BladeRunnerEngine::init2() {

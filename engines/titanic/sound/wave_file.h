@@ -25,35 +25,64 @@
 
 #include "audio/audiostream.h"
 #include "audio/mixer.h"
+#include "titanic/sound/audio_buffer.h"
 #include "titanic/support/string.h"
 #include "titanic/true_talk/dialogue_file.h"
 
 namespace Titanic {
 
+enum LoadMode { LOADMODE_AUDIO_BUFFER = 1, LOADMODE_SCUMMVM = 2 };
+
 class QSoundManager;
 
 class CWaveFile {
 private:
-	uint _size;
+	byte *_waveData;
+	int _waveSize;
+	int _dataSize;
+	int _headerSize;
+	int _rate;
+	byte _flags;
+	uint16 _wavType;
+	Audio::SeekableAudioStream *_audioStream;
+private:
+	/**
+	 * Handles setup of fields shared by the constructors
+	 */
+	void setup();
+
+	/**
+	 * Gets passed the raw data for the wave file
+	 */
+	void load(byte *data, uint dataSize);
 public:
-	QSoundManager *_owner;
-	Audio::SeekableAudioStream *_stream;
-	Audio::SoundHandle _soundHandle;
 	Audio::Mixer::SoundType _soundType;
+
+	LoadMode _loadMode;
+	CAudioBuffer *_audioBuffer;
+	DisposeAfterUse::Flag _disposeAudioBuffer;
+	int _channel;
 public:
 	CWaveFile();
 	CWaveFile(QSoundManager *owner);
 	~CWaveFile();
 
 	/**
-	 * Returns the duration of the wave file in seconds
+	 * Returns the duration of the wave file
+	 * @returns	Total ticks. Not really sure how ticks
+	 * map to real time
 	 */
-	uint getDuration() const;
+	uint getDurationTicks() const;
 
 	/**
 	 * Return the size of the wave file
 	 */
-	uint size() const { return _size; }
+	uint size() const { return _dataSize; }
+
+	/**
+	 * Returns a ScummVM Audio Stream for playback purposes
+	 */
+	Audio::SeekableAudioStream *audioStream();
 
 	/**
 	 * Tries to load the specified wave file sound
@@ -71,14 +100,36 @@ public:
 	bool loadMusic(const CString &name);
 
 	/**
+	 * Tries to load the specified audio buffer
+	 */
+	bool loadMusic(CAudioBuffer *buffer, DisposeAfterUse::Flag disposeAfterUse);
+
+	/**
 	 * Returns true if the wave file has data loaded
 	 */
-	bool isLoaded() const { return _stream != nullptr; }
+	bool isLoaded() const {
+		return _audioStream != nullptr || _waveData != nullptr;
+	}
 
 	/**
 	 * Return the frequency of the loaded wave file
 	 */
-	uint getFrequency() const;
+	uint getFrequency();
+
+	/**
+	 * Resets the music stream
+	 */
+	void reset();
+
+	/**
+	 * Lock sound data for access
+	 */
+	const int16 *lock();
+
+	/**
+	 * Unlock sound data after a prior call to lock
+	 */
+	void unlock(const int16 *ptr);
 };
 
 } // End of namespace Titanic

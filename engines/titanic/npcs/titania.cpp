@@ -43,7 +43,7 @@ CTitania::CTitania() : CCharacter() {
 	_ear2 = false;
 	_nose = false;
 	_mouth = false;
-	_showIntro = true;
+	_showSpeech = true;
 }
 
 void CTitania::save(SimpleFile *file, int indent) {
@@ -59,7 +59,7 @@ void CTitania::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(_ear2, indent);
 	file->writeNumberLine(_nose, indent);
 	file->writeNumberLine(_mouth, indent);
-	file->writeNumberLine(_showIntro, indent);
+	file->writeNumberLine(_showSpeech, indent);
 
 	CCharacter::save(file, indent);
 }
@@ -77,7 +77,7 @@ void CTitania::load(SimpleFile *file) {
 	_ear2 = file->readNumber();
 	_nose = file->readNumber();
 	_mouth = file->readNumber();
-	_showIntro = file->readNumber();
+	_showSpeech = file->readNumber();
 
 	CCharacter::load(file);
 }
@@ -99,7 +99,7 @@ bool CTitania::AddHeadPieceMsg(CAddHeadPieceMsg *msg) {
 		_eye2 = true;
 	} else if (msg->_value == "Ear1") {
 		_ear1 = true;
-	} else if (msg->_value == "Ear2") {
+	} else if (msg->_value == "Ear 2") {
 		_ear2 = true;
 	} else if (msg->_value == "Mouth") {
 		_mouth = true;
@@ -180,7 +180,7 @@ bool CTitania::ActMsg(CActMsg *msg) {
 			CActMsg actMsg("Woken");
 			actMsg.execute("MouthSlot");
 			actMsg.execute("VisionCentreSlot");
-			setPassengerClass(4);
+			setPassengerClass(UNCHECKED);
 
 			addTimer(1000);
 		} else {
@@ -197,8 +197,8 @@ bool CTitania::ActMsg(CActMsg *msg) {
 }
 
 bool CTitania::EnterViewMsg(CEnterViewMsg *msg) {
-	if (_showIntro) {
-		_showIntro = false;
+	if (_showSpeech) {
+		_showSpeech = false;
 		disableMouse();
 		petHide();
 
@@ -216,8 +216,11 @@ bool CTitania::EnterViewMsg(CEnterViewMsg *msg) {
 }
 
 bool CTitania::TimerMsg(CTimerMsg *msg) {
-	changeView("Titania.Node 18.N", "");
+	// WORKAROUND: The original uses the disc change dialog as a pause
+	// to allow the parrot speech to finish. I've rewritten it to instead
+	// use the standard TrueTalkNotifySpeechEndedMsg message instead
 	startTalking("PerchedParrot", 80022);
+	lockMouse();
 
 	return true;
 }

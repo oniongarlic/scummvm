@@ -66,7 +66,8 @@ bool CParrotNutEater::ReplaceBowlAndNutsMsg(CReplaceBowlAndNutsMsg *msg) {
 
 bool CParrotNutEater::NutPuzzleMsg(CNutPuzzleMsg *msg) {
 	if (msg->_value == "Jiggle") {
-		playMovie(MOVIE_NOTIFY_OBJECT | MOVIE_GAMESTATE);
+		setVisible(true);
+		playMovie(MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 		movieEvent(68);
 		movieEvent(132);
 		playSound("z#215.wav");

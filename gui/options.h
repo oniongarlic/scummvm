@@ -67,6 +67,7 @@ public:
 	void init();
 
 	void open();
+	virtual void apply();
 	void close();
 	void handleCommand(CommandSender *sender, uint32 cmd, uint32 data);
 	const Common::String& getDomain() const { return _domain; }
@@ -80,8 +81,15 @@ protected:
 	ButtonWidget *_soundFontButton;
 	StaticTextWidget *_soundFont;
 	ButtonWidget *_soundFontClearButton;
+	
+	virtual void build();
+	virtual void clean();
+	void rebuild();
 
+
+	void addControlControls(GuiObject *boss, const Common::String &prefix);
 	void addGraphicControls(GuiObject *boss, const Common::String &prefix);
+	void addShaderControls(GuiObject *boss, const Common::String &prefix);
 	void addAudioControls(GuiObject *boss, const Common::String &prefix);
 	void addMIDIControls(GuiObject *boss, const Common::String &prefix);
 	void addMT32Controls(GuiObject *boss, const Common::String &prefix);
@@ -107,6 +115,23 @@ protected:
 	int _pathsTabId;
 
 private:
+	
+	//
+	// Control controls
+	//
+	bool _enableControlSettings;
+
+	CheckboxWidget *_touchpadCheckbox;
+	CheckboxWidget *_onscreenCheckbox;
+	CheckboxWidget *_swapMenuAndBackBtnsCheckbox;
+
+	StaticTextWidget *_kbdMouseSpeedDesc;
+	SliderWidget *_kbdMouseSpeedSlider;
+	StaticTextWidget *_kbdMouseSpeedLabel;
+	StaticTextWidget *_joystickDeadzoneDesc;
+	SliderWidget *_joystickDeadzoneSlider;
+	StaticTextWidget *_joystickDeadzoneLabel;
+
 	//
 	// Graphics controls
 	//
@@ -118,6 +143,13 @@ private:
 	CheckboxWidget *_aspectCheckbox;
 	StaticTextWidget *_renderModePopUpDesc;
 	PopUpWidget *_renderModePopUp;
+	
+	//
+	// Shader controls
+	//
+	bool _enableShaderSettings;
+	StaticTextWidget *_shaderPopUpDesc;
+	PopUpWidget *_shaderPopUp;
 
 	//
 	// Audio controls
@@ -170,6 +202,9 @@ private:
 	//
 	// Volume controls
 	//
+	void updateMusicVolume(const int newValue) const;
+	void updateSfxVolume(const int newValue) const;
+	void updateSpeechVolume(const int newValue) const;
 	bool _enableVolumeSettings;
 
 	StaticTextWidget *_musicVolumeDesc;
@@ -194,11 +229,6 @@ protected:
 	Common::String _guioptionsString;
 
 	//
-	//Theme Options
-	//
-	Common::String _oldTheme;
-
-	//
 	// Engine-specific controls
 	//
 	CheckboxWidgetList _engineCheckboxes;
@@ -210,7 +240,7 @@ public:
 	GlobalOptionsDialog(LauncherDialog *launcher);
 	~GlobalOptionsDialog();
 
-	void open();
+	virtual void apply();
 	void close();
 	void handleCommand(CommandSender *sender, uint32 cmd, uint32 data);
 	void handleTickle();
@@ -218,6 +248,10 @@ public:
 	virtual void reflowLayout();
 
 protected:
+	virtual void build();
+	virtual void clean();
+
+	Common::String _newTheme;
 	LauncherDialog *_launcher;
 #ifdef GUI_ENABLE_KEYSDIALOG
 	KeysDialog *_keysDialog;

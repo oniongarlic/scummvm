@@ -122,6 +122,8 @@ public:
 	CString _itemObjects[TOTAL_ITEMS];
 	StringArray _itemIds;
 	StringArray _roomNames;
+	Strings _strings;
+	CString _stateRoomExitView;
 public:
 	TitanicEngine(OSystem *syst, const TitanicGameDescription *gameDesc);
 	virtual ~TitanicEngine();
@@ -160,6 +162,11 @@ public:
 	 * Gets a random number
 	 */
 	uint getRandomNumber(uint max) { return _randomSource.getRandomNumber(max); }
+
+	/**
+	 * Returns a random floating point number between 0.0 to 65535.0
+	 */
+	double getRandomFloat() { return getRandomNumber(0xfffffffe) * 0.000015259022; }
 
 	/**
 	 * Support method that generates a savegame name

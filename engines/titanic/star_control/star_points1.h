@@ -45,7 +45,7 @@ public:
 	/**
 	 * Draw the starfield points
 	 */
-	void draw(CSurfaceArea *surface, CStarControlSub12 *img);
+	void draw(CSurfaceArea *surface, CStarControlSub12 *sub12);
 };
 
 } // End of namespace Titanic

@@ -21,6 +21,7 @@
  */
 
 #include "titanic/game/bomb.h"
+#include "titanic/game/code_wheel.h"
 
 namespace Titanic {
 
@@ -36,19 +37,19 @@ BEGIN_MESSAGE_MAP(CBomb, CBackground)
 	ON_MESSAGE(SetFrameMsg)
 END_MESSAGE_MAP()
 
-static const char *const WAVE_NAMES1[] = {
-	"z#353.wav", "z#339.wav", "z#325.wav", "z#311.wav", "z#297.wav",
+const int CORRECT_WHEELS = 23;
+
+static const char *const HUNDREDS_WAVS[] = {
+	"", "z#353.wav", "z#339.wav", "z#325.wav", "z#311.wav", "z#297.wav",
 	"z#283.wav", "z#269.wav", "z#255.wav", "z#241.wav"
 };
 
-static const char *const WAVE_NAMES2[] = {
+static const char *const HUNDREDS_AND_WAVS[] = {
 	"", "z#352.wav", "z#338.wav", "z#324.wav", "z#310.wav", "z#296.wav",
-	"z#281.wav", "z#268.wav", "z#254.wav", "z#240.wav", "", "z#351.wav",
-	"z#337.wav", "z#323.wav", "z#309.wav", "z#295.wav", "z#282.wav",
-	"z#267.wav", "z#253.wav", "z#239.wav"
+	"z#281.wav", "z#268.wav", "z#254.wav", "z#240.wav"
 };
 
-static const char *const WAVE_NAMES3[100] = {
+static const char *const COUNTDOWN_WAVS[100] = {
 	"bombcountdown_c0.wav", "z#355.wav", "z#341.wav",  "z#327.wav", "z#313.wav",
 	"z#299.wav", "z#285.wav", "z#271.wav", "z#257.wav", "z#243.wav",
 	"z#354.wav", "z#350.wav", "z#349.wav", "z#348.wav", "z#347.wav",
@@ -72,28 +73,28 @@ static const char *const WAVE_NAMES3[100] = {
 };
 
 CBomb::CBomb() : CBackground() {
-	_fieldE0 = 0;
-	_fieldE4 = 0;
-	_fieldE8 = 17;
-	_fieldEC = 9;
-	_fieldF0 = 0;
+	_active = false;
+	_numCorrectWheels = 0;
+	_tappedCtr = 17;
+	_hammerCtr = 9;
+	_commentCtr = 0;
 	_countdown = 999;
 	_soundHandle = 0;
-	_fieldFC = 0;
+	_unusedHandle = 0;
 	_startingTicks = 0;
 	_volume = 60;
 }
 
 void CBomb::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
-	file->writeNumberLine(_fieldE0, indent);
-	file->writeNumberLine(_fieldE4, indent);
-	file->writeNumberLine(_fieldE8, indent);
-	file->writeNumberLine(_fieldEC, indent);
-	file->writeNumberLine(_fieldF0, indent);
+	file->writeNumberLine(_active, indent);
+	file->writeNumberLine(_numCorrectWheels, indent);
+	file->writeNumberLine(_tappedCtr, indent);
+	file->writeNumberLine(_hammerCtr, indent);
+	file->writeNumberLine(_commentCtr, indent);
 	file->writeNumberLine(_countdown, indent);
 	file->writeNumberLine(_soundHandle, indent);
-	file->writeNumberLine(_fieldFC, indent);
+	file->writeNumberLine(_unusedHandle, indent);
 	file->writeNumberLine(_startingTicks, indent);
 	file->writeNumberLine(_volume, indent);
 
@@ -102,14 +103,14 @@ void CBomb::save(SimpleFile *file, int indent) {
 
 void CBomb::load(SimpleFile *file) {
 	file->readNumber();
-	_fieldE0 = file->readNumber();
-	_fieldE4 = file->readNumber();
-	_fieldE8 = file->readNumber();
-	_fieldEC = file->readNumber();
-	_fieldF0 = file->readNumber();
+	_active = file->readNumber();
+	_numCorrectWheels = file->readNumber();
+	_tappedCtr = file->readNumber();
+	_hammerCtr = file->readNumber();
+	_commentCtr = file->readNumber();
 	_countdown = file->readNumber();
 	_soundHandle = file->readNumber();
-	_fieldFC = file->readNumber();
+	_unusedHandle = file->readNumber();
 	_startingTicks = file->readNumber();
 	_volume = file->readNumber();
 
@@ -117,34 +118,39 @@ void CBomb::load(SimpleFile *file) {
 }
 
 bool CBomb::StatusChangeMsg(CStatusChangeMsg *msg) {
-	_fieldE4 += msg->_newStatus;
+	// Check whether the wheels are corect
+	CCheckCodeWheelsMsg checkMsg;
+	checkMsg.execute(findRoom(), nullptr, MSGFLAG_SCAN);
 
-	if (_fieldE4 == 23) {
+	_numCorrectWheels = checkMsg._isCorrect ? CORRECT_WHEELS : 0;
+
+	if (_numCorrectWheels == CORRECT_WHEELS) {
+		// Nobody likes a smartass
 		startAnimTimer("Disarmed", 2000);
 		lockMouse();
 	}
 
-	_fieldF0 %= 1000;
-	if (!(_fieldF0 % 20) && _countdown < 995) {
+	_commentCtr = (_commentCtr % 1000) + 1;
+	if (!(_commentCtr % 20) && _countdown < 995) {
 		int val = getRandomNumber(5) + 25;
-		if (_fieldF0 < 20 || _fieldF0 > 80)
+		if (_commentCtr < 20 || _commentCtr > 80)
 			val = 28;
 
 		CString name;
-		switch (val - 25) {
-		case 0:
+		switch (val) {
+		case 25:
 			name = "z#372.wav";
 			break;
-		case 1:
+		case 26:
 			name = "z#371.wav";
 			break;
-		case 2:
+		case 27:
 			name = "z#370.wav";
 			break;
-		case 3:
+		case 28:
 			name = "z#369.wav";
 			break;
-		case 4:
+		case 29:
 			name = "z#368.wav";
 			break;
 		default:
@@ -159,20 +165,22 @@ bool CBomb::StatusChangeMsg(CStatusChangeMsg *msg) {
 }
 
 bool CBomb::EnterViewMsg(CEnterViewMsg *msg) {
-	_fieldE4 = 2;
+	// WORKAROUND: Don't keep resetting wheels
 	return true;
 }
 
 bool CBomb::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
 	playSound("z#62.wav");
 
-	if (_fieldE0) {
+	if (_active) {
 		stopSound(_soundHandle);
-		if (_fieldE4 < 23) {
-			_fieldE8 = MIN(_fieldE8 + 1, 23);
+		//stopSound(_unusedHandle);
+
+		if (_numCorrectWheels < CORRECT_WHEELS) {
+			_tappedCtr = MIN(_tappedCtr + 1, 23);
 
 			CString name;
-			switch (_fieldE8) {
+			switch (_tappedCtr) {
 			case 18:
 				name = "z#380.wav";
 				break;
@@ -198,7 +206,7 @@ bool CBomb::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
 		}
 	} else {
 		_soundHandle = playSound("z#389.wav", _volume);
-		_fieldE0 = true;
+		_active = true;
 		CActMsg actMsg("Arm Bomb");
 		actMsg.execute("EndExplodeShip");
 	}
@@ -207,9 +215,9 @@ bool CBomb::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
 }
 
 bool CBomb::EnterRoomMsg(CEnterRoomMsg *msg) {
-	_fieldE8 = 17;
-	_fieldEC = 9;
-	_fieldF0 = 0;
+	_tappedCtr = 17;
+	_hammerCtr = 9;
+	_commentCtr = 0;
 	_startingTicks = getTicksCount();
 	return true;
 }
@@ -219,11 +227,11 @@ bool CBomb::ActMsg(CActMsg *msg) {
 		playSound("z#63.wav");
 		stopSound(_soundHandle);
 
-		if (_fieldEC < 17)
-			++_fieldEC;
+		if (_hammerCtr < 17)
+			++_hammerCtr;
 
 		CString name;
-		switch (_fieldEC) {
+		switch (_hammerCtr) {
 		case 10:
 			name = "z#388.wav";
 			break;
@@ -258,9 +266,19 @@ bool CBomb::ActMsg(CActMsg *msg) {
 }
 
 bool CBomb::TurnOn(CTurnOn *msg) {
-	if (!_fieldE0) {
+	if (!_active) {
 		_soundHandle = playSound("z#389.wav", _volume);
-		_fieldE0 = true;
+		_active = true;
+
+		// WORKAROUND: Only reset the code wheels back to 'O' value
+		// when first arming the bomb, not whenever the bomb view is entered
+		_numCorrectWheels = 2;
+		CRoomItem *room = findRoom();
+		for (CTreeItem *treeItem = room; treeItem; treeItem = treeItem->scan(room)) {
+			CodeWheel *codeWheel = dynamic_cast<CodeWheel *>(treeItem);
+			if (codeWheel)
+				codeWheel->reset();
+		}
 
 		CActMsg actMsg("Arm Bomb");
 		actMsg.execute("EndExplodeShip");
@@ -282,7 +300,7 @@ bool CBomb::TimerMsg(CTimerMsg *msg) {
 
 		CActMsg actMsg1("Disarm Bomb");
 		actMsg1.execute("EndExplodeShip");
-		_fieldE0 = false;
+		_active = false;
 		CActMsg actMsg2("Titania.Node 5.N");
 		actMsg2.execute("BombNav");
 		actMsg2.execute("EnterBombNav");
@@ -294,49 +312,54 @@ bool CBomb::TimerMsg(CTimerMsg *msg) {
 
 	if (compareRoomNameTo("Titania")) {
 		if (msg->_actionVal == 1 && getRandomNumber(9) == 0) {
-			if (!_fieldE0)
+			if (!_active)
 				return true;
 
 			CParrotSpeakMsg speakMsg("Bomb", "BombCountdown");
 			speakMsg.execute("PerchedParrot");
 		}
 
-		if (_fieldE0) {
-			if (isSoundActive(_soundHandle)) {
+		if (_active) {
+			if (!isSoundActive(_soundHandle)) {
 				if (msg->_actionVal == 0) {
 					addTimer(1, 1000, 0);
 				} else {
 					_soundHandle = 0;
-					int section = _countdown / 100;
-					int index = _countdown % 100;
+					int hundreds = _countdown / 100;
+					int remainder = _countdown % 100;
 
 					if (_countdown >= 100) {
-						CString name1 = index ? WAVE_NAMES2[section] :
-							WAVE_NAMES1[section];
-						playSound(name1, _volume);
+						// Play "x hundred and" or just "x hundred"
+						CString hName = remainder ? HUNDREDS_AND_WAVS[hundreds] : HUNDREDS_WAVS[hundreds];
+						_soundHandle = playSound(hName, _volume);
 					}
 
-					CString name2 = WAVE_NAMES3[index];
+					CString ctrName = COUNTDOWN_WAVS[remainder];
 					if (_countdown == 10) {
-						name2 = "z#229.wav";
+						ctrName = "z#229.wav";
 						_countdown = 998;
 					}
 
+					// Play the sub-hundred portion of the countdown amount
 					if (_soundHandle > 0) {
-						_soundHandle = queueSound(name2, _soundHandle, _volume);
+						_soundHandle = queueSound(ctrName, _soundHandle, _volume);
 					} else {
-						_soundHandle = playSound(name2, _volume);
+						_soundHandle = playSound(ctrName, _volume);
 					}
 
+					// Reduce countdown and schedule another timer
 					--_countdown;
 					addTimer(0, 1000, 0);
 				}
 			} else {
+				// Bomb speech currently active, so schedule the method'
+				// to re-trigger after 100ms to check if speech is finished
 				addTimer(0, 100, 0);
 			}
 		}
 	} else {
-		if (_fieldE0) {
+		// In rooms other than the bomb room
+		if (_active) {
 			--_countdown;
 			addTimer(6000);
 
@@ -350,7 +373,7 @@ bool CBomb::TimerMsg(CTimerMsg *msg) {
 
 bool CBomb::TrueTalkGetStateValueMsg(CTrueTalkGetStateValueMsg *msg) {
 	if (msg->_stateNum == 10)
-		msg->_stateVal = _fieldE0;
+		msg->_stateVal = _active ? 1 : 0;
 
 	return true;
 }

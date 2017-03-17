@@ -30,8 +30,8 @@ CStarControlSub6::CStarControlSub6() {
 	clear();
 }
 
-CStarControlSub6::CStarControlSub6(int mode, double val) {
-	set(mode, val);
+CStarControlSub6::CStarControlSub6(Axis axis, double amount) {
+	setRotationMatrix(axis, amount);
 }
 
 CStarControlSub6::CStarControlSub6(const CStarControlSub6 *src) {
@@ -47,69 +47,120 @@ void CStarControlSub6::deinit() {
 	_static = nullptr;
 }
 
-void CStarControlSub6::clear() {
-	_matrix.clear();
-	_field24 = 0;
-	_field28 = 0;
-	_field2C = 0;
+void CStarControlSub6::identity() {
+	FMatrix::identity();
+	_vector.clear();
 }
 
-void CStarControlSub6::set(int mode, double amount) {
-	const double ROTATION = 3.1415927 * 0.0055555557;
+void CStarControlSub6::setRotationMatrix(Axis axis, double amount) {
+	const double ROTATION = 2 * M_PI / 360.0;
 	double sinVal = sin(amount * ROTATION);
 	double cosVal = cos(amount * ROTATION);
 
-	switch (mode) {
-	case 0:
-		_matrix._row1._x = 1.0;
-		_matrix._row1._y = 0.0;
-		_matrix._row1._z = 0.0;
-		_matrix._row2._x = 0.0;
-		_matrix._row2._y = cosVal;
-		_matrix._row2._z = sinVal;
-		_matrix._row3._x = 0.0;
-		_matrix._row3._y = -sinVal;
-		_matrix._row3._z = cosVal;
+	switch (axis) {
+	case X_AXIS:
+		_row1._x = 1.0;
+		_row1._y = 0.0;
+		_row1._z = 0.0;
+		_row2._x = 0.0;
+		_row2._y = cosVal;
+		_row2._z = sinVal;
+		_row3._x = 0.0;
+		_row3._y = -sinVal;
+		_row3._z = cosVal;
 		break;
 
-	case 1:
-		_matrix._row1._x = cosVal;
-		_matrix._row1._y = 0.0;
-		_matrix._row1._z = sinVal;
-		_matrix._row2._x = 0.0;
-		_matrix._row2._y = 1.0;
-		_matrix._row2._z = 0.0;
-		_matrix._row3._x = -sinVal;
-		_matrix._row3._y = 0.0;
-		_matrix._row3._z = sinVal;
+	case Y_AXIS:
+		_row1._x = cosVal;
+		_row1._y = 0.0;
+		_row1._z = sinVal;
+		_row2._x = 0.0;
+		_row2._y = 1.0;
+		_row2._z = 0.0;
+		_row3._x = -sinVal;
+		_row3._y = 0.0;
+		_row3._z = sinVal;
 		break;
 
-	case 2:
-		_matrix._row1._x = cosVal;
-		_matrix._row1._y = sinVal;
-		_matrix._row1._z = 0.0;
-		_matrix._row2._x = -sinVal;
-		_matrix._row2._y = cosVal;
-		_matrix._row2._z = 0.0;
-		_matrix._row3._x = 0.0;
-		_matrix._row3._y = 0.0;
-		_matrix._row3._z = 1.0;
+	case Z_AXIS:
+		_row1._x = cosVal;
+		_row1._y = sinVal;
+		_row1._z = 0.0;
+		_row2._x = -sinVal;
+		_row2._y = cosVal;
+		_row2._z = 0.0;
+		_row3._x = 0.0;
+		_row3._y = 0.0;
+		_row3._z = 1.0;
 		break;
 
 	default:
 		break;
 	}
 
-	_field24 = 0.0;
-	_field28 = 0.0;
-	_field2C = 0.0;
+	_vector.clear();
 }
 
 void CStarControlSub6::copyFrom(const CStarControlSub6 *src) {
-	_matrix = src->_matrix;
-	_field24 = src->_field24;
-	_field28 = src->_field28;
-	_field2C = src->_field2C;
+	_row1 = src->_row1;
+	_row2 = src->_row2;
+	_row3 = src->_row3;
+	_vector = src->_vector;
+}
+
+void CStarControlSub6::copyFrom(const FMatrix &src) {
+	_row1 = src._row1;
+	_row2 = src._row2;
+	_row3 = src._row3;
+}
+
+CStarControlSub6 *CStarControlSub6::setup(CStarControlSub6 *dest, const CStarControlSub6 *s2, const CStarControlSub6 *s3) {
+	CStarControlSub6 &d = *dest;
+
+	d._row1._x = s3->_row1._x * s2->_row1._x
+		+ s2->_row1._z * s3->_row3._x
+		+ s2->_row1._y * s3->_row2._x;
+	d._row1._y = s2->_row1._x * s3->_row1._y
+		+ s3->_row3._y * s2->_row1._z
+		+ s3->_row2._y * s2->_row1._y;
+	d._row1._z = s2->_row1._x * s3->_row1._z
+		+ s3->_row3._z * s2->_row1._z
+		+ s3->_row2._z * s2->_row1._y;
+	d._row2._x = s3->_row1._x * s2->_row2._x
+		+ s2->_row2._y * s3->_row2._x
+		+ s2->_row2._z * s3->_row3._x;
+	d._row2._y = s2->_row2._y * s3->_row2._y
+		+ s2->_row2._z * s3->_row3._y
+		+ s3->_row1._y * s2->_row2._x;
+	d._row2._z = s3->_row1._z * s2->_row2._x
+		+ s2->_row2._y * s3->_row2._z
+		+ s2->_row2._z * s3->_row3._z;
+	d._row3._x = s3->_row1._x * s2->_row3._x
+		+ s2->_row3._y * s3->_row2._x
+		+ s2->_row3._z * s3->_row3._x;
+	d._row3._y = s2->_row3._z * s3->_row3._y
+		+ s2->_row3._y * s3->_row2._y
+		+ s3->_row1._y * s2->_row3._x;
+	d._row3._z = s3->_row3._z * s2->_row3._z
+		+ s3->_row2._z * s2->_row3._y
+		+ s3->_row1._z * s2->_row3._x;
+	d._vector._x = s3->_row1._x * s2->_vector._x
+		+ s2->_vector._y * s3->_row2._x
+		+ s2->_vector._z * s3->_row3._x
+		+ s3->_vector._x;
+	d._vector._y = s2->_vector._z * s3->_row3._y
+		+ s2->_vector._y * s3->_row2._y
+		+ s2->_vector._x * s3->_row1._y
+		+ s3->_vector._y;
+	d._vector._z = s2->_vector._y * s3->_row2._z
+		+ s2->_vector._z * s3->_row3._z
+		+ s2->_vector._x * s3->_row1._z
+		+ s3->_vector._z;
+	return dest;
+}
+
+void CStarControlSub6::fn1(CStarControlSub6 *sub6) {
+	// TODO
 }
 
 } // End of namespace Titanic

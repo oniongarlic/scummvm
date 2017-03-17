@@ -171,6 +171,7 @@ ipch/
 *.bat
 *.tss
 *.VC.db
+.vs/
 
 #Ignore default Visual Studio build folders
 [Dd]ebug/
@@ -207,6 +208,11 @@ dists/msvc*/**
 #Ignore Xcode output/project files
 out/
 scummvm.xcodeproj
+
+#Ignore PSP2 files
+psp2pkg/
+*.velf
+*.vpk
 
 #Ignore gmon.out created by gprof
 gmon.out

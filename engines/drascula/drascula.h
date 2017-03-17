@@ -325,6 +325,8 @@ public:
 	virtual ~DrasculaEngine();
 	virtual bool hasFeature(EngineFeature f) const;
 
+	virtual void syncSoundSettings();
+
 	Common::RandomSource *_rnd;
 	const DrasculaGameDescription *_gameDescription;
 	uint32 getFeatures() const;
@@ -488,7 +490,7 @@ public:
 	void addKeyToBuffer(Common::KeyState& key);
 	void flushKeyBuffer();
 	void selectVerb(int);
-	void updateVolume(Audio::Mixer::SoundType soundType, int prevVolume);
+	int updateVolume(int prevVolume, int prevVolumeY);
 	void volumeControls();
 
 	bool saveLoadScreen();

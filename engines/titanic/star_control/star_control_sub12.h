@@ -25,8 +25,11 @@
 
 #include "titanic/support/simple_file.h"
 #include "titanic/star_control/fmatrix.h"
+#include "titanic/star_control/fpoint.h"
+#include "titanic/star_control/base_star.h"
 #include "titanic/star_control/star_control_sub13.h"
 #include "titanic/star_control/star_control_sub20.h"
+#include "titanic/star_control/error_code.h"
 
 namespace Titanic {
 
@@ -59,11 +62,11 @@ public:
 	static void init();
 	static void deinit();
 public:
-	CStarControlSub12(void *val1, const CStar20Data *data);
+	CStarControlSub12(const CStar20Data *data);
 	CStarControlSub12(CStarControlSub13 *src);
 	virtual ~CStarControlSub12();
 
-	virtual void proc2(const void *src);
+	virtual void proc2(const CStarControlSub13 *src);
 	virtual void proc3(const CStar20Data *src);
 	virtual void setPosition(const FVector &v);
 	virtual void proc5(const FVector &v);
@@ -73,27 +76,32 @@ public:
 	virtual void proc9(int v);
 	virtual void proc10(int v);
 	virtual void proc11();
-	virtual void proc12(double v1, double v2);
+	virtual void proc12(StarMode mode, double v2);
 	virtual void proc13(CStarControlSub13 *dest);
-	virtual void proc14(int v);
-	virtual void proc15(int v);
+	virtual void proc14(FVector &v);
+	virtual void proc15(CErrorCode *errorCode);
 	virtual void proc16();
 	virtual void proc17();
 	virtual void proc18();
 	virtual void proc19();
-	virtual void proc20(double v);
-	virtual void proc21(CStarControlSub6 &sub6);
+	virtual void proc20(double factor);
+	virtual void proc21(const CStarControlSub6 *sub6);
 	virtual void proc22(FMatrix &m);
 	virtual CStarControlSub6 proc23();
 	virtual CStarControlSub6 proc24();
 	virtual double proc25() const;
 	virtual double proc26() const;
 	virtual int proc27() const;
-	virtual FVector proc28(int index, const void *v2);
-	virtual FVector proc29(const FVector &v);
+	virtual void proc28(int index, const FVector &src, FVector &dest);
+	virtual void proc29(int index, const FVector &src, FVector &dest);
 	virtual FVector proc30(int index, const FVector &v);
 	virtual FVector proc31(int index, const FVector &v);
-	virtual void proc32(double v1, double v2);
+
+	/**
+	 * Sets the viewport position within the starfield
+	 */
+	virtual void setViewportPosition(const FPoint &pt);
+
 	virtual int getCurrentIndex() const { return _currentIndex; }
 	virtual bool setArrayVector(const FVector &v);
 	virtual bool proc35();
@@ -113,6 +121,10 @@ public:
 	bool is108() const { return _field108; }
 	void set108() { _field108 = true; }
 	void reset108() { _field108 = false; }
+
+	void fn1(CStarControlSub13 *sub13, const FVector &v);
+	void fn2(FVector v1, FVector v2, FVector v3);
+	void fn3(CStarControlSub13 *sub13, const FVector &v);
 };
 
 } // End of namespace Titanic

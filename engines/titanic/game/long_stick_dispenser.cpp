@@ -56,12 +56,12 @@ void CLongStickDispenser::load(SimpleFile *file) {
 }
 
 bool CLongStickDispenser::PuzzleSolvedMsg(CPuzzleSolvedMsg *msg) {
-	if (!_fieldBC && !_fieldC4 && !_fieldC0) {
+	if (!_fieldBC && _fieldC4 == 1 && !_fieldC0) {
 		CStatusChangeMsg statusMsg;
 		statusMsg.execute("ShatterGlass");
 		_fieldC0 = 1;
 		loadFrame(19);
-	} else if (_fieldC0) {
+	} else if (_fieldC0 != 1) {
 		playSound(g_vm->isGerman() ? "z#594.wav" : "z#63.wav");
 		petDisplayMessage(1, GLASS_IS_UNBREAKABLE);
 	}
@@ -109,9 +109,9 @@ bool CLongStickDispenser::MouseButtonDownMsg(CMouseButtonDownMsg *msg) {
 bool CLongStickDispenser::LeaveViewMsg(CLeaveViewMsg *msg) {
 	if (_fieldC0 == 1) {
 		if (_fieldC4) {
-			playMovie(19, 38, MOVIE_GAMESTATE);
+			playMovie(19, 38, MOVIE_WAIT_FOR_FINISH);
 		} else {
-			playMovie(0, 18, MOVIE_GAMESTATE);
+			playMovie(0, 18, MOVIE_WAIT_FOR_FINISH);
 			_fieldBC = 1;
 		}
 

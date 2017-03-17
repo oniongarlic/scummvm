@@ -32,24 +32,28 @@
 namespace Chewy {
 
 const byte _cursorFrames[] = {
-	4, 1, 1, 1,		// walk
-	4, 1, 1, 1,		// pick up / use
-	1, 1, 1, 1, 1,
-	4, 1, 1, 1,		// look
-	4, 1, 1, 1,		// talk
-	4, 1, 1, 1,		// open
-	1,
-	1, 1, 1, 1,		// left, right, up, down
-	1,				// save
-	1,
-	5, 1, 1, 1, 1,
-	1,
-	1,				// use (inventory)
-	1,				// look (inventory)
-	1				// gun
+	4, 1, 1, 1,     //   0-3: walk
+	4, 1, 1, 1,     //   5-7: use (+ no use, 4)
+	1,              //     8: go to
+	4, 1, 1, 1,     //  9-12: nope
+	4, 1, 1, 1,     // 13-16: look
+	4, 1, 1, 1,     // 17-20: talk (+ no talk, 17)
+	4, 1, 1, 1,     // 21-24: inventory
+	1,              // 25: save
+	1,              // 26: exit left
+	1,              // 27: exit right
+	1,              // 28: exit up
+	1,              // 29: exit down
+	1,              // 30: disk
+	1,              // 31: Howard
+	5, 1, 1, 1, 1,  // 32: animated arrow
+	1,              // 37: Nichelle
+	1,              // 38: use (inventory)
+	1,              // 39: look (inventory)
+	1               // 40: gun
 };
 
-Cursor::Cursor(ChewyEngine *vm) : _vm(vm) {
+Cursor::Cursor() {
 	_curCursor = 0;
 	_curCursorFrame = 0;
 	_cursorSprites = new SpriteResource("cursor.taf");
@@ -57,6 +61,35 @@ Cursor::Cursor(ChewyEngine *vm) : _vm(vm) {
 
 Cursor::~Cursor() {
 	delete _cursorSprites;
+}
+
+// TODO: This may need to be refactored, since in the original the user
+// selects the cursor to use from a pop-up menu
+CurrentCursor Cursor::getCurrentCursor() const {
+	switch (_curCursor) {
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+		return kWalk;
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+		return kUse;
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+		return kLook;
+	case 17:
+	case 18:
+	case 19:
+	case 20:
+		return kTalk;
+	default:
+		return kOther;
+	}
 }
 
 void Cursor::setCursor(uint num, bool newCursor) {

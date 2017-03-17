@@ -106,14 +106,14 @@ void CFilesManager::loadDrive() {
 }
 
 void CFilesManager::insertCD(CScreenManager *screenManager) {
-	// We not support running game directly from the original CDs,
+	// We don't support running the game directly from the original CDs,
 	// so this method can remain stubbed
 }
 
 void CFilesManager::resetView() {
 	if (_gameManager) {
 		_gameManager->_gameState.setMode(GSMODE_INTERACTIVE);
-		_gameManager->initBounds();
+		_gameManager->markAllDirty();
 	}
 }
 

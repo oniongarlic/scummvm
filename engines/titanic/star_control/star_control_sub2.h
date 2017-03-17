@@ -31,10 +31,15 @@ class CStarControlSub2: public CBaseStar {
 public:
 	virtual ~CStarControlSub2() {}
 
-	virtual bool proc3(int v1);
-	virtual bool proc4(int v1, int v2, int v3, int v4, int v5);
+	virtual bool loadYale(int v1);
+
+	/**
+	 * Selects a star
+	 */
+	virtual bool selectStar(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12,
+		const Common::Point &pt, void *handler = nullptr);
+
 	virtual bool loadStar();
-	virtual bool proc7(int v1, int v2);
 
 	/**
 	 * Setup the control

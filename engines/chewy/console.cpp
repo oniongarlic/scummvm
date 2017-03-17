@@ -26,6 +26,7 @@
 #include "chewy/console.h"
 #include "chewy/graphics.h"
 #include "chewy/resource.h"
+#include "chewy/scene.h"
 #include "chewy/sound.h"
 #include "chewy/text.h"
 
@@ -34,7 +35,8 @@ namespace Chewy {
 Console::Console(ChewyEngine *vm) : GUI::Debugger(), _vm(vm) {
 	registerCmd("dump",          WRAP_METHOD(Console, Cmd_Dump));
 	registerCmd("dump_bg",       WRAP_METHOD(Console, Cmd_DumpBg));
-	registerCmd("draw",          WRAP_METHOD(Console, Cmd_Draw));
+	registerCmd("draw_image",    WRAP_METHOD(Console, Cmd_DrawImage));
+	registerCmd("draw_sprite",   WRAP_METHOD(Console, Cmd_DrawSprite));
 	registerCmd("play_sound",    WRAP_METHOD(Console, Cmd_PlaySound));
 	registerCmd("play_speech",   WRAP_METHOD(Console, Cmd_PlaySpeech));
 	registerCmd("play_music",    WRAP_METHOD(Console, Cmd_PlayMusic));
@@ -43,6 +45,7 @@ Console::Console(ChewyEngine *vm) : GUI::Debugger(), _vm(vm) {
 	registerCmd("error_message", WRAP_METHOD(Console, Cmd_ErrorMessage));
 	registerCmd("dialog",        WRAP_METHOD(Console, Cmd_Dialog));
 	registerCmd("text",          WRAP_METHOD(Console, Cmd_Text));
+	registerCmd("scene",         WRAP_METHOD(Console, Cmd_Scene));
 }
 
 Console::~Console() {
@@ -102,9 +105,9 @@ bool Console::Cmd_DumpBg(int argc, const char **argv) {
 }
 
 
-bool Console::Cmd_Draw(int argc, const char **argv) {
+bool Console::Cmd_DrawImage(int argc, const char **argv) {
 	if (argc < 3) {
-		debugPrintf("Usage: draw <file> <resource number>\n");
+		debugPrintf("Usage: draw_image <file> <resource number>\n");
 		return true;
 	}
 
@@ -112,6 +115,22 @@ bool Console::Cmd_Draw(int argc, const char **argv) {
 	int resNum = atoi(argv[2]);
 	
 	_vm->_graphics->drawImage(filename, resNum);
+
+	return false;
+}
+
+bool Console::Cmd_DrawSprite(int argc, const char **argv) {
+	if (argc < 3) {
+		debugPrintf("Usage: draw_sprite <file> <resource number> [x] [y]\n");
+		return true;
+	}
+
+	Common::String filename = argv[1];
+	int spriteNum = atoi(argv[2]);
+	int x = (argc < 4) ? 0 : atoi(argv[3]);
+	int y = (argc < 5) ? 0 : atoi(argv[4]);
+
+	_vm->_graphics->drawSprite(filename, spriteNum, x, y);
 
 	return false;
 }
@@ -233,6 +252,19 @@ bool Console::Cmd_Text(int argc, const char **argv) {
 	delete d;
 
 	return true;
+}
+
+bool Console::Cmd_Scene(int argc, const char **argv) {
+	if (argc < 2) {
+		debugPrintf("Current scene is: %d\n", _vm->_scene->getCurScene());
+		debugPrintf("Use scene <scene num> to change the scene\n");
+		return true;
+	}
+
+	int sceneNum = atoi(argv[1]);
+	_vm->_scene->change(sceneNum);
+
+	return false;
 }
 
 } // End of namespace Chewy

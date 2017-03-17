@@ -28,11 +28,12 @@
 #include "chewy/cursor.h"
 #include "chewy/events.h"
 #include "chewy/graphics.h"
+#include "chewy/scene.h"
 
 namespace Chewy {
 
-Events::Events(ChewyEngine *vm, Graphics *graphics, Console *console) :
-	_vm(vm), _graphics(graphics), _console(console) {
+Events::Events(ChewyEngine *vm, Console *console) :
+	_vm(vm), _console(console) {
 
 	_eventManager = g_system->getEventManager();
 }
@@ -54,8 +55,12 @@ void Events::processEvents() {
 			default:
 				break;
 			}
+		} else if (_event.type == Common::EVENT_LBUTTONUP) {
+			_vm->_scene->mouseClick(_event.mouse);
 		} else if (_event.type == Common::EVENT_RBUTTONUP) {
 			_vm->_cursor->nextCursor();
+		} else if (_event.type == Common::EVENT_MOUSEMOVE) {
+			_vm->_scene->updateMouse(_event.mouse);
 		}
 	}
 }

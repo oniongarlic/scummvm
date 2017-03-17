@@ -33,6 +33,10 @@ private:
 	CStarControlSub27 _sub27;
 public:
 	CStarControlSub22(const CStar20Data *src);
+	virtual ~CStarControlSub22() {}
+
+	virtual void proc8(FVector &v1, FVector &v2, FMatrix &m1, FMatrix &m2);
+	virtual void proc11(CErrorCode &errorCode, FVector &v, const FMatrix &m);
 };
 
 } // End of namespace Titanic

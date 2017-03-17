@@ -29,6 +29,7 @@
 #include "titanic/star_control/star_control_sub13.h"
 #include "titanic/star_control/surface_fader.h"
 #include "titanic/star_control/error_code.h"
+#include "titanic/star_control/fvector.h"
 
 namespace Titanic {
 
@@ -45,12 +46,27 @@ private:
 	CStarControlSub13 _sub13;
 	CSurfaceFader _fader;
 	CVideoSurface *_videoSurface2;
-	int _field210;
 	CGameObject *_homePhotoMask;
-	int _field218;
-	int _field21C;
+	bool _field218;
+	bool _showingPhoto;
+#if 0
+	int _field210;
+#endif
 private:
-	void fn1();
+	bool fn1();
+	void fn18(CStarControlSub12 *sub12);
+	void fn19(int v);
+
+	void randomizeVectors1(FVector &v1, FVector &v2);
+	void randomizeVectors2(FVector &v1, FVector &v2);
+	void randomizeVectors3(FVector &v1, FVector &v2);
+	void randomizeVectors4(FVector &v1, FVector &v2);
+
+	/**
+	 * Handles resizing the surface
+	 */
+	void resizeSurface(CScreenManager *scrManager, int width, int height,
+		CVideoSurface **surface);
 public:
 	CStarView();
 
@@ -79,17 +95,17 @@ public:
 	/**
 	 * Handles mouse down messages
 	 */
-	void MouseButtonDownMsg(int unused, const Point &pt);
+	bool MouseButtonDownMsg(int unused, const Point &pt);
 
 	/**
 	 * Handles mouse move messages
 	 */
-	void MouseMoveMsg(int unused, const Point &pt);
+	bool MouseMoveMsg(int unused, const Point &pt);
 
 	/**
 	 * Handles keyboard messages
 	 */
-	CErrorCode KeyCharMsg(int key);
+	bool KeyCharMsg(int key, CErrorCode *errorCode);
 
 	/**
 	 * Returns true if a star destination can be set
@@ -100,6 +116,39 @@ public:
 	 * Called when a star destination is set
 	 */
 	void starDestinationSet();
+
+	/**
+	 * Resets back to the origin position
+	 */
+	void resetPosition();
+
+	void fn2();
+	void fn3(bool fadeIn);
+	void fn4();
+	void fn5();
+	void fn6();
+	void fn7();
+	void fn8();
+	void fn9();
+
+	/**
+	 * Toggles between starfield and photo modes
+	 */
+	void toggleMode();
+	
+	void fn11();
+	void fn12();
+	void fn13();
+	void fn14();
+
+	/**
+	 * Called when the photograph is used on the navigation computer
+	 */
+	void setHasReference();
+	
+	void fn16();
+	void fn17();
+
 };
 
 } // End of namespace Titanic

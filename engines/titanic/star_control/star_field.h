@@ -39,12 +39,15 @@ private:
 	CStarPoints1 _points1;
 	CStarPoints2 _points2;
 	CStarControlSub5 _sub5;
-	int _val1;
-	int _val2;
-	int _val3;
+	bool _points1On;
+	bool _points2On;
+	StarMode _mode;
 	bool _val4;
 	int _val5;
-	bool _val6;
+	bool _isSolved;
+private:
+	void fn3(CSurfaceArea *surfaceArea);
+	void fn4(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12);
 public:
 	CStarField();
 
@@ -71,14 +74,59 @@ public:
 	void set2(int val);
 	int get54() const;
 	void set54(int val);
-	int get3() const;
-	void set3(int val);
+	
+	/**
+	 * Gets the current display mode
+	 */
+	StarMode getMode() const;
+	
+	/**
+	 * Sets the display mode
+	 */
+	void setMode(StarMode mode);
+	
 	void toggle4();
 	bool set4(bool val);
 	int get88() const;
 	int get5() const;
-	void update6();
-	int get6() const;
+
+	/**
+	 * Sets the flag that the starfield has been solved
+	 */
+	void setSolved();
+
+	/**
+	 * Returns true if the starfield puzzle has been solved
+	 */
+	bool isSolved() const;
+
+	int get7Count() const {
+		return _sub7.size();
+	}
+
+	void fn1(CErrorCode *errorCode);
+	double fn5(CSurfaceArea *surfaceArea, CStarControlSub12 *sub12,
+		FVector &v1, FVector &v2, FVector &v3);
+	void fn6(CVideoSurface *surface, CStarControlSub12 *sub12);
+	void fn7();
+	void fn8(CVideoSurface *surface);
+	void fn9() { _sub5.fn1(); }
+
+	/**
+	 * Called when the starfield is clicked
+	 */
+	bool mouseButtonDown(CVideoSurface *surface, CStarControlSub12 *sub12,
+		int flags, const Common::Point &pt);
+
+	/**
+	 * Gets a random star
+	 */
+	const CBaseStarEntry *getRandomStar() const;
+
+	/**
+	 * Gets a specified star
+	 */
+	const CBaseStarEntry *getStar(int index) const;
 };
 
 } // End of namespace Titanic
