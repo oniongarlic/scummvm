@@ -23,6 +23,7 @@
 #ifndef SCI_GRAPHICS_FRAMEOUT_H
 #define SCI_GRAPHICS_FRAMEOUT_H
 
+#include "engines/util.h"                // for initGraphics
 #include "sci/graphics/plane32.h"
 #include "sci/graphics/screen_item32.h"
 
@@ -58,30 +59,7 @@ public:
 	bool _isHiRes;
 
 	void clear();
-	void syncWithScripts(bool addElements); // this is what Game::restore does, only needed when our ScummVM dialogs are patched in
 	void run();
-
-#pragma mark -
-#pragma mark Benchmarking
-private:
-	/**
-	 * Optimization to avoid the more expensive object name
-	 * comparision on every call to kAddScreenItem and
-	 * kRemoveScreenItem.
-	 */
-	bool _benchmarkingFinished;
-
-	/**
-	 * Whether or not calls to kFrameOut should be framerate
-	 * limited to 60fps.
-	 */
-	bool _throttleFrameOut;
-
-	/**
-	 * Determines whether or not a screen item is the "Fred"
-	 * object.
-	 */
-	bool checkForFred(const reg_t object);
 
 #pragma mark -
 #pragma mark Screen items
@@ -307,12 +285,9 @@ private:
 	}
 
 public:
-	/**
-	 * Whether or not the data in the current buffer is what
-	 * is visible to the user. During rendering updates,
-	 * this flag is set to false.
-	 */
-	bool _frameNowVisible;
+	void setPixelFormat(const Graphics::PixelFormat &format) const {
+		initGraphics(_currentBuffer.screenWidth, _currentBuffer.screenHeight, _isHiRes, &format);
+	}
 
 	/**
 	 * Whether palMorphFrameOut should be used instead of

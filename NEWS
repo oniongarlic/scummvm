@@ -5,6 +5,18 @@ For a more comprehensive changelog of the latest experimental code, see:
  New Games:
    - Added support for Full Pipe.
 
+ New Games (Sierra SCI2 - SCI2.1):
+   - Added support for Gabriel Knight.
+   - Added support for Gabriel Knight 2.
+   - Added support for King's Quest VII.
+   - Added support for King's Questions.
+   - Added support for Leisure Suit Larry 6 (hires).
+   - Added support for Phantasmagoria.
+   - Added support for Police Quest 4.
+   - Added support for Shivers.
+   - Added support for Space Quest 6.
+   - Added support for Torin's Passage.
+
  New ports:
    - Added PSP Vita port.
 
@@ -14,6 +26,7 @@ For a more comprehensive changelog of the latest experimental code, see:
    - Many options in GUI could be applied without closing the dialog.
    - On-the-fly language switching was implemented.
    - Updated Munt MT-32 emulation code to version 2.0.3.
+   - Improved handling of joysticks.
 
  AGOS:
    - Fixed subtitle speed setting in the Hebrew version of Simon the Sorcerer 1.
@@ -22,8 +35,9 @@ For a more comprehensive changelog of the latest experimental code, see:
    - Added save/load from General Main Menu.
 
 Drascula:
-  - Add handling of the master volume and fix volume synchronization between
+  - Added handling of the master volume and fix volume synchronization between
     the game and ScummVM options.
+  - Added possibility to load and save games using GMM.
 
 1.9.1 (YYYY-MM-DD)
  General:
@@ -38,6 +52,11 @@ Drascula:
 
  MADS:
    - Fixed a bug that caused a crash after starting Rex Nebular and the Cosmic Gender Bender.
+
+ SCI:
+   - Fixed a script bug in Laura Bow 2: Dagger of Amon Ra that made it impossible to exit the
+     party room with the large golden head inside the museum (room 350).
+     This bug is also present, when using the original interpreter.
 
  TsAGE:
    - Fixed recently introduced bug preventing animations in Return to Ringworld from playing.

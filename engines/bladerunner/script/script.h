@@ -25,7 +25,409 @@
 
 #include "common/str.h"
 
+#include "bladerunner/bladerunner.h"
+
 namespace BladeRunner {
+
+enum Actors {
+	kActorMcCoy = 0,
+	kActorSteele = 1,
+	kActorGordo = 2,
+	kActorDektora = 3,
+	kActorGuzza = 4,
+	kActorClovis = 5,
+	kActorLucy = 6,
+	kActorIzo = 7,
+	kActorSadik = 8,
+	kActorCrazylegs = 9,
+	kActorLuther = 10,
+	kActorGrigorian = 11,
+	kActorTransient = 12,
+	kActorLance = 13,
+	kActorBulletBob = 14,
+	kActorRunciter = 15,
+	kActorInsectDealer = 16,
+	kActorTyrellGuard = 17,
+	kActorEarlyQ = 18,
+	kActorZuben = 19,
+	kActorHasan = 20,
+	kActorMarcus = 21,
+	kActorMia = 22,
+	kActorOfficerLeary = 23,
+	kActorOfficerGrayford = 24,
+	kActorHanoi = 25,
+	kActorBaker = 26,
+	kActorDeskClerk = 27,
+	kActorHowieLee = 28,
+	kActorFishDealer = 29,
+	kActorKlein = 30,
+	kActorMurray = 31,
+	kActorHawkersBarkeep = 32,
+	kActorHolloway = 33,
+	kActorSergeantWalls = 34,
+	kActorMoraji = 35,
+	kActorTheBard = 36,
+	kActorPhotographer = 37,
+	kActorDispatcher = 38,
+	kActorAnsweringMachine = 39,
+	kActorRajif = 40,
+	kActorGovernorKolvig = 41,
+	kActorEarlyQBartender = 42,
+	kActorHawkersParrot = 43,
+	kActorTaffyPatron = 44,
+	kActorLockupGuard = 45,
+	kActorTeenager = 46,
+	kActorHysteriaPatron1 = 47,
+	kActorHysteriaPatron2 = 48,
+	kActorHysteriaPatron3 = 49,
+	kActorShoeshineMan = 50,
+	kActorTyrell = 51,
+	kActorChew = 52,
+	kActorGaff = 53,
+	kActorBryant = 54,
+	kActorTaffy = 55,
+	kActorSebastian = 56,
+	kActorRachael = 57,
+	kActorGeneralDoll = 58,
+	kActorIsabella = 59,
+	kActorBlimpGuy = 60,
+	kActorNewscaster = 61,
+	kActorLeon = 62,
+	kActorMaleAnnouncer = 63,
+	kActorFreeSlotA = 64,
+	kActorFreeSlotB = 65,
+	kActorMaggie = 66,
+	kActorGenwalkerA = 67,
+	kActorGenwalkerB = 68,
+	kActorGenwalkerC = 69,
+	kActorMutant1 = 70,
+	kActorMutant2 = 71,
+	kActorMutant3 = 72,
+	kActorVoiceOver = 99
+};
+
+enum Clues {
+	kClueOfficersStatement = 0,
+	kClueDoorForced1 = 1,
+	kClueDoorForced2 = 2,
+	kClueLimpingFootprints = 3,
+	kClueGracefulFootprints = 4,
+	kClueShellCasings = 5,
+	kClueCandy = 6,
+	kClueToyDog = 7,
+	kClueChopstickWrapper = 8,
+	kClueSushiMenu = 9,
+	kClueLabCorpses = 10,
+	kClueLabShellCasings = 11,
+	kClueRuncitersVideo = 12,
+	kClueLucy = 13,
+	kClueDragonflyAnklet = 14,
+	kClueReferenceLetter = 15,
+	kClueCrowdInterviewA = 16,
+	kClueCrowdInterviewB = 17,
+	kClueZubenRunsAway = 18,
+	kClueZubenInterview = 19,
+	kClueZuben = 20,
+	kClueBigManLimping = 21,
+	kClueRunciterInterviewA = 22,
+	kClueRunciterInterviewB1 = 23,
+	kClueRunciterInterviewB2 = 24,
+	kClueHowieLeeInterview = 25,
+	kCluePaintTransfer = 26,
+	kClueChromeDebris = 27,
+	kClueRuncitersViewA = 28,
+	kClueRuncitersViewB = 29,
+	kClueCarColorAndMake = 30,
+	kCluePartialLicenseNumber = 31,
+	kClueBriefcase = 32,
+	kClueGaffsInformation = 33,
+	kClueCrystalVisitedRunciters = 34,
+	kClueCrystalVisitedChinatown = 35,
+	kClueWantedPoster = 36,
+	kClueLicensePlate = 37,
+	kClueLicensePlateMatch = 38,
+	kClueLabPaintTransfer = 39,
+	kClueDispatchHitAndRun = 40,
+	kClueInceptShotRoy = 41,
+	kClueInceptShotsLeon = 42,
+	kCluePhoneCallGuzza = 43,
+	kClueDragonflyEarring = 44,
+	kClueTyrellSecurity = 45,
+	kClueTyrellGuardInterview = 46,
+	kClueBombingSuspect = 47,
+	kClueSadiksGun = 48,
+	kClueDetonatorWire = 49,
+	kClueVictimInformation = 50,
+	kClueAttemptedFileAccess = 51,
+	kClueCrystalsCase = 52,
+	kClueKingstonKitchenBox1 = 53,
+	kClueTyrellSalesPamphlet1 = 54,
+	kClueTyrellSalesPamphlet2 = 55,
+	kCluePeruvianLadyInterview = 56,
+	kClueHasanInterview = 57,
+	kClueBobInterview1 = 58,
+	kClueBobInterview2 = 59,
+	kClueIzoInterview = 60,
+	kClueIzosWarning = 61,
+	kClueRadiationGoggles = 62,
+	kClueGogglesReplicantIssue = 63,
+	kClueFishLadyInterview = 64,
+	kClueDogCollar1 = 65,
+	kClueWeaponsCache = 66,
+	kClueChewInterview = 67,
+	kClueMorajiInterview = 68,
+	kClueGordoInterview1 = 69,
+	kClueGordoInterview2 = 70,
+	kClueAnsweringMachineMessage = 71,
+	kClueChessTable = 72,
+	kClueSightingSadikBradbury = 73,
+	kClueStaggeredbyPunches = 74,
+	kClueMaggieBracelet = 75,
+	kClueEnvelope = 76,
+	kClueIzosFriend = 77,
+	kClueChinaBarSecurityPhoto = 78,
+	kCluePurchasedScorpions = 79,
+	kClueWeaponsOrderForm = 80,
+	kClueShippingForm = 81,
+	kClueGuzzasCash = 82,
+	kCluePoliceIssueWeapons = 83,
+	kClueHysteriaToken = 84,
+	kClueRagDoll = 85,
+	kClueMoonbus1 = 86,
+	kClueCheese = 87,
+	kClueDektorasDressingRoom = 88,
+	kClueEarlyQsClub = 89,
+	kClueDragonflyCollection = 90,
+	kClueDragonflyBelt = 91,
+	kClueEarlyQInterview = 92,
+	kClueStrangeScale1 = 93,
+	kClueDektoraInterview1 = 94,
+	kClueSuspectDektora = 95,
+	kClueDektoraInterview2 = 96,
+	kClueDektoraInterview3 = 97,
+	kClueDektorasCard = 98,
+	kClueGrigoriansNote = 99,
+	kClueCollectionReceipt = 100,
+	kClueSpecialIngredient = 101,
+	kClueStolenCheese = 102,
+	kClueGordoInterview3 = 103,
+	kClueGordoConfession = 104,
+	kClueGordosLighter1 = 105,
+	kClueGordosLighter2 = 106,
+	kClueDektoraInterview4 = 107,
+	kClueHollowayInterview = 108,
+	kClueBakersBadge = 109,
+	kClueHoldensBadge = 110,
+	kClueCar = 111,
+	kClueCarIdentified = 112,
+	kClueCarRegistration1 = 113,
+	kClueCarRegistration2 = 114,
+	kClueCarRegistration3 = 115,
+	kClueCrazylegsInterview1 = 116,
+	kClueCrazylegsInterview2 = 117,
+	kClueLichenDogWrapper = 118,
+	kClueRequisitionForm = 119,
+	kClueScaryChair = 120,
+	kClueIzosStashRaided = 121,
+	kClueHomelessManInterview1 = 122,
+	kClueHomelessManInterview2 = 123,
+	kClueHomelessManKid = 124,
+	kClueFolder = 125,
+	kClueGuzzaFramedMcCoy = 126,
+	kClueOriginalShippingForm = 127,
+	kClueOriginalRequisitionForm = 128,
+	kClueCandyWrapper = 129,
+	kClueGordoBlabs = 130,
+	kClueFlaskOfAbsinthe = 131,
+	kClueGuzzaAgreesToMeet = 132,
+	kClueDektoraConfession = 133,
+	kClueRunciterConfession1 = 134,
+	kClueRunciterConfession2 = 135,
+	kClueLutherLanceInterview = 136,
+	kClueMoonbus2 = 137,
+	kClueMoonbusCloseup = 138,
+	kCluePhoneCallDektora1 = 139,
+	kCluePhoneCallDektora2 = 140,
+	kCluePhoneCallLucy1 = 141,
+	kCluePhoneCallLucy2 = 142,
+	kCluePhoneCallClovis = 143,
+	kCluePhoneCallCrystal = 144,
+	kCluePowerSource = 145,
+	kClueBomb = 146,
+	kClueDNATyrell = 147,
+	kClueDNASebastian = 148,
+	kClueDNAChew = 149,
+	kClueDNAMoraji = 150,
+	kClueDNALutherLance = 151,
+	kClueDNAMarcus = 152,
+	kClueGarterSnake = 153,
+	kClueSlug = 154,
+	kClueGoldfish = 155,
+	kClueZubenTalksAboutLucy1 = 156,
+	kClueZubenTalksAboutLucy2 = 157,
+	kClueZubensMotive = 158,
+	kClueSightingBulletBob = 159,
+	kClueSightingClovis = 160,
+	kClueSightingDektora = 161,
+	kClueVKDektoraReplicant = 162,
+	kClueVKDektoraHuman = 163,
+	kClueVKBobGorskyReplicant = 164,
+	kClueVKBobGorskyHuman = 165,
+	kClueVKLutherLanceReplicant = 166,
+	kClueVKLutherLanceHuman = 167,
+	kClueVKGrigorianReplicant = 168,
+	kClueVKGrigorianHuman = 169,
+	kClueVKIzoReplicant = 170,
+	kClueVKIzoHuman = 171,
+	kClueVKCrazylegsReplicant = 172,
+	kClueVKCrazylegsHuman = 173,
+	kClueVKRunciterReplicant = 174,
+	kClueVKRunciterHuman = 175,
+	kClueVKEarlyQReplicant = 176,
+	kClueVKEarlyQHuman = 177,
+	kClueCrimeSceneNotes = 178,
+	kClueGrigorianInterviewA = 179,
+	kClueGrigorianInterviewB1 = 180,
+	kClueGrigorianInterviewB2 = 181,
+	kClueLabAnalysisGoldChain = 182,
+	kClueSightingZuben = 183,
+	kClueCrystalRetiredZuben = 184,
+	kClueCrystalRetiredGordo = 185,
+	kClueSightingGordo = 186,
+	kClueCrystalRetiredIzo = 187,
+	kClueClovisIncept = 188,
+	kClueDektoraIncept = 189,
+	kClueLucyIncept = 190,
+	kClueGordoIncept = 191,
+	kClueIzoIncept = 192,
+	kClueSadikIncept = 193,
+	kClueZubenIncept = 194,
+	kClueMcCoyIncept = 195,
+	kClueWarRecordsGordoFrizz = 196,
+	kCluePoliceWeaponUsed = 197,
+	kClueMcCoysWeaponUsedonBob = 198,
+	kClueBobRobbed = 199,
+	kClueBobShotInSelfDefense = 200,
+	kClueBobShotInColdBlood = 201,
+	kClueMcCoyRecoveredHoldensBadge = 202,
+	kClueCrystalTestedBulletBob = 203,
+	kClueCrystalRetiredBob = 204,
+	kClueCrystalTestedCrazylegs = 205,
+	kClueCrystalRetiredCrazylegs = 206,
+	kClueCrystalArrestedCrazylegs = 207,
+	kClueCrystalTestedRunciter = 208,
+	kClueCrystalRetiredRunciter1 = 209,
+	kClueCrystalRetiredRunciter2 = 210,
+	kClueSightingMcCoyRuncitersShop = 211,
+	kClueMcCoyKilledRunciter1 = 212,
+	kClueMcCoysDescription = 213,
+	kClueMcCoyIsABladeRunner = 214,
+	kClueMcCoyLetZubenEscape = 215,
+	kClueMcCoyWarnedIzo = 216,
+	kClueMcCoyHelpedIzoIzoIsAReplicant = 217,
+	kClueMcCoyHelpedDektora = 218,
+	kClueMcCoyHelpedLucy = 219,
+	kClueMcCoyHelpedGordo = 220,
+	kClueMcCoyShotGuzza = 221,
+	kClueMcCoyRetiredZuben = 222,
+	kClueMcCoyRetiredLucy = 223,
+	kClueMcCoyRetiredDektora = 224,
+	kClueMcCoyRetiredGordo = 225,
+	kClueMcCoyRetiredSadik = 226,
+	kClueMcCoyShotZubenintheback = 227,
+	kClueMcCoyRetiredLutherLance = 228,
+	kClueMcCoyBetrayal = 229,
+	kClueMcCoyKilledRunciter2 = 230,
+	kClueClovisOrdersMcCoysDeath = 231,
+	kClueEarlyAttemptedToSeduceLucy = 232,
+	kClueCarWasStolen = 233,
+	kClueGrigoriansResponse1 = 234,
+	kClueGrigoriansResponse2 = 235,
+	kClueCrazysInvolvement = 236,
+	kClueGrigoriansResources = 237,
+	kClueMcCoyPulledAGun = 238,
+	kClueMcCoyIsStupid = 239,
+	kClueMcCoyIsAnnoying = 240,
+	kClueMcCoyIsKind = 241,
+	kClueMcCoyIsInsane = 242,
+	kClueAnimalMurderSuspect = 243,
+	kClueMilitaryBoots = 244,
+	kClueOuterDressingRoom = 245,
+	kCluePhotoOfMcCoy1 = 246,
+	kCluePhotoOfMcCoy2 = 247,
+	kClueEarlyQAndLucy = 248,
+	kClueClovisflowers = 249,
+	kClueLucyWithDektora = 250,
+	kClueWomanInAnimoidRow = 251,
+	kClueScorpions = 252,
+	kClueStrangeScale2 = 253,
+	kClueChinaBarSecurityCamera = 254,
+	kClueIzo = 255,
+	kClueGuzza = 256,
+	kClueChinaBarSecurityDisc = 257,
+	kClueScorpionbox = 258,
+	kClueTyrellSecurityPhoto = 259,
+	kClueChinaBar = 260,
+	kCluePlasticExplosive = 261,
+	kClueDogCollar2 = 262,
+	kClueKingstonKitchenBox2 = 263,
+	kClueCrystalsCigarette = 264,
+	kClueSpinnerKeys = 265,
+	kClueAct2Ended = 266,
+	kClueAct3Ended = 267,
+	kClueAct4Ended = 268,
+	kClueExpertBomber = 269,
+	kClueAmateurBomber = 270,
+	kClueVKLucyReplicant = 271,
+	kClueVKLucyHuman = 272,
+	kClueLucyInterview = 273,
+	kClueMoonbusReflection = 274,
+	kClueMcCoyAtMoonbus = 275,
+	kClueClovisAtMoonbus = 276,
+	kClueSadikAtMoonbus = 277,
+	kClueRachaelInterview = 278,
+	kClueTyrellInterview = 279,
+	kClueRuncitersConfession1 = 280,
+	kClueRuncitersConfession2 = 281,
+	kClueRuncitersConfession3 = 282,
+	kClueEarlyInterviewA = 283,
+	kClueEarlyInterviewB1 = 284,
+	kClueEarlyInterviewB2 = 285,
+	kClueCrazylegsInterview3 = 286,
+	kClueCrazylegGgrovels = 287
+};
+
+enum ClueTypes {
+	kClueTypePhotograph  = 0,
+	kClueTypeVideoClip = 1,
+	kClueTypeAudioRecording = 2,
+	kClueTypeObject = 3
+};
+
+enum Crimes {
+	kCrimeAnimalMurder = 0,
+	kCrimeEisendullerMurder = 1,
+	kCrimeArmsDealing = 2,
+	kCrimeMorajiMurder = 3,
+	kCrimeBradburyAssault = 4,
+	kCrimeFactoryBombing = 5,
+	kCrimeBobMurder = 6,
+	kCrimeRunciterMurder = 7,
+	kCrimeMoonbusHijacking = 8
+};
+
+enum SpinnerDestinations {
+	kSpinnerDestinationPoliceStation = 0,
+	kSpinnerDestinationMcCoysApartment = 1,
+	kSpinnerDestinationRuncitersAnimals = 2,
+	kSpinnerDestinationChinatown = 3,
+	kSpinnerDestinationAnimoidRow = 4,
+	kSpinnerDestinationTyrellBuilding = 5,
+	kSpinnerDestinationDNARow = 6,
+	kSpinnerDestinationBradburyBuilding = 7,
+	kSpinnerDestinationNightclubRow = 8,
+	kSpinnerDestinationHysteriaHall = 9
+};
 
 class BladeRunnerEngine;
 
@@ -75,10 +477,10 @@ protected:
 	void Actor_Set_Flag_Damage_Anim_If_Moving(int actorId, bool value);
 	bool Actor_Query_Flag_Damage_Anim_If_Moving(int actorId);
 	void Actor_Combat_AI_Hit_Attempt(int actorId);
-	void Non_Player_Actor_Combat_Mode_On(int actorId, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10, int a11, int a12, int a13, int a14);
+	void Non_Player_Actor_Combat_Mode_On(int actorId, int a2, int a3, int otherActorId, int a5, int animationModeCombatIdle, int animationModeCombatWalk, int animationModeCombatRun, int a9, int a10, int a11, int a12, int a13, int a14);
 	void Non_Player_Actor_Combat_Mode_Off(int actorId);
-	void Actor_Set_Health(int actor, int hp, int maxHp);
-	void Actor_Set_Targetable(int actor, bool targetable);
+	void Actor_Set_Health(int actorId, int hp, int maxHp);
+	void Actor_Set_Targetable(int actorId, bool targetable);
 	void Actor_Says(int actorId, int sentenceId, int animationMode);
 	void Actor_Says_With_Pause(int actorId, int sentenceId, float pause, int animationMode);
 	void Actor_Voice_Over(int sentenceId, int actorId);
@@ -98,7 +500,7 @@ protected:
 	int Slice_Animation_Query_Number_Of_Frames(int animationId);
 	void Actor_Change_Animation_Mode(int actorId, int animationMode);
 	int Actor_Query_Animation_Mode(int actorId);
-	bool Loop_Actor_Walk_To_Actor(int actorId, int otherActorId, int a3, int a4, bool running);
+	bool Loop_Actor_Walk_To_Actor(int actorId, int otherActorId, int distance, int a4, bool running);
 	bool Loop_Actor_Walk_To_Item(int actorId, int itemId, int a3, int a4, bool run);
 	bool Loop_Actor_Walk_To_Scene_Object(int actorId, const char *objectName, int distance, bool a4, bool run);
 	bool Loop_Actor_Walk_To_Waypoint(int actorId, int waypointId, int a3, int a4, bool run);
@@ -108,8 +510,8 @@ protected:
 	void Actor_Force_Stop_Walking(int actorId);
 	bool Loop_Actor_Travel_Stairs(int actorId, int a2, int a3, int a4);
 	bool Loop_Actor_Travel_Ladder(int actorId, int a2, int a3, int a4);
-	void Actor_Clue_Add_To_Database(int actorId, int clueId, int unknown, bool clueAcquired, bool unknownFlag, int fromActorId);
-	void Actor_Clue_Acquire(int actorId, int clueId, byte unknownFlag, int fromActorId);
+	void Actor_Clue_Add_To_Database(int actorId, int clueId, int weight, bool clueAcquired, bool unknownFlag, int fromActorId);
+	void Actor_Clue_Acquire(int actorId, int clueId, bool unknownFlag, int fromActorId);
 	void Actor_Clue_Lose(int actorId, int clueId);
 	bool Actor_Clue_Query(int actorId, int clueId);
 	void Actor_Clues_Transfer_New_To_Mainframe(int actorId);
@@ -197,13 +599,13 @@ protected:
 	void Scene_Exits_Enable();
 	void Scene_2D_Region_Add(int index, int left, int top, int right, int down);
 	void Scene_2D_Region_Remove(int index);
-	void World_Waypoint_Set(int waypointId, int sceneId, float x, float y, float z);
+	void World_Waypoint_Set(int waypointId, int setId, float x, float y, float z);
 	// World_Waypoint_Reset
 	float World_Waypoint_Query_X(int waypointId);
 	float World_Waypoint_Query_Y(int waypointId);
 	float World_Waypoint_Query_Z(int waypointId);
-	void Combat_Cover_Waypoint_Set_Data(int combatCoverId, int a2, int sceneId, int a4, float x, float y, float z);
-	void Combat_Flee_Waypoint_Set_Data(int combatFleeWaypointId, int a2, int sceneId, int a4, float x, float y, float z, int a8);
+	void Combat_Cover_Waypoint_Set_Data(int combatCoverId, int a2, int setId, int a4, float x, float y, float z);
+	void Combat_Flee_Waypoint_Set_Data(int combatFleeWaypointId, int a2, int setId, int a4, float x, float y, float z, int a8);
 	void Police_Maze_Target_Track_Add(int itemId, float startX, float startY, float startZ, float endX, float endY, float endZ, int steps, signed int data[], bool a10);
 	// Police_Maze_Query_Score
 	// Police_Maze_Zero_Score
@@ -211,10 +613,10 @@ protected:
 	// Police_Maze_Decrement_Score
 	// Police_Maze_Set_Score
 	void Police_Maze_Set_Pause_State(int a1);
-	void CDB_Set_Crime(int crimeId, int value);
-	void CDB_Set_Clue_Asset_Type(int assetId, int type);
+	void CDB_Set_Crime(int clueId, int crimeId);
+	void CDB_Set_Clue_Asset_Type(int clueId, int assetType);
 	void SDB_Set_Actor(int suspectId, int actorId);
-	bool SDB_Add_Photo_Clue(int suspectId, int a2, int a3);
+	bool SDB_Add_Photo_Clue(int suspectId, int clueId, int shapeId);
 	void SDB_Set_Name(int suspectId);
 	void SDB_Set_Sex(int suspectId, int sex);
 	bool SDB_Add_Identity_Clue(int suspectId, int clueId);
@@ -278,576 +680,6 @@ protected:
 	void VK_Add_Question(int a1, int a2, int a3);
 	void VK_Subject_Reacts(int a1, int a2, int a3, int a4);
 	void VK_Eye_Animates(int a1);
-};
-
-class SceneScriptBase : public ScriptBase {
-public:
-	SceneScriptBase(BladeRunnerEngine *vm) : ScriptBase(vm) {}
-
-	virtual void InitializeScene() = 0;
-	virtual void SceneLoaded() = 0;
-	virtual bool MouseClick(int x, int y) = 0;
-	virtual bool ClickedOn3DObject(const char *objectName, bool a2) = 0;
-	virtual bool ClickedOnActor(int actorId) = 0;
-	virtual bool ClickedOnItem(int itemId, bool a2) = 0;
-	virtual bool ClickedOnExit(int exitId) = 0;
-	virtual bool ClickedOn2DRegion(int region) = 0;
-	virtual void SceneFrameAdvanced(int frame) = 0;
-	virtual void ActorChangedGoal(int actorId, int newGoal, int oldGoal, bool currentSet) = 0;
-	virtual void PlayerWalkedIn() = 0;
-	virtual void PlayerWalkedOut() = 0;
-	virtual void DialogueQueueFlushed(int a1) = 0;
-};
-
-/*
- * Scene Scripts
- */
-
-class Script {
-public:
-	BladeRunnerEngine *_vm;
-	int                _inScriptCounter;
-	SceneScriptBase   *_currentScript;
-
-	Script(BladeRunnerEngine *vm)
-		: _vm(vm),
-		  _inScriptCounter(0),
-		  _currentScript(nullptr) {
-	}
-	~Script();
-
-	bool open(const Common::String &name);
-
-	void InitializeScene();
-	void SceneLoaded();
-	bool MouseClick(int x, int y);
-	bool ClickedOn3DObject(const char *objectName, bool a2);
-	bool ClickedOnActor(int actorId);
-	bool ClickedOnItem(int itemId, bool a2);
-	bool ClickedOnExit(int exitId);
-	bool ClickedOn2DRegion(int region);
-	void SceneFrameAdvanced(int frame);
-	void ActorChangedGoal(int actorId, int newGoal, int oldGoal, bool currentSet);
-	void PlayerWalkedIn();
-	void PlayerWalkedOut();
-	void DialogueQueueFlushed(int a1);
-};
-
-#define DECLARE_SCRIPT(name) \
-class Script##name : public SceneScriptBase { \
-public: \
-	Script##name(BladeRunnerEngine *vm) \
-		: SceneScriptBase(vm) \
-	{} \
-	void InitializeScene(); \
-	void SceneLoaded(); \
-	bool MouseClick(int x, int y); \
-	bool ClickedOn3DObject(const char *objectName, bool a2); \
-	bool ClickedOnActor(int actorId); \
-	bool ClickedOnItem(int itemId, bool a2); \
-	bool ClickedOnExit(int exitId); \
-	bool ClickedOn2DRegion(int region); \
-	void SceneFrameAdvanced(int frame); \
-	void ActorChangedGoal(int actorId, int newGoal, int oldGoal, bool currentSet); \
-	void PlayerWalkedIn(); \
-	void PlayerWalkedOut(); \
-	void DialogueQueueFlushed(int a1); \
-private:
-#define END_SCRIPT };
-
-DECLARE_SCRIPT(AR01)
-END_SCRIPT
-
-DECLARE_SCRIPT(AR02)
-	void sub_402694();
-	void sub_402AE0();
-	void sub_402CE4();
-END_SCRIPT
-
-DECLARE_SCRIPT(BB01)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB02)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB03)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB04)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB05)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB06)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB07)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB08)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB09)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB10)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB11)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB12)
-END_SCRIPT
-
-DECLARE_SCRIPT(BB51)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT01)
-	void sub_40269C();
-END_SCRIPT
-
-DECLARE_SCRIPT(CT02)
-	void sub_401ACC();
-END_SCRIPT
-
-DECLARE_SCRIPT(CT03)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT04)
-	void sub_401D4C();
-END_SCRIPT
-
-DECLARE_SCRIPT(CT05)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT06)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT07)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT08)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT09)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT10)
-	void sub_401844();
-END_SCRIPT
-
-DECLARE_SCRIPT(CT11)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT12)
-END_SCRIPT
-
-DECLARE_SCRIPT(CT51)
-END_SCRIPT
-
-DECLARE_SCRIPT(DR01)
-END_SCRIPT
-
-DECLARE_SCRIPT(DR02)
-END_SCRIPT
-
-DECLARE_SCRIPT(DR03)
-	void sub_401B18();
-END_SCRIPT
-
-DECLARE_SCRIPT(DR04)
-	bool sub_401160();
-END_SCRIPT
-
-DECLARE_SCRIPT(DR05)
-END_SCRIPT
-
-DECLARE_SCRIPT(DR06)
-END_SCRIPT
-
-DECLARE_SCRIPT(HC01)
-	void sub_402384();
-	void sub_40346C();
-END_SCRIPT
-
-DECLARE_SCRIPT(HC02)
-END_SCRIPT
-
-DECLARE_SCRIPT(HC03)
-END_SCRIPT
-
-DECLARE_SCRIPT(HC04)
-	void sub_401B90();
-END_SCRIPT
-
-DECLARE_SCRIPT(HF01)
-	void sub_4026B4();
-	void sub_4032DC();
-	void sub_403484();
-END_SCRIPT
-
-DECLARE_SCRIPT(HF02)
-END_SCRIPT
-
-DECLARE_SCRIPT(HF03)
-	void sub_401C80();
-END_SCRIPT
-
-DECLARE_SCRIPT(HF04)
-END_SCRIPT
-
-DECLARE_SCRIPT(HF05)
-	void sub_402370();
-	void sub_402970();
-	void sub_402AE4();
-	void sub_403738();
-	void sub_403A34(int actorId);
-	void sub_403F0C();
-	void sub_40410C();
-	void sub_4042E4();
-	void sub_404474();
-	int sub_404858();
-	int sub_4048C0();
-END_SCRIPT
-
-DECLARE_SCRIPT(HF06)
-	void sub_401EF4();
-	void sub_4023E0();
-END_SCRIPT
-
-DECLARE_SCRIPT(HF07)
-	int sub_401864();
-END_SCRIPT
-
-DECLARE_SCRIPT(KP01)
-END_SCRIPT
-
-DECLARE_SCRIPT(KP02)
-END_SCRIPT
-
-DECLARE_SCRIPT(KP03)
-	void sub_401E54();
-END_SCRIPT
-
-DECLARE_SCRIPT(KP04)
-END_SCRIPT
-
-DECLARE_SCRIPT(KP05)
-END_SCRIPT
-
-DECLARE_SCRIPT(KP06)
-END_SCRIPT
-
-DECLARE_SCRIPT(KP07)
-END_SCRIPT
-
-DECLARE_SCRIPT(MA01)
-END_SCRIPT
-
-DECLARE_SCRIPT(MA02)
-	void sub_401E4C();
-	bool sub_401F7C();
-	void sub_402044();
-END_SCRIPT
-
-//MA03 does not exists
-
-DECLARE_SCRIPT(MA04)
-	bool sub_402758();
-	bool sub_402820();
-	bool sub_402888();
-	void sub_4028A8();
-	void sub_402F2C();
-	void sub_4032A0();
-	void sub_4034D8();
-	void sub_403864();
-	void sub_403DA8();
-END_SCRIPT
-
-DECLARE_SCRIPT(MA05)
-	bool sub_401990();
-END_SCRIPT
-
-DECLARE_SCRIPT(MA06)
-	bool sub_4012C0();
-	void sub_4014E4();
-END_SCRIPT
-
-DECLARE_SCRIPT(MA07)
-END_SCRIPT
-
-DECLARE_SCRIPT(MA08)
-END_SCRIPT
-
-DECLARE_SCRIPT(NR01)
-END_SCRIPT
-
-DECLARE_SCRIPT(NR02)
-	void sub_402134();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR03)
-	void sub_40259C(int frame);
-	void sub_402994();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR04)
-	void sub_401DB0();
-	void sub_402860(int frame);
-	void sub_402960();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR05)
-	void sub_401F74(int frame);
-	void sub_4020B4();
-	void sub_4022DC();
-	void sub_402A48(int actorId);
-	void sub_402B9C();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR06)
-	void sub_401BAC();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR07)
-	void sub_4018D4();
-	void sub_401A10();
-	void sub_401C60();
-	void sub_401EF4();
-	void sub_4020F0();
-	void sub_402284();
-	void sub_402510();
-	void sub_402614();
-	void sub_402738();
-	void sub_4028FC();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR08)
-	void sub_4021B4();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR09)
-	void sub_40172C();
-END_SCRIPT
-
-DECLARE_SCRIPT(NR10)
-END_SCRIPT
-
-DECLARE_SCRIPT(NR11)
-	void sub_4027D0(int actorId, signed int frame);
-	void sub_4028EC();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS01)
-END_SCRIPT
-
-DECLARE_SCRIPT(PS02)
-	void sub_4018BC();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS03)
-END_SCRIPT
-
-DECLARE_SCRIPT(PS04)
-	void sub_4017E4();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS05)
-	void sub_401B34();
-	void sub_401C30();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS06)
-END_SCRIPT
-
-DECLARE_SCRIPT(PS07)
-	void sub_401D60();
-END_SCRIPT
-
-// PS08 does not exits
-
-DECLARE_SCRIPT(PS09)
-	void sub_402090();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS10)
-	void sub_402238();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS11)
-	void sub_402744();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS12)
-	void sub_4028C4();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS13)
-	void sub_40267C();
-END_SCRIPT
-
-DECLARE_SCRIPT(PS14)
-END_SCRIPT
-
-DECLARE_SCRIPT(PS15)
-END_SCRIPT
-
-DECLARE_SCRIPT(RC01)
-	void sub_403850();
-	void sub_4037AC();
-END_SCRIPT
-
-DECLARE_SCRIPT(RC02)
-	void sub_402A7C();
-END_SCRIPT
-
-DECLARE_SCRIPT(RC03)
-	void sub_402834();
-END_SCRIPT
-
-DECLARE_SCRIPT(RC04)
-	void sub_401DF4();
-END_SCRIPT
-
-DECLARE_SCRIPT(RC51)
-END_SCRIPT
-
-DECLARE_SCRIPT(TB02)
-	void sub_402644();
-	void sub_402B50();
-END_SCRIPT
-
-DECLARE_SCRIPT(TB03)
-END_SCRIPT
-
-DECLARE_SCRIPT(TB05)
-END_SCRIPT
-
-DECLARE_SCRIPT(TB06)
-END_SCRIPT
-
-DECLARE_SCRIPT(TB07)
-	void sub_401B0C();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG01)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG02)
-	bool sub_402354();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG03)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG04)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG05)
-	int sub_4021B0();
-	void sub_402218();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG06)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG07)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG08)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG09)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG10)
-END_SCRIPT
-
-// UG11 does not exists
-
-DECLARE_SCRIPT(UG12)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG13)
-	void sub_40223C();
-	void sub_4023D8();
-	void sub_4025E0();
-	void sub_402960();
-	int sub_402AD0();
-	void sub_402AD4();
-	void sub_402E24();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG14)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG15)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG16)
-	void sub_401D78();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG17)
-END_SCRIPT
-
-DECLARE_SCRIPT(UG18)
-	void sub_402734();
-	void sub_402DE8();
-	void sub_402F8C();
-	void sub_403114();
-	void sub_403278();
-	void sub_403588();
-END_SCRIPT
-
-DECLARE_SCRIPT(UG19)
-END_SCRIPT
-
-#undef DECLARE_SCRIPT
-
-/*
- * Actor Scripts
- */
-
-class AIScriptBase : public ScriptBase {
-public:
-	AIScriptBase(BladeRunnerEngine *vm) : ScriptBase(vm) {}
-
-	virtual void Initialize() = 0;
-	virtual bool Update() = 0;
-	virtual void TimerExpired(int timer) = 0;
-	virtual void CompletedMovementTrack() = 0;
-	virtual void ReceivedClue(int clueId, int fromActorId) = 0;
-	virtual void ClickedByPlayer() = 0;
-	virtual void EnteredScene(int sceneId) = 0;
-	virtual void OtherAgentEnteredThisScene() = 0;
-	virtual void OtherAgentExitedThisScene() = 0;
-	virtual void OtherAgentEnteredCombatMode() = 0;
-	virtual void ShotAtAndMissed() = 0;
-	virtual void ShotAtAndHit() = 0;
-	virtual void Retired(int byActorId) = 0;
-	virtual void GetFriendlinessModifierIfGetsClue() = 0;
-	virtual bool GoalChanged(int currentGoalNumber, int newGoalNumber) = 0;
-	virtual bool UpdateAnimation(int *animation, int *frame) = 0;
-	virtual bool ChangeAnimationMode(int mode) = 0;
-	virtual void QueryAnimationState(int *animationState, int *a2, int *a3, int *a4) = 0;
-	virtual void SetAnimationState(int animationState, int a2, int a3, int a4) = 0;
-	virtual bool ReachedMovementTrackWaypoint() = 0;
-};
-
-class AIScripts {
-public:
-	BladeRunnerEngine *_vm;
-	int                _inScriptCounter;
-	AIScriptBase      *_AIScripts[100];
-
-	AIScripts(BladeRunnerEngine *vm);
-	~AIScripts();
-
-	void Initialize(int actor);
-	void UpdateAnimation(int actor, int *animation, int *frame);
-	void ChangeAnimationMode(int actor, int mode);
 };
 
 } // End of namespace BladeRunner

@@ -128,7 +128,9 @@ public:
 	void speedThrottler(uint32 neededSleep);
 	void wait(int16 ticks);
 
-	uint32 _throttleCounter; /**< total times kAnimate was invoked */
+#ifdef ENABLE_SCI32
+	uint32 _eventCounter; /**< total times kGetEvent was invoked since the last call to kFrameOut */
+#endif
 	uint32 _throttleLastTime; /**< last time kAnimate was invoked */
 	bool _throttleTrigger;
 	bool _gameIsBenchmarking;
@@ -143,9 +145,7 @@ public:
 	int16 _lastSaveNewId;    // last newly created filename-id by kSaveGame
 
 	// see detection.cpp / SciEngine::loadGameState()
-	bool _delayedRestoreGame;  // boolean, that triggers delayed restore (triggered by ScummVM menu)
 	int _delayedRestoreGameId; // the saved game id, that it supposed to get restored (triggered by ScummVM menu)
-	bool _delayedRestoreFromLauncher; // is set, when the the delayed restore game was triggered from launcher
 
 	uint _chosenQfGImportItem; // Remembers the item selected in QfG import rooms
 
@@ -214,7 +214,6 @@ public:
 
 	// TODO: Excise video code from the state manager
 	VideoState _videoState;
-	bool _syncedAudioOptions;
 
 	/**
 	 * Resets the engine state.

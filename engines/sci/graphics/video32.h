@@ -28,10 +28,11 @@
 #include "common/str.h"           // for String
 #include "sci/engine/vm_types.h"  // for reg_t
 #include "sci/video/robot_decoder.h" // for RobotDecoder
+#include "sci/sound/audio32.h"    // for Audio32::kMaxVolume
+#include "video/avi_decoder.h"    // for AVIDecoder::setVolume
 
 namespace Video {
 class AdvancedVMDDecoder;
-class AVIDecoder;
 }
 namespace Sci {
 class EventManager;
@@ -362,6 +363,11 @@ public:
 	 */
 	void ignorePalettes() { _ignorePalettes = true; }
 
+	/**
+	 * Sets the plane and plane priority used to render video.
+	 */
+	void setPlane(const int16 priority, const reg_t planeId);
+
 private:
 	/**
 	 * The location of the VMD plane, in game script
@@ -378,6 +384,11 @@ private:
 	 * The screen item representing the VMD surface.
 	 */
 	ScreenItem *_screenItem;
+
+	/**
+	 * The bitmap used to render the VMD.
+	 */
+	reg_t _bitmapId;
 
 	// TODO: planeIsOwned and priority are used in SCI3+ only
 
@@ -487,8 +498,18 @@ private:
 	 * palette is submitted to the palette manager,
 	 * which is then restored after the video pixels
 	 * have already been rendered.
+	 *
+	 * This functionality is currently disabled because it seems like
+	 * it was designed for a different graphics architecture where
+	 * pixel data could be rendered before the video card's palette
+	 * had been updated. This is not possible in ScummVM because the
+	 * palette & pixel data are rendered simultaneously when
+	 * OSystem::updateScreen is called, rather than immediately
+	 * after they are sent to the backend.
 	 */
+#ifdef SCI_VMD_BLACK_PALETTE
 	bool _blackPalette;
+#endif
 
 #pragma mark -
 #pragma mark VMDPlayer - Brightness boost
@@ -531,28 +552,130 @@ private:
 	bool _showCursor;
 };
 
+#pragma mark -
+#pragma mark DuckPlayer
+
+class DuckPlayer {
+public:
+	enum DuckStatus {
+		kDuckClosed  = 0,
+		kDuckOpen    = 1,
+		kDuckPlaying = 2,
+		kDuckPaused  = 3
+	};
+
+	DuckPlayer(SegManager *segMan, EventManager *eventMan);
+
+	~DuckPlayer();
+
+	/**
+	 * Opens a stream to a Duck resource.
+	 */
+	void open(const GuiResourceId resourceId, const int displayMode, const int16 x, const int16 y);
+
+	/**
+	 * Stops playback and closes the currently open Duck stream.
+	 */
+	void close();
+
+	/**
+	 * Begins playback of the current Duck video.
+	 */
+	void play(const int lastFrameNo);
+
+	/**
+	 * Sets a flag indicating that an opaque plane should be added
+	 * to the graphics manager underneath the video surface during
+	 * playback.
+	 */
+	void setDoFrameOut(const bool value) { _doFrameOut = value; }
+
+	/**
+	 * Sets the volume of the decoder.
+	 */
+	void setVolume(const uint8 value) {
+		_volume = (uint)value * Audio::Mixer::kMaxChannelVolume / Audio32::kMaxVolume;
+		_decoder->setVolume(_volume);
+	}
+
+private:
+	EventManager *_eventMan;
+	Video::AVIDecoder *_decoder;
+
+	/**
+	 * An empty plane drawn behind the video when the doFrameOut
+	 * flag is true.
+	 */
+	Plane *_plane;
+
+	/**
+	 * The player status.
+	 */
+	DuckStatus _status;
+
+	/**
+	 * The screen rect where the video should be drawn.
+	 */
+	Common::Rect _drawRect;
+
+	/**
+	 * The playback volume for the player.
+	 */
+	uint8 _volume;
+
+	/**
+	 * If true, frameOut will be called during Duck video playback to update
+	 * other parts of the screen.
+	 */
+	bool _doFrameOut;
+
+	/**
+	 * If true, the video will be pixel doubled during playback.
+	 */
+	bool _pixelDouble;
+
+	/**
+	 * The buffer used to perform scaling of the video.
+	 */
+	byte *_scaleBuffer;
+
+	/**
+	 * Renders the current frame to the system video buffer.
+	 */
+	void renderFrame() const;
+};
+
+#pragma mark -
+#pragma mark Video32
+
 /**
  * Video32 provides facilities for playing back
  * video in SCI engine.
  */
-class Video32 {
+class Video32 : public Common::Serializable {
 public:
 	Video32(SegManager *segMan, EventManager *eventMan) :
 	_SEQPlayer(segMan),
 	_AVIPlayer(segMan, eventMan),
 	_VMDPlayer(segMan, eventMan),
-	_robotPlayer(segMan) {}
+	_robotPlayer(segMan),
+	_duckPlayer(segMan, eventMan) {}
+
+	void beforeSaveLoadWithSerializer(Common::Serializer &ser);
+	virtual void saveLoadWithSerializer(Common::Serializer &ser);
 
 	SEQPlayer &getSEQPlayer() { return _SEQPlayer; }
 	AVIPlayer &getAVIPlayer() { return _AVIPlayer; }
 	VMDPlayer &getVMDPlayer() { return _VMDPlayer; }
 	RobotDecoder &getRobotPlayer() { return _robotPlayer; }
+	DuckPlayer &getDuckPlayer() { return _duckPlayer; }
 
 private:
 	SEQPlayer _SEQPlayer;
 	AVIPlayer _AVIPlayer;
 	VMDPlayer _VMDPlayer;
 	RobotDecoder _robotPlayer;
+	DuckPlayer _duckPlayer;
 };
 } // End of namespace Sci
 

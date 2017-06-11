@@ -35,7 +35,7 @@ namespace Sci {
  */
 class HunkPalette {
 public:
-	HunkPalette(byte *rawPalette);
+	HunkPalette(const SciSpan<const byte> &rawPalette);
 
 	/**
 	 * Gets the version of the palette. Used to avoid resubmitting a HunkPalette
@@ -118,7 +118,7 @@ private:
 	/**
 	 * The raw palette data for this hunk palette.
 	 */
-	byte *_data;
+	SciSpan<const byte> _data;
 
 	/**
 	 * Returns a struct that describes the palette held by this HunkPalette. The
@@ -129,8 +129,8 @@ private:
 	/**
 	 * Returns a pointer to the palette data within the hunk palette.
 	 */
-	byte *getPalPointer() const {
-		return _data + kHunkPaletteHeaderSize + (2 * _numPalettes);
+	SciSpan<const byte> getPalPointer() const {
+		return _data.subspan(kHunkPaletteHeaderSize + (2 * _numPalettes));
 	}
 };
 
@@ -240,11 +240,8 @@ public:
 	/**
 	 * Copies all entries from `nextPalette` to `currentPalette` and updates the
 	 * backend's raw palette.
-	 *
-	 * @param updateScreen If true, this call will also tell the backend to draw
-	 * to the screen.
 	 */
-	void updateHardware(const bool updateScreen = true);
+	void updateHardware();
 
 private:
 	ResourceManager *_resMan;
@@ -572,6 +569,37 @@ private:
 	 * The intensity levels of each palette entry, in percent. Defaults to 100.
 	 */
 	uint16 _fadeTable[256];
+
+#pragma mark -
+#pragma mark Gamma correction
+public:
+	enum {
+		/**
+		 * The number of available gamma corrections.
+		 */
+		numGammaTables = 6
+	};
+
+	/**
+	 * Sets the gamma correction level, from 0 (off) to `numGammaTables`,
+	 * inclusive.
+	 */
+	void setGamma(const int16 level) {
+		_gammaLevel = CLIP<int16>(level, 0, numGammaTables) - 1;
+		_gammaChanged = true;
+	}
+
+private:
+	/**
+	 * The current gamma correction level. -1 means no correction.
+	 */
+	int8 _gammaLevel;
+
+	/**
+	 * Whether the gamma correction has changed since the last call to update
+	 * the hardware palette.
+	 */
+	bool _gammaChanged;
 };
 
 } // End of namespace Sci

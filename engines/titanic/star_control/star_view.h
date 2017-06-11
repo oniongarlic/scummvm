@@ -25,8 +25,8 @@
 
 #include "titanic/support/simple_file.h"
 #include "titanic/support/video_surface.h"
-#include "titanic/star_control/star_control_sub12.h"
-#include "titanic/star_control/star_control_sub13.h"
+#include "titanic/star_control/star_camera.h"
+#include "titanic/star_control/viewport.h"
 #include "titanic/star_control/surface_fader.h"
 #include "titanic/star_control/error_code.h"
 #include "titanic/star_control/fvector.h"
@@ -41,26 +41,28 @@ private:
 	CStarControl *_owner;
 	CStarField *_starField;
 	CVideoSurface *_videoSurface;
-	CStarControlSub12 _sub12;
-	int _field118;
-	CStarControlSub13 _sub13;
+	CStarCamera _camera;
+	bool _hasReference;
+	CViewport _photoViewport;
 	CSurfaceFader _fader;
-	CVideoSurface *_videoSurface2;
+	CVideoSurface *_photoSurface;
 	CGameObject *_homePhotoMask;
 	bool _field218;
 	bool _showingPhoto;
-#if 0
-	int _field210;
-#endif
 private:
 	bool fn1();
-	void fn18(CStarControlSub12 *sub12);
+	void fn18(CStarCamera *camera);
 	void fn19(int v);
 
-	void randomizeVectors1(FVector &v1, FVector &v2);
-	void randomizeVectors2(FVector &v1, FVector &v2);
-	void randomizeVectors3(FVector &v1, FVector &v2);
-	void randomizeVectors4(FVector &v1, FVector &v2);
+	/**
+	 * Gets a random position and orientation
+	 */
+	void randomizeVectors1(FVector &pos, FVector &orientation);
+
+	/**
+	 * Gets a random position and orientation
+	 */
+	void getRandomPhotoViewpoint(FVector &pos, FVector &orientation);
 
 	/**
 	 * Handles resizing the surface
@@ -128,7 +130,12 @@ public:
 	void fn5();
 	void fn6();
 	void fn7();
-	void fn8();
+
+	/**
+	 * Increase starfield movement to full speed
+	 */
+	void fullSpeed();
+
 	void fn9();
 
 	/**
@@ -137,7 +144,12 @@ public:
 	void toggleMode();
 	
 	void fn11();
-	void fn12();
+
+	/**
+	 * Toggles whether the viewpoint box is visible in the starfield
+	 */
+	void toggleBox();
+	
 	void fn13();
 	void fn14();
 
@@ -146,8 +158,15 @@ public:
 	 */
 	void setHasReference();
 	
-	void fn16();
-	void fn17();
+	/**
+	  * Handles locking in a star
+	  */
+	void lockStar();
+
+	/**
+	 * Handles unlocking a star
+	 */
+	void unlockStar();
 
 };
 

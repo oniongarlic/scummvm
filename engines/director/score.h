@@ -28,6 +28,7 @@
 #include "director/archive.h"
 #include "director/cast.h"
 #include "director/images.h"
+#include "director/stxt.h"
 
 namespace Graphics {
 	class ManagedSurface;
@@ -77,11 +78,12 @@ public:
 	void loadCastData(Common::SeekableSubReadStreamEndian &stream, uint16 id, Resource *res);
 	void loadCastInfo(Common::SeekableSubReadStreamEndian &stream, uint16 id);
 	void setCurrentFrame(uint16 frameId) { _currentFrame = frameId; }
-	int getCurrentFrame() { return _currentFrame; }
+	uint16 getCurrentFrame() { return _currentFrame; }
 	Common::String getMacName() const { return _macName; }
 	Sprite *getSpriteById(uint16 id);
 	void setSpriteCasts();
 	void loadSpriteImages(bool isSharedCast);
+	void copyCastStxts();
 	Graphics::ManagedSurface *getSurface() { return _surface; }
 
 	void loadCastInto(Sprite *sprite, int castId);
@@ -133,6 +135,7 @@ public:
 	Common::HashMap<int, BitmapCast *> *_loadedBitmaps;
 	Common::HashMap<int, ShapeCast *> *_loadedShapes;
 	Common::HashMap<int, ScriptCast *> *_loadedScripts;
+	Common::HashMap<int, const Stxt *> *_loadedStxts;
 
 private:
 	uint16 _versionMinor;

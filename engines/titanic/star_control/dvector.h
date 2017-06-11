@@ -41,18 +41,60 @@ public:
 	DVector(double x, double y, double z) : _x(x), _y(y), _z(z) {}
 	DVector(const FVector &v) : _x(v._x), _y(v._y), _z(v._z) {}
 
-	void normalize();
+	double normalize();
 
 	/**
 	 * Returns the distance between this vector and the passed one
 	 */
 	double getDistance(const DVector &src);
 
-	void fn1(DVector &dest, const DMatrix &m);
-	void fn2(double val);
-	void fn3(DVector &dest);
-	const DMatrix *fn4(const DVector &v, DMatrix &m);
-	void fn5(DMatrix &dest);
+	DVector fn1(const DMatrix &m);
+	void fn2(double angle);
+	DVector fn3() const;
+	DMatrix fn4(const DVector &v);
+	DMatrix fn5() const;
+
+	/**
+	 * Returns true if the passed vector equals this one
+	 */
+	bool operator==(const DVector &src) const {
+		return _x == src._x && _y == src._y && _z == src._z;
+	}
+
+	/**
+	 * Returns true if the passed vector does not equal this one
+	 */
+	bool operator!=(const DVector &src) const {
+		return _x != src._x || _y != src._y || _z != src._z;
+	}
+
+	DVector operator+(const DVector &delta) const {
+		return DVector(_x + delta._x, _y + delta._y, _z + delta._z);
+	}
+
+	DVector operator-(const DVector &delta) const {
+		return DVector(_x - delta._x, _y - delta._y, _z - delta._z);
+	}
+
+	void operator+=(const DVector &delta) {
+		_x += delta._x;
+		_y += delta._y;
+		_z += delta._z;
+	}
+
+	void operator-=(const DVector &delta) {
+		_x -= delta._x;
+		_y -= delta._y;
+		_z -= delta._z;
+	}
+
+	const DVector operator*(double right) const {
+		return DVector(_x * right, _y * right, _z * right);
+	}
+
+	const DVector operator*(const DVector &right) const {
+		return DVector(_x * right._x, _y * right._y, _z * right._z);
+	}
 };
 
 } // End of namespace Titanic

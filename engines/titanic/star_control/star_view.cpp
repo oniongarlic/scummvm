@@ -30,22 +30,22 @@
 
 namespace Titanic {
 
-CStarView::CStarView() : _sub12((const CStar20Data *)nullptr), _owner(nullptr),
-		_starField(nullptr), _videoSurface(nullptr), _field118(0),
-		_videoSurface2(nullptr), _homePhotoMask(nullptr),
+CStarView::CStarView() : _camera((const CNavigationInfo *)nullptr), _owner(nullptr),
+		_starField(nullptr), _videoSurface(nullptr), _hasReference(0),
+		_photoSurface(nullptr), _homePhotoMask(nullptr),
 		_field218(false), _showingPhoto(false) {
-	CStar20Data data = { 0, 0, 100000.0, 0, 20.0, 1.0, 1.0, 1.0 };
+	CNavigationInfo data = { 0, 0, 100000.0, 0, 20.0, 1.0, 1.0, 1.0 };
 
-	_sub12.proc3(&data);
+	_camera.proc3(&data);
 }
 
 void CStarView::load(SimpleFile *file, int param) {
 	if (!param) {
-		_sub12.load(file, param);
+		_camera.load(file, param);
 
-		_field118 = file->readNumber();
-		if (_field118)
-			_sub13.load(file, 0);
+		_hasReference = file->readNumber();
+		if (_hasReference)
+			_photoViewport.load(file, 0);
 
 		_field218 = file->readNumber();
 		_showingPhoto = file->readNumber();
@@ -53,11 +53,11 @@ void CStarView::load(SimpleFile *file, int param) {
 }
 
 void CStarView::save(SimpleFile *file, int indent) {
-	_sub12.save(file, indent);
+	_camera.save(file, indent);
 
-	file->writeNumberLine(_field118, indent);
-	if (_field118)
-		_sub13.save(file, indent);
+	file->writeNumberLine(_hasReference, indent);
+	if (_hasReference)
+		_photoViewport.save(file, indent);
 
 	file->writeNumberLine(_field218, indent);
 	file->writeNumberLine(_showingPhoto, indent);
@@ -69,9 +69,9 @@ void CStarView::setup(CScreenManager *screenManager, CStarField *starField, CSta
 }
 
 void CStarView::reset() {
-	if (!_field118) {
-		CStarControlSub12 sub12(&_sub13);
-		fn18(&sub12);
+	if (_hasReference) {
+		CStarCamera camera(&_photoViewport);
+		fn18(&camera);
 	}
 }
 
@@ -80,14 +80,15 @@ void CStarView::draw(CScreenManager *screenManager) {
 		return;
 
 	if (_fader.isActive()) {
-		CVideoSurface *surface = _showingPhoto ? _videoSurface2 : _videoSurface;
-		surface = _fader.fade(screenManager, surface);
+		CVideoSurface *surface = _showingPhoto ? _photoSurface : _videoSurface;
+		surface = _fader.draw(screenManager, surface);
 		screenManager->blitFrom(SURFACE_PRIMARY, surface);
 	} else {
 		Point destPos(20, 10);
 
 		if (_showingPhoto) {
-			screenManager->blitFrom(SURFACE_PRIMARY, _videoSurface2, &destPos);
+			if (_photoSurface)
+				screenManager->blitFrom(SURFACE_PRIMARY, _photoSurface, &destPos);
 
 			if (!_homePhotoMask && _owner) {
 				_homePhotoMask = _owner->getHiddenObject("HomePhotoMask");
@@ -101,7 +102,7 @@ void CStarView::draw(CScreenManager *screenManager) {
 			// Render the display
 			_videoSurface->clear();
 			_videoSurface->lock();
-			_starField->render(_videoSurface, &_sub12);
+			_starField->render(_videoSurface, &_camera);
 			_videoSurface->unlock();
 
 			// Blit the resulting surface to the screen
@@ -113,8 +114,8 @@ void CStarView::draw(CScreenManager *screenManager) {
 bool CStarView::MouseButtonDownMsg(int flags, const Point &pt) {
 	if (_starField) {
 		return _starField->mouseButtonDown(
-			_showingPhoto ? _videoSurface2 : _videoSurface,
-			&_sub12, flags, pt);
+			_showingPhoto ? _photoSurface : _videoSurface,
+			&_camera, flags, pt);
 	}
 
 	return false;
@@ -126,16 +127,16 @@ bool CStarView::MouseMoveMsg(int unused, const Point &pt) {
 		FPoint centerPt(300.0, 170.0);
 
 		if (fpt != centerPt) {
-			double threshold = MIN(centerPt._x, centerPt._y) * 0.5;
+			float threshold = MIN(centerPt._x, centerPt._y) * 0.5;
 			FPoint tempPt = fpt - centerPt;
 
-			double distance = tempPt.normalize();
+			float distance = tempPt.normalize();
 			if (distance >= threshold) {
 				distance -= threshold;
 
-				FPoint relPt(tempPt._x * -2.0 * distance / threshold, 
+				FPoint angle(tempPt._x * -2.0 * distance / threshold, 
 					tempPt._y * -2.0 * distance / threshold);
-				_sub12.setViewportPosition(relPt);
+				_camera.setViewportAngle(angle);
 				return true;
 			}
 		}
@@ -145,8 +146,8 @@ bool CStarView::MouseMoveMsg(int unused, const Point &pt) {
 }
 
 bool CStarView::KeyCharMsg(int key, CErrorCode *errorCode) {
-	CStarControlSub6 sub6;
-	int v = _starField ? _starField->get88() : -1;
+	FPose pose;
+	int matchedIndex = _starField ? _starField->getMatchedIndex() : -1;
 
 	switch (key) {
 	case Common::KEYCODE_TAB:
@@ -176,52 +177,52 @@ bool CStarView::KeyCharMsg(int key, CErrorCode *errorCode) {
 
 	case Common::KEYCODE_z:
 	case Common::KEYCODE_c:
-		if (v == -1) {
-			sub6.setRotationMatrix(key == Common::KEYCODE_z ? Y_AXIS : X_AXIS, 1.0);
-			_sub12.proc22(sub6);
-			_sub12.proc15(errorCode);
+		if (matchedIndex == -1) {
+			pose.setRotationMatrix(key == Common::KEYCODE_z ? Y_AXIS : X_AXIS, 1.0);
+			_camera.proc22(pose);
+			_camera.updatePosition(errorCode);
 			return true;
 		}
 		break;
 
 	case Common::KEYCODE_SEMICOLON:
-		if (v == -1) {
-			_sub12.proc16();
+		if (matchedIndex == -1) {
+			_camera.increaseSpeed();
 			errorCode->set();
 			return true;
 		}
 		break;
 
 	case Common::KEYCODE_PERIOD:
-		if (v == -1) {
-			_sub12.proc17();
+		if (matchedIndex == -1) {
+			_camera.decreaseSpeed();
 			errorCode->set();
 			return true;
 		}
 		break;
 
 	case Common::KEYCODE_SPACE:
-		if (v == -1) {
-			_sub12.proc19();
+		if (matchedIndex == -1) {
+			_camera.stop();
 			errorCode->set();
 			return true;
 		}
 		break;
 
 	case Common::KEYCODE_x:
-		if (v == -1) {
-			sub6.setRotationMatrix(Y_AXIS, -1.0);
-			_sub12.proc22(sub6);
-			_sub12.proc15(errorCode);
+		if (matchedIndex == -1) {
+			pose.setRotationMatrix(Y_AXIS, -1.0);
+			_camera.proc22(pose);
+			_camera.updatePosition(errorCode);
 			return true;
 		}
 		break;
 
 	case Common::KEYCODE_QUOTE:
-		if (v == -1) {
-			sub6.setRotationMatrix(X_AXIS, -1.0);
-			_sub12.proc22(sub6);
-			_sub12.proc15(errorCode);
+		if (matchedIndex == -1) {
+			pose.setRotationMatrix(X_AXIS, -1.0);
+			_camera.proc22(pose);
+			_camera.updatePosition(errorCode);
 			return true;
 		}
 		break;
@@ -234,21 +235,21 @@ bool CStarView::KeyCharMsg(int key, CErrorCode *errorCode) {
 }
 
 bool CStarView::canSetStarDestination() const {
-	return _sub12.is108();
+	return _camera.isMoved();
 }
 
 void CStarView::starDestinationSet() {
-	_sub12.reset108();
+	_camera.clearIsMoved();
 }
 
 void CStarView::resetPosition() {
-	_sub12.setPosition(FVector(0.0, 0.0, 0.0));
+	_camera.setPosition(FVector(0.0, 0.0, 0.0));
 }
 
 bool CStarView::fn1() {
 	if (_videoSurface) {
 		CErrorCode errorCode;
-		_sub12.proc15(&errorCode);
+		_camera.updatePosition(&errorCode);
 
 		if (_fader._index < 0 || _fader._index >= _fader._count)
 			_starField->fn1(&errorCode);
@@ -269,7 +270,7 @@ void CStarView::fn2() {
 
 		if (_videoSurface) {
 			fn13();
-			fn19(200);
+			fn19(244);
 			draw(scrManager);
 		}
 	}
@@ -282,9 +283,9 @@ void CStarView::fn3(bool fadeIn) {
 
 void CStarView::fn4() {
 	FVector v1, v2;
-	randomizeVectors2(v1, v2);
-	_sub12.setPosition(v1);
-	_sub12.proc5(v2);
+	randomizeVectors1(v1, v2);
+	_camera.setPosition(v1);
+	_camera.setOrientation(v2);
 }
 
 void CStarView::fn5() {
@@ -298,37 +299,37 @@ void CStarView::fn6() {
 void CStarView::fn7() {
 	const CBaseStarEntry *star = _starField->getRandomStar();
 	if (star) {
-		FVector v1, v2;
-		randomizeVectors3(v1, v2);
-		v2 += star->_position;
-		_sub12.setPosition(v2);
-		_sub12.proc5(v1);
+		FVector pos, orientation;
+		randomizeVectors1(pos, orientation);
+		pos += star->_position;
+		_camera.setPosition(pos);
+		_camera.setOrientation(orientation);
 	}
 }
 
 void CStarView::fn19(int index) {
 	const CBaseStarEntry *star = _starField->getStar(index);
 	if (star) {
-		FVector v1, v2;
-		randomizeVectors3(v1, v2);
-		v1 += star->_position;
-		_sub12.setPosition(v1);
-		_sub12.proc5(v2);
+		FVector pos, orientation;
+		randomizeVectors1(pos, orientation);
+		pos += star->_position;
+		_camera.setPosition(pos);
+		_camera.setOrientation(orientation);
 	}
 }
 
-void CStarView::fn8() {
-	_sub12.proc18();
+void CStarView::fullSpeed() {
+	_camera.fullSpeed();
 }
 
 void CStarView::fn9() {
 	_field218 = !_field218;
 	if (_field218) {
-		_sub12.proc12(MODE_PHOTO, 30.0);
-		_sub12.proc12(MODE_STARFIELD, 28000.0);
+		_camera.proc12(MODE_PHOTO, 30.0);
+		_camera.proc12(MODE_STARFIELD, 28000.0);
 	} else {
-		_sub12.proc12(MODE_PHOTO, 0.0);
-		_sub12.proc12(MODE_STARFIELD, 0.0);
+		_camera.proc12(MODE_PHOTO, 0.0);
+		_camera.proc12(MODE_STARFIELD, 0.0);
 	}
 }
 
@@ -343,61 +344,64 @@ void CStarView::fn11() {
 		_starField->fn9();
 }
 
-void CStarView::fn12() {
+void CStarView::toggleBox() {
 	if (_starField)
-		_starField->toggle4();
+		_starField->toggleBox();
 }
 
 void CStarView::fn13() {
 	_field218 = true;
-	_sub12.proc12(MODE_PHOTO, 30.0);
-	_sub12.proc12(MODE_STARFIELD, 28000.0);
+	_camera.proc12(MODE_PHOTO, 30.0);
+	_camera.proc12(MODE_STARFIELD, 28000.0);
 }
 
 void CStarView::fn14() {
 	_field218 = false;
-	_sub12.proc12(MODE_PHOTO, 0.0);
-	_sub12.proc12(MODE_STARFIELD, 0.0);
+	_camera.proc12(MODE_PHOTO, 0.0);
+	_camera.proc12(MODE_STARFIELD, 0.0);
 }
 
 void CStarView::setHasReference() {
-	FVector v1, v2;
-	randomizeVectors1(v1, v2);
+	FVector pos, orientation;
+	getRandomPhotoViewpoint(pos, orientation);
 
-	_sub13.setPosition(v1);
-	_sub13.fn11(v2);
+	_photoViewport.setPosition(pos);
+	_photoViewport.setOrientation(orientation);
 	_field218 = false;
-	_sub13.fn13(MODE_PHOTO, 0.0);
-	_sub13.fn13(MODE_STARFIELD, 0.0);
-	_field118 = true;
+	_photoViewport.fn13(MODE_PHOTO, 0.0);
+	_photoViewport.fn13(MODE_STARFIELD, 0.0);
+	_hasReference = true;
 	reset();
 	_field218 = true;
 }
 
-void CStarView::fn16() {
+void CStarView::lockStar() {
 	if (_starField && !_showingPhoto) {
 		CSurfaceArea surfaceArea(_videoSurface);
 		FVector v1, v2, v3;
-		double val = _starField->fn5(&surfaceArea, &_sub12, v1, v2, v3);
+		double val = _starField->fn5(&surfaceArea, &_camera, v1, v2, v3);
 
 		if (val > -1.0) {
-			v1 += surfaceArea._centroid;
-			v3 += surfaceArea._centroid;
+			v1 -= surfaceArea._centroid;
+			v3 -= surfaceArea._centroid;
 
-			switch (_starField->get88()) {
+			switch (_starField->getMatchedIndex()) {
 			case -1:
-				_sub12.fn2(v1, v2, v3);
-				_starField->fn7();
+				// First star match
+				_camera.lockMarker1(v1, v2, v3);
+				_starField->incMatches();
 				break;
 
 			case 0:
-				_sub12.fn3(&_sub13, v2);
-				_starField->fn7();
+				// Second star match
+				_camera.lockMarker2(&_photoViewport, v2);
+				_starField->incMatches();
 				break;
 
 			case 1:
-				_sub12.fn1(&_sub13, v2);
-				_starField->fn7();
+				// Third star match
+				_camera.lockMarker3(&_photoViewport, v2);
+				_starField->incMatches();
 				break;
 
 			default:
@@ -407,87 +411,71 @@ void CStarView::fn16() {
 	}
 }
 
-void CStarView::fn17() {
+void CStarView::unlockStar() {
 	if (_starField && !_showingPhoto) {
-		_sub12.proc35();
-		_starField->fn8(_videoSurface2);
+		_camera.removeMatrixRow();
+		_starField->fn8(_photoSurface);
 	}
 }
 
-void CStarView::fn18(CStarControlSub12 *sub12) {
+void CStarView::fn18(CStarCamera *camera) {
 	if (_starField) {
-		if (!_videoSurface2) {
+		if (!_photoSurface) {
 			CScreenManager *scrManager = CScreenManager::setCurrent();
 			if (scrManager)
-				resizeSurface(scrManager, 600, 340, &_videoSurface2);
+				resizeSurface(scrManager, 600, 340, &_photoSurface);
 		}
 
-		if (_videoSurface2) {
+		if (_photoSurface) {
 			int oldVal = _starField->get54();
-			_starField->set4(false);
+			bool oldCrosshairs = _starField->setBoxVisible(false);
 
-			_videoSurface2->clear();
-			_videoSurface2->lock();
-			_starField->render(_videoSurface2, sub12);
-			_videoSurface2->unlock();
+			// Render the starfield for the photograph view
+			_photoSurface->clear();
+			_photoSurface->lock();
+			_starField->render(_photoSurface, camera);
 
+			// Render any previously set crosshairs
+			_starField->setBoxVisible(oldCrosshairs);
 			_starField->set54(oldVal);
-			_starField->fn6(_videoSurface2, sub12);
+			_starField->fn6(_photoSurface, camera);
+			_photoSurface->unlock();
 		}
 	}
 }
 
-void CStarView::randomizeVectors1(FVector &v1, FVector &v2) {
-	v1._x = g_vm->getRandomFloat() * -4096.0 - 3072.0;
-	v1._y = g_vm->getRandomFloat() * -4096.0 - 3072.0;
-	v1._z = g_vm->getRandomFloat() * -4096.0 - 3072.0;
-
-	double vx = g_vm->getRandomFloat() * 8192.0;
-	double vy = g_vm->getRandomFloat() * 1024.0;
-	vx -= v1._x;
-	vy -= v1._y;
-	
-	v2._x = vx;
-	v2._y = vy;
-	v2._z = -v1._z;
-	v2.normalize();
-}
-
-void CStarView::randomizeVectors2(FVector &v1, FVector &v2) {
+void CStarView::randomizeVectors1(FVector &pos, FVector &orientation) {
+	/* ***DEBUG***
 	v1._x = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 	v1._y = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 	v1._z = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 
-	// TODO: Doublecheck
 	v2._x = -v1._x;
 	v2._y = -v1._y;
 	v2._z = -v1._z;
 	v2.normalize();
+	*/
+	// Values temporarily hardcoded to match hacked values in original EXE
+	pos = FVector((float)69481544.0, (float)69481544.0, (float)69481544.0);
+	orientation = FVector((float)-0.577350259, (float)-0.577350259, (float)-0.577350259);
 }
 
-void CStarView::randomizeVectors3(FVector &v1, FVector &v2) {
+void CStarView::getRandomPhotoViewpoint(FVector &pos, FVector &orientation) {
+	/* ****DEBUG***
 	v1._x = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 	v1._y = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 	v1._z = 3072.0 - g_vm->getRandomFloat() * -4096.0;
 
-	// TODO: Doublecheck
-	v2._x = -v1._x;
-	v2._y = -v1._y;
+	v2._x = g_vm->getRandomFloat() * 8192.0 - v1._x;
+	v2._y = g_vm->getRandomFloat() * 1024.0 - v1._y;
 	v2._z = -v1._z;
 	v2.normalize();
+	*/
+	// Values temporarily hardcoded to match hacked values in original EXE
+	pos = FVector((float)69481544.0, (float)69481544.0, (float)69481544.0);
+	orientation = FVector((float)0.624659300, (float)-0.468542814, (float)-0.624714553);
 }
 
-void CStarView::randomizeVectors4(FVector &v1, FVector &v2) {
-	v1._x = 3072.0 - g_vm->getRandomFloat() * -4096.0;
-	v1._y = 3072.0 - g_vm->getRandomFloat() * -4096.0;
-	v1._z = 3072.0 - g_vm->getRandomFloat() * -4096.0;
-
-	// TODO: Doublecheck
-	v2._x = -v1._x;
-	v2._y = -v1._y;
-	v2._z = -v1._z;
-	v2.normalize();
-}
 void CStarView::resizeSurface(CScreenManager *scrManager, int width, int height,
 		CVideoSurface **surface) {
 	if (!surface)

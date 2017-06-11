@@ -29,11 +29,15 @@
 
 namespace Titanic {
 
-class CStarControlSub12;
+class CStarCamera;
 
 class CStarPoints1 {
+	struct CStarPointEntry : public FVector {
+		bool _flag;
+		CStarPointEntry() : FVector(), _flag(false) {}
+	};
 private:
-	Common::Array<FVector> _data;
+	Common::Array<CStarPointEntry> _data;
 public:
 	CStarPoints1();
 
@@ -45,7 +49,7 @@ public:
 	/**
 	 * Draw the starfield points
 	 */
-	void draw(CSurfaceArea *surface, CStarControlSub12 *sub12);
+	void draw(CSurfaceArea *surface, CStarCamera *camera);
 };
 
 } // End of namespace Titanic

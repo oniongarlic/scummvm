@@ -27,6 +27,7 @@
 #include "common/rect.h"
 #include "sci/resource.h"
 #include "sci/engine/vm_types.h"
+#include "sci/util.h"
 
 namespace Sci {
 typedef Common::Rational Ratio;
@@ -124,14 +125,17 @@ struct CelInfo32 {
 	}
 
 	inline Common::String toString() const {
-		if (type == kCelTypeView) {
+		switch (type) {
+		case kCelTypeView:
 			return Common::String::format("view %u, loop %d, cel %d", resourceId, loopNo, celNo);
-		} else if (type == kCelTypePic) {
+		case kCelTypePic:
 			return Common::String::format("pic %u, cel %d", resourceId, celNo);
-		} else if (kCelTypeColor) {
+		case kCelTypeColor:
 			return Common::String::format("color %d", color);
-		} else if (type == kCelTypeMem) {
+		case kCelTypeMem:
 			return Common::String::format("mem %04x:%04x", PRINT_REG(bitmap));
+		default:
+			assert(!"Should never happen");
 		}
 	}
 };
@@ -413,7 +417,7 @@ public:
 	 * Retrieves a pointer to the raw resource data for this
 	 * cel. This method cannot be used with a CelObjColor.
 	 */
-	virtual byte *getResPointer() const = 0;
+	virtual const SciSpan<const byte> getResPointer() const = 0;
 
 	/**
 	 * Reads the pixel at the given coordinates. This method
@@ -535,7 +539,7 @@ public:
 	void draw(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition, bool mirrorX, const Ratio &scaleX, const Ratio &scaleY);
 
 	virtual CelObjView *duplicate() const override;
-	virtual byte *getResPointer() const override;
+	virtual const SciSpan<const byte> getResPointer() const override;
 };
 
 #pragma mark -
@@ -580,7 +584,7 @@ public:
 	virtual void draw(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition, const bool mirrorX) override;
 
 	virtual CelObjPic *duplicate() const override;
-	virtual byte *getResPointer() const override;
+	virtual const SciSpan<const byte> getResPointer() const override;
 };
 
 #pragma mark -
@@ -598,7 +602,7 @@ public:
 	virtual ~CelObjMem() override {};
 
 	virtual CelObjMem *duplicate() const override;
-	virtual byte *getResPointer() const override;
+	virtual const SciSpan<const byte> getResPointer() const override;
 };
 
 #pragma mark -
@@ -622,7 +626,7 @@ public:
 	virtual void draw(Buffer &target, const Common::Rect &targetRect, const Common::Point &scaledPosition, const bool mirrorX) override;
 
 	virtual CelObjColor *duplicate() const override;
-	virtual byte *getResPointer() const override;
+	virtual const SciSpan<const byte> getResPointer() const override;
 };
 } // End of namespace Sci
 

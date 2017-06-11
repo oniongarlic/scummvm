@@ -22,6 +22,7 @@
 
 #include "backends/graphics/openglsdl/openglsdl-graphics.h"
 #include "backends/events/sdl/sdl-events.h"
+#include "backends/platform/sdl/sdl.h"
 
 #include "common/textconsole.h"
 #include "common/config-manager.h"
@@ -620,25 +621,46 @@ bool OpenGLSdlGraphicsManager::notifyEvent(const Common::Event &event) {
 				return true;
 			}
 
+			// Alt-s creates a screenshot
 			if (event.kbd.keycode == Common::KEYCODE_s) {
-				// Alt-s creates a screenshot
 				Common::String filename;
+
+				Common::String screenshotsPath;
+				OSystem_SDL *sdl_g_system = dynamic_cast<OSystem_SDL*>(g_system);
+				if (sdl_g_system)
+					screenshotsPath = sdl_g_system->getScreenshotsPath();
 
 				for (int n = 0;; n++) {
 					SDL_RWops *file;
 
+#ifdef USE_PNG
+					filename = Common::String::format("scummvm%05d.png", n);
+#else
 					filename = Common::String::format("scummvm%05d.bmp", n);
-					file = SDL_RWFromFile(filename.c_str(), "r");
+#endif
+
+					file = SDL_RWFromFile((screenshotsPath + filename).c_str(), "r");
+
 					if (!file)
 						break;
 					SDL_RWclose(file);
 				}
 
-				saveScreenshot(filename.c_str());
-				debug("Saved screenshot '%s'", filename.c_str());
+				if (saveScreenshot(screenshotsPath + filename)) {
+					if (screenshotsPath.empty())
+						debug("Saved screenshot '%s' in current directory", filename.c_str());
+					else
+						debug("Saved screenshot '%s' in directory '%s'", filename.c_str(), screenshotsPath.c_str());
+				} else {
+					if (screenshotsPath.empty())
+						warning("Could not save screenshot in current directory");
+					else
+						warning("Could not save screenshot in directory '%s'", screenshotsPath.c_str());
+				}
 
 				return true;
 			}
+
 		} else if (event.kbd.hasFlags(Common::KBD_CTRL | Common::KBD_ALT)) {
 			if (   event.kbd.keycode == Common::KEYCODE_PLUS || event.kbd.keycode == Common::KEYCODE_MINUS
 			    || event.kbd.keycode == Common::KEYCODE_KP_PLUS || event.kbd.keycode == Common::KEYCODE_KP_MINUS) {

@@ -57,14 +57,6 @@ private:
 	GfxCache *_cache;
 
 	/**
-	 * The resource ID of the default font used by the game.
-	 *
-	 * @todo Check all SCI32 games to learn what their
-	 * default font is.
-	 */
-	static int16 _defaultFontId;
-
-	/**
 	 * The width and height of the currently active text
 	 * bitmap, in text-system coordinates.
 	 *
@@ -161,6 +153,11 @@ public:
 	GfxText32(SegManager *segMan, GfxCache *fonts);
 
 	/**
+	 * Initialises static GfxText32 members.
+	 */
+	static void init();
+
+	/**
 	 * The memory handle of the currently active bitmap.
 	 */
 	reg_t _bitmap;
@@ -237,6 +234,11 @@ public:
 	 * calculation of text dimensions.
 	 */
 	void setFont(const GuiResourceId fontId);
+
+	/**
+	 * Gets the pixel height of the currently loaded font.
+	 */
+	int16 getScaledFontHeight() const;
 
 	/**
 	 * Gets the width of a character.

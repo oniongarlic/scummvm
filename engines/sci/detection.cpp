@@ -22,6 +22,7 @@
 
 #include "engines/advancedDetector.h"
 #include "base/plugins.h"
+#include "common/config-manager.h"
 #include "common/file.h"
 #include "common/ptr.h"
 #include "common/savefile.h"
@@ -378,6 +379,15 @@ Common::String convertSierraGameId(Common::String sierraId, uint32 *gameFlags, R
 		return "qfg3";
 	}
 
+	if (sierraId == "l7")
+		return "lsl7";
+
+	if (sierraId == "p2")
+		return "phantasmagoria2";
+
+	if (sierraId == "lite")
+		return "lighthouse";
+
 	return sierraId;
 }
 
@@ -496,10 +506,23 @@ static ADGameDescription s_fallbackDesc = {
 
 static char s_fallbackGameIdBuf[256];
 
+static const char *directoryGlobs[] = {
+	"english",
+	"french",
+	"german",
+	"italian",
+	"msg",
+	"spanish",
+	0
+};
+
 class SciMetaEngine : public AdvancedMetaEngine {
 public:
 	SciMetaEngine() : AdvancedMetaEngine(Sci::SciGameDescriptions, sizeof(ADGameDescription), s_sciGameTitles, optionsList) {
 		_singleId = "sci";
+		_maxScanDepth = 3;
+		_directoryGlobs = directoryGlobs;
+		_matchFullPaths = true;
 	}
 
 	virtual const char *getName() const {
@@ -602,7 +625,7 @@ const ADGameDescription *SciMetaEngine::fallbackDetect(const FileMap &allFiles, 
 	if (!foundResMap && !foundRes000)
 		return 0;
 
-	ResourceManager resMan;
+	ResourceManager resMan(true);
 	resMan.addAppropriateSourcesForDetection(fslist);
 	resMan.init();
 	// TODO: Add error handling.
@@ -627,7 +650,7 @@ const ADGameDescription *SciMetaEngine::fallbackDetect(const FileMap &allFiles, 
 		s_fallbackDesc.platform = Common::kPlatformAmiga;
 
 	// Determine the game id
-	Common::String sierraGameId = resMan.findSierraGameId();
+	Common::String sierraGameId = resMan.findSierraGameId(s_fallbackDesc.platform == Common::kPlatformMacintosh);
 
 	// If we don't have a game id, the game is not SCI
 	if (sierraGameId.empty())
@@ -648,18 +671,18 @@ const ADGameDescription *SciMetaEngine::fallbackDetect(const FileMap &allFiles, 
 	// As far as we know, these games store the messages of each language in separate
 	// resources, and it's not possible to detect that easily
 	// Also look for "%J" which is used in japanese games
-	Resource *text = resMan.findResource(ResourceId(kResourceTypeText, 0), 0);
+	Resource *text = resMan.findResource(ResourceId(kResourceTypeText, 0), false);
 	uint seeker = 0;
 	if (text) {
-		while (seeker < text->size) {
-			if (text->data[seeker] == '#')  {
-				if (seeker + 1 < text->size)
-					s_fallbackDesc.language = charToScummVMLanguage(text->data[seeker + 1]);
+		while (seeker < text->size()) {
+			if (text->getUint8At(seeker) == '#')  {
+				if (seeker + 1 < text->size())
+					s_fallbackDesc.language = charToScummVMLanguage(text->getUint8At(seeker + 1));
 				break;
 			}
-			if (text->data[seeker] == '%') {
-				if ((seeker + 1 < text->size) && (text->data[seeker + 1] == 'J')) {
-					s_fallbackDesc.language = charToScummVMLanguage(text->data[seeker + 1]);
+			if (text->getUint8At(seeker) == '%') {
+				if ((seeker + 1 < text->size()) && (text->getUint8At(seeker + 1) == 'J')) {
+					s_fallbackDesc.language = charToScummVMLanguage(text->getUint8At(seeker + 1));
 					break;
 				}
 			}
@@ -755,6 +778,7 @@ SaveStateList SciMetaEngine::listSaves(const char *target) const {
 	filenames = saveFileMan->listSavefiles(pattern);
 
 	SaveStateList saveList;
+	bool hasAutosave = false;
 	int slotNr = 0;
 	for (Common::StringArray::const_iterator file = filenames.begin(); file != filenames.end(); ++file) {
 		// Obtain the last 3 digits of the filename, since they correspond to the save slot
@@ -774,6 +798,7 @@ SaveStateList SciMetaEngine::listSaves(const char *target) const {
 				if (slotNr == 0) {
 					// ScummVM auto-save slot
 					descriptor.setWriteProtectedFlag(true);
+					hasAutosave = true;
 				} else {
 					descriptor.setWriteProtectedFlag(false);
 				}
@@ -782,6 +807,12 @@ SaveStateList SciMetaEngine::listSaves(const char *target) const {
 				delete in;
 			}
 		}
+	}
+
+	if (!hasAutosave) {
+		SaveStateDescriptor descriptor(0, _("(Autosave)"));
+		descriptor.setLocked(true);
+		saveList.push_back(descriptor);
 	}
 
 	// Sort saves based on slot number.
@@ -853,7 +884,6 @@ void SciMetaEngine::removeSaveState(const char *target, int slot) const {
 
 Common::Error SciEngine::loadGameState(int slot) {
 	_gamestate->_delayedRestoreGameId = slot;
-	_gamestate->_delayedRestoreGame = true;
 	return Common::kNoError;
 }
 
@@ -884,13 +914,12 @@ Common::Error SciEngine::saveGameState(int slot, const Common::String &desc) {
 
 bool SciEngine::canLoadGameStateCurrently() {
 #ifdef ENABLE_SCI32
+	const Common::String &guiOptions = ConfMan.get("guioptions");
 	if (getSciVersion() >= SCI_VERSION_2) {
-		switch (getGameId()) {
-		case GID_PHANTASMAGORIA:
-		case GID_HOYLE5:
+		if (ConfMan.getBool("originalsaveload") ||
+			Common::checkGameGUIOption(GUIO_NOLAUNCHLOAD, guiOptions)) {
+
 			return false;
-		default:
-			break;
 		}
 	}
 #endif

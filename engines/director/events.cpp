@@ -46,6 +46,10 @@ void DirectorEngine::processEvents() {
 	uint endTime = g_system->getMillis() + 200;
 
 	Score *sc = getCurrentScore();
+	if (sc->getCurrentFrame() >= sc->_frames.size()) {
+		warning("processEvents: request to access frame %d of %d", sc->getCurrentFrame(), sc->_frames.size() - 1);
+		return;
+	}
 	Frame *currentFrame = sc->_frames[sc->getCurrentFrame()];
 	uint16 spriteId = 0;
 
@@ -66,6 +70,8 @@ void DirectorEngine::processEvents() {
 				spriteId = currentFrame->getSpriteIDFromPos(pos);
 				sc->_currentMouseDownSpriteId = spriteId;
 
+				debugC(3, kDebugEvents, "event: Button Down @(%d, %d), sprite id: %d", pos.x, pos.y, spriteId);
+
 				if (getVersion() > 3) {
 					// TODO: check that this is the order of script execution!
 					_lingo->processEvent(kEventMouseDown, kCastScript, currentFrame->_sprites[spriteId]->_castId);
@@ -81,6 +87,9 @@ void DirectorEngine::processEvents() {
 				pos = g_system->getEventManager()->getMousePos();
 
 				spriteId = currentFrame->getSpriteIDFromPos(pos);
+
+				debugC(3, kDebugEvents, "event: Button Up @(%d, %d), sprite id: %d", pos.x, pos.y, spriteId);
+
 				if (getVersion() > 3) {
 					// TODO: check that this is the order of script execution!
 					_lingo->processEvent(kEventMouseUp, kCastScript, currentFrame->_sprites[spriteId]->_castId);
@@ -88,9 +97,9 @@ void DirectorEngine::processEvents() {
 				} else {
 					// Frame script overrides sprite script
 					if (!currentFrame->_sprites[spriteId]->_scriptId)
-						_lingo->processEvent(kEventMouseUp, kSpriteScript, currentFrame->_sprites[spriteId]->_castId + 1024);
+						_lingo->processEvent(kEventNone, kSpriteScript, currentFrame->_sprites[spriteId]->_castId + 1024);
 					else
-						_lingo->processEvent(kEventMouseUp, kFrameScript, currentFrame->_sprites[spriteId]->_scriptId);
+						_lingo->processEvent(kEventNone, kFrameScript, currentFrame->_sprites[spriteId]->_scriptId);
 				}
 
 				sc->_currentMouseDownSpriteId = 0;
@@ -128,7 +137,7 @@ void DirectorEngine::processEvents() {
 		g_system->updateScreen();
 		g_system->delayMillis(10);
 
-		if (currentFrame > 0)
+		if (sc->getCurrentFrame() > 0)
 			_lingo->processEvent(kEventIdle, kFrameScript, sc->getCurrentFrame());
 	}
 }

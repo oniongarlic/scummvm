@@ -25,8 +25,8 @@
 #include "titanic/star_control/star_control.h"
 #include "titanic/star_control/dmatrix.h"
 #include "titanic/star_control/error_code.h"
-#include "titanic/star_control/star_control_sub6.h"
-#include "titanic/star_control/star_control_sub12.h"
+#include "titanic/star_control/fpose.h"
+#include "titanic/star_control/star_camera.h"
 #include "titanic/game_manager.h"
 #include "titanic/core/dont_save_file_item.h"
 #include "titanic/core/project_item.h"
@@ -41,16 +41,14 @@ BEGIN_MESSAGE_MAP(CStarControl, CGameObject)
 	ON_MESSAGE(FrameMsg)
 END_MESSAGE_MAP()
 
-CStarControl::CStarControl() : _enabled(false),
+CStarControl::CStarControl() : _enabled(false), _petControl(nullptr),
 		_starRect(20, 10, 620, 350) {
-	CStarControlSub6::init();
-	CStarControlSub12::init();
+	CStarCamera::init();
 	DMatrix::init();
 }
 
 CStarControl::~CStarControl() {
-	CStarControlSub6::deinit();
-	CStarControlSub12::deinit();
+	CStarCamera::deinit();
 	DMatrix::deinit();
 }
 
@@ -138,16 +136,16 @@ void CStarControl::newFrame() {
 		_petControl = getPetControl();
 
 	if (_petControl) {
-		int val1 = _starField.get88();
-		int val2 = 0;
+		int matchIndex = _starField.getMatchedIndex();
+		bool isClose = false;
 
 		if (_starField.getMode() == MODE_STARFIELD) {
-			val2 = _starField.get5();
-			if ((val1 + 2) == _starField.get7Count())
-				val2 = 0;
+			isClose = _starField.isCloseToMarker();
+			if ((matchIndex + 2) != _starField.getMarkerCount())
+				isClose = false;
 		}
 
-		_petControl->starsSetButtons(val1, val2);
+		_petControl->starsSetButtons(matchIndex, isClose);
 	}
 }
 
@@ -200,8 +198,8 @@ void CStarControl::doAction(StarControlAction action) {
 		_view.fn7();
 		break;
 
-	case STAR_7:
-		_view.fn8();
+	case STAR_FULL_SPEED:
+		_view.fullSpeed();
 		break;
 
 	case STAR_8:
@@ -217,7 +215,7 @@ void CStarControl::doAction(StarControlAction action) {
 		break;
 
 	case STAR_11:
-		_view.fn12();
+		_view.toggleBox();
 		break;
 
 	case STAR_12:
@@ -244,12 +242,12 @@ void CStarControl::doAction(StarControlAction action) {
 		_view.fn3(false);
 		break;
 
-	case STAR_17:
-		_view.fn16();
+	case LOCK_STAR:
+		_view.lockStar();
 		break;
 
-	case STAR_18:
-		_view.fn17();
+	case UNLOCK_STAR:
+		_view.unlockStar();
 		break;
 
 	case STAR_19:
@@ -260,6 +258,11 @@ void CStarControl::doAction(StarControlAction action) {
 
 bool CStarControl::isSolved() const {
 	return _starField.isSolved();
+}
+
+void CStarControl::forceSolved() {
+	while (!_starField.isSolved())
+		_starField.incMatches();
 }
 
 bool CStarControl::canSetStarDestination() const {

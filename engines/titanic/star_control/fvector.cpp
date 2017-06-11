@@ -21,27 +21,35 @@
  */
 
 #include "titanic/star_control/fvector.h"
-#include "titanic/star_control/star_control_sub6.h"
+#include "titanic/star_control/dvector.h"
+#include "titanic/star_control/fpose.h"
 #include "common/algorithm.h"
 #include "common/textconsole.h"
 
 namespace Titanic {
 
-void FVector::fn1(FVector *v) {
-	v->_x = (ABS(_x - _y) < 0.00001 && ABS(_y - _z) < 0.00001 &&
-		ABS(_x - _z) < 0.00001) ? -_x : _x;
-	v->_y = _y;
-	v->_z = _z;
+FVector::FVector(const DVector &src) : _x(src._x), _y(src._y), _z(src._z) {
 }
 
-void FVector::crossProduct(FVector *dest, const FVector *src) {
-	dest->_x = (src->_z * _y) - (_z * src->_y);
-	dest->_y = (src->_x * _z) - (_x * src->_z);
-	dest->_z = (src->_y * _x) - (_y * src->_x);
+FVector FVector::fn1() const {
+	return FVector(
+		(ABS(_x - _y) < 0.00001 && ABS(_y - _z) < 0.00001 &&
+			ABS(_x - _z) < 0.00001) ? -_y : _y,
+		_z,
+		_x
+	);
 }
 
-double FVector::normalize() {
-	double hyp = sqrt(_x * _x + _y * _y + _z * _z);
+FVector FVector::crossProduct(const FVector &src) const {
+	return FVector(
+		src._z * _y - _z * src._y,
+		src._x * _z - _x * src._z,
+		src._y * _x - _y * src._x
+	);
+}
+
+float FVector::normalize() {
+	float hyp = sqrt(_x * _x + _y * _y + _z * _z);
 	assert(hyp);
 
 	_x *= 1.0 / hyp;
@@ -50,23 +58,31 @@ double FVector::normalize() {
 	return hyp;
 }
 
-void FVector::addAndNormalize(FVector *dest, const FVector *v1, const FVector *v2) {
-	FVector tempVector(v1->_x + v2->_x, v1->_y + v2->_y, v1->_z + v2->_z);
-	tempVector.normalize();
+FVector FVector::addAndNormalize(const FVector &v) const {
+	FVector tempV(_x + v._x, _y + v._y, _z + v._z);
+	tempV.normalize();
 
-	*dest = tempVector;
+	return tempV;
 }
 
-double FVector::getDistance(const FVector *src) const {
-	double xd = src->_x - _x;
-	double yd = src->_y - _y;
-	double zd = src->_z - _z;
+float FVector::getDistance(const FVector &src) const {
+	float xd = src._x - _x;
+	float yd = src._y - _y;
+	float zd = src._z - _z;
 
 	return sqrt(xd * xd + yd * yd + zd * zd);
 }
 
-void FVector::fn5(FVector *dest, const CStarControlSub6 *sub6) const {
-	error("TODO: FVector::fn5");
+FVector FVector::fn5(const FPose &pose) const {
+	FVector v;
+	v._x = pose._row2._x * _y + pose._row3._x * _z + pose._row1._x * _x + pose._vector._x;
+	v._y = pose._row2._y * _y + pose._row3._y * _z + pose._row1._y * _x + pose._vector._y;
+	v._z = pose._row3._z * _z + pose._row2._z * _y + pose._row1._z * _x + pose._vector._z;
+	return v;
+}
+
+Common::String FVector::toString() const {
+	return Common::String::format("(%.3f,%.3f,%.3f)", _x, _y, _z);
 }
 
 } // End of namespace Titanic

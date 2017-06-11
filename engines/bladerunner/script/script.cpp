@@ -47,135 +47,7 @@
 #include "bladerunner/vector.h"
 #include "bladerunner/waypoints.h"
 
-#include "bladerunner/script/ai_00_mccoy.h"
-#include "bladerunner/script/aiscript_officer_leroy.h"
-
 namespace BladeRunner {
-
-bool Script::open(const Common::String &name) {
-	delete _currentScript;
-
-	if (name == "RC01") { _currentScript = new ScriptRC01(_vm); return true; }
-	if (name == "RC02") { _currentScript = new ScriptRC02(_vm); return true; }
-	if (name == "RC03") { _currentScript = new ScriptRC03(_vm); return true; }
-	if (name == "RC04") { _currentScript = new ScriptRC04(_vm); return true; }
-	if (name == "RC51") { _currentScript = new ScriptRC51(_vm); return true; }
-
-	return false;
-}
-
-Script::~Script() {
-	delete _currentScript;
-}
-
-void Script::InitializeScene() {
-	_inScriptCounter++;
-	_currentScript->InitializeScene();
-	_inScriptCounter--;
-}
-
-void Script::SceneLoaded() {
-	_inScriptCounter++;
-	_currentScript->SceneLoaded();
-	_inScriptCounter--;
-}
-
-bool Script::MouseClick(int x, int y) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	//MouseX = x;
-	//MouseY = y;
-	bool result = _currentScript->MouseClick(x, y);
-	//SelectedEntity = -1;
-	_inScriptCounter--;
-	//MouseX = -1;
-	//MouseY = -1;
-	return result;
-}
-
-bool Script::ClickedOn3DObject(const char *objectName, bool a2) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	bool result = _currentScript->ClickedOn3DObject(objectName, a2);
-	_inScriptCounter--;
-	return result;
-}
-
-bool Script::ClickedOnActor(int actorId) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	bool result = _currentScript->ClickedOnActor(actorId);
-	_inScriptCounter--;
-	return result;
-}
-
-bool Script::ClickedOnItem(int itemId, bool a2) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	bool result = _currentScript->ClickedOnItem(itemId, a2);
-	_inScriptCounter--;
-	return result;
-}
-
-bool Script::ClickedOnExit(int exitId) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	bool result = _currentScript->ClickedOnExit(exitId);
-	_inScriptCounter--;
-	return result;
-}
-
-bool Script::ClickedOn2DRegion(int region) {
-	if (_inScriptCounter > 0)
-		return true;
-
-	_inScriptCounter++;
-	bool result = _currentScript->ClickedOn2DRegion(region);
-	_inScriptCounter--;
-	return result;
-}
-
-void Script::SceneFrameAdvanced(int frame) {
-	_inScriptCounter++;
-	_currentScript->SceneFrameAdvanced(frame);
-	_inScriptCounter--;
-}
-
-void Script::ActorChangedGoal(int actorId, int newGoal, int oldGoal, bool currentSet) {
-	_inScriptCounter++;
-	//TODO remove this check
-	if(_currentScript)
-		_currentScript->ActorChangedGoal(actorId, newGoal, oldGoal, currentSet);
-	_inScriptCounter--;
-}
-
-void Script::PlayerWalkedIn() {
-	_inScriptCounter++;
-	_currentScript->PlayerWalkedIn();
-	_inScriptCounter--;
-}
-
-void Script::PlayerWalkedOut() {
-	_inScriptCounter++;
-	_currentScript->PlayerWalkedOut();
-	_inScriptCounter--;
-}
-
-void Script::DialogueQueueFlushed(int a1) {
-	_inScriptCounter++;
-	_currentScript->DialogueQueueFlushed(a1);
-	_inScriptCounter--;
-}
 
 void ScriptBase::Preload(int animationId) {
 	_vm->_sliceRenderer->preload(animationId);
@@ -190,7 +62,7 @@ void ScriptBase::Actor_Set_At_XYZ(int actorId, float x, float y, float z, int di
 }
 
 void ScriptBase::Actor_Set_At_Waypoint(int actorId, int waypointId, int angle) {
-	_vm->_actors[actorId]->setAtWaypoint(waypointId, angle, 0, 0);
+	_vm->_actors[actorId]->setAtWaypoint(waypointId, angle, 0, false);
 }
 
 bool ScriptBase::Region_Check(int left, int top, int right, int down) {
@@ -332,8 +204,8 @@ void ScriptBase::Actor_Combat_AI_Hit_Attempt(int actorId) {
 		_vm->_actors[actorId]->_combatInfo->hitAttempt();
 }
 
-void ScriptBase::Non_Player_Actor_Combat_Mode_On(int actorId, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10, int a11, int a12, int a13, int a14) {
-	_vm->_actors[actorId]->combatModeOn(a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
+void ScriptBase::Non_Player_Actor_Combat_Mode_On(int actorId, int a2, int a3, int otherActorId, int a5, int animationModeCombatIdle, int animationModeCombatWalk, int animationModeCombatRun, int a9, int a10, int a11, int a12, int a13, int a14) {
+	_vm->_actors[actorId]->combatModeOn(a2, a3, otherActorId, a5, animationModeCombatIdle, animationModeCombatWalk, animationModeCombatRun, a9, a10, a11, a12, a13, a14);
 }
 
 void ScriptBase::Non_Player_Actor_Combat_Mode_Off(int actorId) {
@@ -387,7 +259,7 @@ void ScriptBase::Actor_Says_With_Pause(int actorId, int sentenceId, float pause,
 		}
 	}
 	if (animationModeChanged) {
-		actor->changeAnimationMode(0, false);
+		actor->changeAnimationMode(kAnimationModeIdle, false);
 	}
 
 	//TODO: sitcom
@@ -475,8 +347,9 @@ bool ScriptBase::Actor_Query_In_Set(int actorId, int setId) {
 }
 
 int ScriptBase::Actor_Query_Inch_Distance_From_Actor(int actorId, int otherActorId) {
-	if (_vm->_actors[actorId]->getSetId() != _vm->_actors[otherActorId]->getSetId())
+	if (_vm->_actors[actorId]->getSetId() != _vm->_actors[otherActorId]->getSetId()) {
 		return 0.0f;
+	}
 	return _vm->_actors[actorId]->distanceFromActor(otherActorId);
 }
 
@@ -500,11 +373,11 @@ bool ScriptBase::Actor_Query_In_Between_Two_Actors(int actorId, int otherActor1I
 	float z1 = _vm->_actors[otherActor1Id]->getZ();
 	float x2 = _vm->_actors[otherActor2Id]->getX();
 	float z2 = _vm->_actors[otherActor2Id]->getZ();
-	return _vm->_sceneObjects->isBetweenTwoXZ(actorId, x1, z1, x2, z1)
-		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId, x1 - 12.0f, z1 - 12.0f, x2 - 12.0f, z2 - 12.0f)
-		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId, x1 + 12.0f, z1 - 12.0f, x2 + 12.0f, z2 - 12.0f)
-		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId, x1 + 12.0f, z1 + 12.0f, x2 + 12.0f, z2 + 12.0f)
-		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId, x1 - 12.0f, z1 + 12.0f, x2 - 12.0f, z2 + 12.0f);
+	return _vm->_sceneObjects->isBetweenTwoXZ(actorId + SCENE_OBJECTS_ACTORS_OFFSET, x1, z1, x2, z1)
+		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId + SCENE_OBJECTS_ACTORS_OFFSET, x1 - 12.0f, z1 - 12.0f, x2 - 12.0f, z2 - 12.0f)
+		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId + SCENE_OBJECTS_ACTORS_OFFSET, x1 + 12.0f, z1 - 12.0f, x2 + 12.0f, z2 - 12.0f)
+		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId + SCENE_OBJECTS_ACTORS_OFFSET, x1 + 12.0f, z1 + 12.0f, x2 + 12.0f, z2 + 12.0f)
+		|| _vm->_sceneObjects->isBetweenTwoXZ(actorId + SCENE_OBJECTS_ACTORS_OFFSET, x1 - 12.0f, z1 + 12.0f, x2 - 12.0f, z2 + 12.0f);
 }
 
 void ScriptBase::Actor_Set_Goal_Number(int actorId, int goalNumber) {
@@ -534,34 +407,69 @@ int ScriptBase::Slice_Animation_Query_Number_Of_Frames(int animation) {
 }
 
 void ScriptBase::Actor_Change_Animation_Mode(int actorId, int animationMode) {
-	_vm->_actors[actorId]->changeAnimationMode(animationMode, 0);
+	_vm->_actors[actorId]->changeAnimationMode(animationMode, false);
 }
 
 int ScriptBase::Actor_Query_Animation_Mode(int actorId) {
 	return _vm->_actors[actorId]->getAnimationMode();
 }
 
-bool ScriptBase::Loop_Actor_Walk_To_Actor(int actorId, int otherActorId, int a3, int a4, bool run) {
-	//TODO
-	warning("Loop_Actor_Walk_To_Actor(%d, %d, %d, %d, %d)", actorId, otherActorId, a3, a4, run);
-	return false;
+bool ScriptBase::Loop_Actor_Walk_To_Actor(int actorId, int otherActorId, int distance, int a4, bool run) {
+	_vm->gameWaitForActive();
+
+	if (actorId == _vm->_walkingActorId) {
+		run = true;
+	}
+	_vm->_playerActorIdle = false;
+	bool isRunning;
+	bool result = _vm->_actors[actorId]->loopWalkToActor(otherActorId, distance, a4, run, true, &isRunning);
+	if (_vm->_playerActorIdle) {
+		result = true;
+		_vm->_playerActorIdle = false;
+	}
+	if (isRunning == 1) {
+		_vm->_walkingActorId = actorId;
+	}
+	Global_Variable_Set(37, actorId);
+	Global_Variable_Set(38, isRunning);
+	return result;
 }
 
 bool ScriptBase::Loop_Actor_Walk_To_Item(int actorId, int itemId, int a3, int a4, bool run) {
-	//TODO
-	warning("Loop_Actor_Walk_To_Item(%d, %d, %d, %d, %d)", actorId, itemId, a3, a4, run);
-	return false;
+	_vm->gameWaitForActive();
+
+	if (_vm->_walkingActorId == actorId) {
+		run = true;
+	}
+	_vm->_playerActorIdle = false;
+	bool isRunning;
+	bool result = _vm->_actors[actorId]->loopWalkToItem(itemId, a3, a4, run, true, &isRunning);
+	if (_vm->_playerActorIdle == 1) {
+		result = true;
+		_vm->_playerActorIdle = false;
+	}
+	if (isRunning == 1) {
+		_vm->_walkingActorId = actorId;
+	}
+	Global_Variable_Set(37, actorId);
+	Global_Variable_Set(38, isRunning);
+	return result;
 }
 
 bool ScriptBase::Loop_Actor_Walk_To_Scene_Object(int actorId, const char *objectName, int destinationOffset, bool a4, bool run) {
 	_vm->gameWaitForActive();
 
-	if(_vm->_walkingActorId == actorId) {
+	if (_vm->_walkingActorId == actorId) {
 		run = true;
 	}
+	_vm->_playerActorIdle = false;
 	bool isRunning;
 	bool result = _vm->_actors[actorId]->loopWalkToSceneObject(objectName, destinationOffset, a4, run, true, &isRunning);
-	if(isRunning == 1) {
+	if (_vm->_playerActorIdle) {
+		result = true;
+		_vm->_playerActorIdle = false;
+	}
+	if (isRunning == 1) {
 		_vm->_walkingActorId = actorId;
 	}
 	Global_Variable_Set(37, actorId);
@@ -629,11 +537,11 @@ bool ScriptBase::Loop_Actor_Travel_Ladder(int actorId, int a2, int a3, int a4) {
 	return false;
 }
 
-void ScriptBase::Actor_Clue_Add_To_Database(int actorId, int clueId, int unknown, bool clueAcquired, bool unknownFlag, int fromActorId) {
-	_vm->_actors[actorId]->addClueToDatabase(clueId, unknown, clueAcquired, unknownFlag, fromActorId);
+void ScriptBase::Actor_Clue_Add_To_Database(int actorId, int clueId, int weight, bool clueAcquired, bool unknownFlag, int fromActorId) {
+	_vm->_actors[actorId]->addClueToDatabase(clueId, weight, clueAcquired, unknownFlag, fromActorId);
 }
 
-void ScriptBase::Actor_Clue_Acquire(int actorId, int clueId, byte unknownFlag, int fromActorId) {
+void ScriptBase::Actor_Clue_Acquire(int actorId, int clueId, bool unknownFlag, int fromActorId) {
 	_vm->_actors[actorId]->acquireClue(clueId, unknownFlag, fromActorId);
 }
 
@@ -1070,38 +978,31 @@ void ScriptBase::Scene_2D_Region_Remove(int index) {
 	_vm->_scene->_regions->remove(index);
 }
 
-void ScriptBase::World_Waypoint_Set(int waypointId, int sceneId, float x, float y, float z) {
-	//TODO
-	warning("World_Waypoint_Set(%d, %d, %f, %f, %f)", waypointId, sceneId, x, y, z);
+void ScriptBase::World_Waypoint_Set(int waypointId, int setId, float x, float y, float z) {
+	_vm->_waypoints->set(waypointId, setId, Vector3(x, y, z));
 }
 // ScriptBase::World_Waypoint_Reset
 
 float ScriptBase::World_Waypoint_Query_X(int waypointId) {
-	//TODO
-	warning("World_Waypoint_Query_X(%d)", waypointId);
-	return 0.0f;
+	return _vm->_waypoints->getX(waypointId);
 }
 
 float ScriptBase::World_Waypoint_Query_Y(int waypointId) {
-	//TODO
-	warning("World_Waypoint_Query_Y(%d)", waypointId);
-	return 0.0f;
+	return _vm->_waypoints->getY(waypointId);
 }
 
 float ScriptBase::World_Waypoint_Query_Z(int waypointId) {
-	//TODO
-	warning("World_Waypoint_Query_Z(%d)", waypointId);
-	return 0.0f;
+	return _vm->_waypoints->getZ(waypointId);
 }
 
-void ScriptBase::Combat_Cover_Waypoint_Set_Data(int combatCoverId, int a2, int sceneId, int a4, float x, float y, float z) {
+void ScriptBase::Combat_Cover_Waypoint_Set_Data(int combatCoverId, int type, int setId, int sceneId, float x, float y, float z) {
 	//TODO
-	warning("Combat_Cover_Waypoint_Set_Data(%d, %d, %d, %d, %f, %f, %f)", combatCoverId, a2, sceneId, a4, x, y, z);
+	warning("Combat_Cover_Waypoint_Set_Data(%d, %d, %d, %d, %f, %f, %f)", combatCoverId, type, setId, sceneId, x, y, z);
 }
 
-void ScriptBase::Combat_Flee_Waypoint_Set_Data(int combatFleeWaypointId, int a2, int sceneId, int a4, float x, float y, float z, int a8) {
+void ScriptBase::Combat_Flee_Waypoint_Set_Data(int combatFleeWaypointId, int type, int setId, int sceneId, float x, float y, float z, int a8) {
 	//TODO
-	warning("Combat_Cover_Waypoint_Set_Data(%d, %d, %d, %d, %f, %f, %f, %d)", combatFleeWaypointId, a2, sceneId, a4, x, y, z, a8);
+	warning("Combat_Cover_Waypoint_Set_Data(%d, %d, %d, %d, %f, %f, %f, %d)", combatFleeWaypointId, type, setId, sceneId, x, y, z, a8);
 }
 
 void ScriptBase::Police_Maze_Target_Track_Add(int itemId, float startX, float startY, float startZ, float endX, float endY, float endZ, int steps, signed int data[], bool a10) {
@@ -1121,20 +1022,20 @@ void ScriptBase::Police_Maze_Set_Pause_State(int a1) {
 	warning("Police_Maze_Set_Pause_State(%d)", a1);
 }
 
-void ScriptBase::CDB_Set_Crime(int crimeId, int value) {
-	_vm->_crimesDatabase->setCrime(crimeId, value);
+void ScriptBase::CDB_Set_Crime(int clueId, int crimeId) {
+	_vm->_crimesDatabase->setCrime(clueId, crimeId);
 }
 
-void ScriptBase::CDB_Set_Clue_Asset_Type(int assetId, int type) {
-	_vm->_crimesDatabase->setAssetType(assetId, type);
+void ScriptBase::CDB_Set_Clue_Asset_Type(int clueId, int assetType) {
+	_vm->_crimesDatabase->setAssetType(clueId, assetType);
 }
 
 void ScriptBase::SDB_Set_Actor(int suspectId, int actorId) {
 	_vm->_suspectsDatabase->get(suspectId)->setActor(actorId);
 }
 
-bool ScriptBase::SDB_Add_Photo_Clue(int suspectId, int a2, int a3) {
-	return _vm->_suspectsDatabase->get(suspectId)->addPhotoClue(a2, a3);
+bool ScriptBase::SDB_Add_Photo_Clue(int suspectId, int clueId, int shapeId) {
+	return _vm->_suspectsDatabase->get(suspectId)->addPhotoClue(shapeId, clueId);
 }
 
 void ScriptBase::SDB_Set_Name(int actorId) {
@@ -1243,7 +1144,7 @@ void ScriptBase::Actor_Retired_Here(int actorId, int width, int height, int reti
 	actor->getXYZ(&actorPosition.x, &actorPosition.y, &actorPosition.z);
 	actor->retire(retired, width, height, retiredByActorId);
 	actor->setAtXYZ(actorPosition, actor->getFacing(), true, 0, true);
-	_vm->_sceneObjects->setRetired(actorId, true);
+	_vm->_sceneObjects->setRetired(actorId + SCENE_OBJECTS_ACTORS_OFFSET, true);
 }
 
 void ScriptBase::Clickable_Object(const char *objectName) {
@@ -1335,26 +1236,28 @@ void ScriptBase::I_Sez(const char *str) {
 }
 
 void ScriptBase::AI_Countdown_Timer_Start(int actorId, signed int timer, int seconds) {
-//	if (timer >= 0 && timer <= 2)
-//		_vm->_actors[actorId]->timerSet(timer, 1000 * seconds);
+	if (timer >= 0 && timer <= 2) {
+		_vm->_actors[actorId]->countdownTimerStart(timer, 1000 * seconds);
+	}
 }
 
 void ScriptBase::AI_Countdown_Timer_Reset(int actorId, int timer) {
-//	if (timer >= 0 && timer <= 2)
-//		_vm->_actors[actorId]->timerReset(timer);
+	if (timer >= 0 && timer <= 2) {
+		_vm->_actors[actorId]->countdownTimerReset(timer);
+	}
 }
 
 void ScriptBase::AI_Movement_Track_Unpause(int actorId) {
-	//_vm->_actors[actorId]->movementTrackUnpause();
+	_vm->_actors[actorId]->movementTrackUnpause();
 }
 
 void ScriptBase::AI_Movement_Track_Pause(int actorId) {
-	//_vm->_actors[actorId]->movementTrackPause();
+	_vm->_actors[actorId]->movementTrackPause();
 }
 
 void ScriptBase::AI_Movement_Track_Repeat(int actorId) {
 	_vm->_actors[actorId]->_movementTrack->repeat();
-	//_vm->_actors[actorId]->movementTrackRepeat(1);
+	_vm->_actors[actorId]->movementTrackNext(true);
 }
 
 void ScriptBase::AI_Movement_Track_Append_Run_With_Facing(int actorId, int waypointId, int delay, int angle) {
@@ -1421,40 +1324,6 @@ void ScriptBase::VK_Subject_Reacts(int a1, int a2, int a3, int a4) {
 void ScriptBase::VK_Play_Speech_Line(int actorIndex, int a2, float a3) {
 	//TODO
 	warning("VK_Play_Speech_Line(%d, %d, %g)", actorIndex, a2, a3);
-}
-
-AIScripts::AIScripts(BladeRunnerEngine *vm) : _vm(vm), _inScriptCounter(0) {
-	for (int i = 0; i != 100; ++i)
-		_AIScripts[i] = nullptr;
-
-	_AIScripts[0]  = new AIScript_McCoy(_vm);
-	_AIScripts[23] = new AIScript_Officer_Leroy(_vm);
-}
-
-AIScripts::~AIScripts() {
-	for (int i = 0; i != 100; ++i) {
-		delete _AIScripts[i];
-		_AIScripts[i] = nullptr;
-	}
-}
-
-void AIScripts::Initialize(int actor) {
-	if (_AIScripts[actor])
-		_AIScripts[actor]->Initialize();
-}
-
-void AIScripts::UpdateAnimation(int actor, int *animation, int *frame) {
-	_inScriptCounter++;
-	if (_AIScripts[actor])
-		_AIScripts[actor]->UpdateAnimation(animation, frame);
-	_inScriptCounter--;
-}
-
-void AIScripts::ChangeAnimationMode(int actor, int mode) {
-	_inScriptCounter++;
-	if (_AIScripts[actor])
-		_AIScripts[actor]->ChangeAnimationMode(mode);
-	_inScriptCounter--;
 }
 
 } // End of namespace BladeRunner

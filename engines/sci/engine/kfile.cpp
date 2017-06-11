@@ -41,6 +41,8 @@
 #include "sci/sound/audio.h"
 #include "sci/console.h"
 #ifdef ENABLE_SCI32
+#include "sci/engine/guest_additions.h"
+#include "sci/engine/message.h"
 #include "sci/resource.h"
 #endif
 
@@ -323,7 +325,7 @@ reg_t kFileIOOpen(EngineState *s, int argc, reg_t *argv) {
 			return SIGNAL_REG;
 		} else if (mode == _K_FILE_MODE_OPEN_OR_FAIL) {
 			// Create a virtual file containing the save game description
-			// and slot number, as the game scripts expect.
+			// and current score progress, as the game scripts expect.
 			int saveNo;
 			sscanf(name.c_str(), "%d.SG", &saveNo);
 			saveNo += kSaveIdShift;
@@ -363,7 +365,7 @@ reg_t kFileIOOpen(EngineState *s, int argc, reg_t *argv) {
 			return SIGNAL_REG;
 		} else if (mode == _K_FILE_MODE_OPEN_OR_FAIL) {
 			// Create a virtual file containing the save game description
-			// and slot number, as the game scripts expect.
+			// and avatar ID, as the game scripts expect.
 			int saveNo;
 			sscanf(name.c_str(), "%d.DTA", &saveNo);
 			saveNo += kSaveIdShift;
@@ -741,6 +743,12 @@ reg_t kFileIOExists(EngineState *s, int argc, reg_t *argv) {
 	if (isSaveCatalogue(name)) {
 		return saveCatalogueExists(name) ? TRUE_REG : NULL_REG;
 	}
+
+	// LSL7 checks to see if the autosave save exists when deciding whether to
+	// go to the main menu or not on startup
+	if (g_sci->getGameId() == GID_LSL7 && name == "autosvsg.000") {
+		return g_sci->getSaveFileManager()->listSavefiles(g_sci->getSavegameName(0)).empty() ? NULL_REG : TRUE_REG;
+	}
 #endif
 
 	// TODO: It may apparently be worth caching the existence of
@@ -849,7 +857,15 @@ reg_t kFileIOReadWord(EngineState *s, int argc, reg_t *argv) {
 }
 
 reg_t kFileIOWriteWord(EngineState *s, int argc, reg_t *argv) {
-	FileHandle *f = getFileFromHandle(s, argv[0].toUint16());
+	uint16 handle = argv[0].toUint16();
+
+#ifdef ENABLE_SCI32
+	if (handle == VIRTUALFILE_HANDLE_SCI32SAVE) {
+		return s->r_acc;
+	}
+#endif
+
+	FileHandle *f = getFileFromHandle(s, handle);
 	if (f)
 		f->_out->writeUint16LE(argv[1].toUint16());
 	return s->r_acc;
@@ -862,9 +878,10 @@ reg_t kFileIOGetCWD(EngineState *s, int argc, reg_t *argv) {
 }
 
 reg_t kFileIOIsValidDirectory(EngineState *s, int argc, reg_t *argv) {
-	// Used in Torin's Passage and LSL7 to determine if the directory passed as
-	// a parameter (usually the save directory) is valid. We always return true
-	// here.
+	// Used in Torin's Passage, LSL7, and RAMA to determine if the directory
+	// passed as a parameter (usually the save directory) is valid. We always
+	// return true here because we do not use this directory information when
+	// saving games.
 	return TRUE_REG;
 }
 
@@ -1179,34 +1196,10 @@ reg_t kGetSaveFiles(EngineState *s, int argc, reg_t *argv) {
 #ifdef ENABLE_SCI32
 
 reg_t kSaveGame32(EngineState *s, int argc, reg_t *argv) {
-	const bool isScummVMSave = argv[0].isNull();
-	Common::String gameName = "";
-	int16 saveNo;
-	Common::String saveDescription;
-	Common::String gameVersion = (argc <= 3 || argv[3].isNull()) ? "" : s->_segMan->getString(argv[3]);
-
-	if (isScummVMSave) {
-		// ScummVM call, from a patched Game::save
-		g_sci->_soundCmd->pauseAll(true);
-		GUI::SaveLoadChooser dialog(_("Save game:"), _("Save"), true);
-		saveNo = dialog.runModalWithCurrentTarget();
-		g_sci->_soundCmd->pauseAll(false);
-
-		if (saveNo < 0) {
-			// User cancelled save
-			return NULL_REG;
-		}
-
-		saveDescription = dialog.getResultString();
-		if (saveDescription.empty()) {
-			saveDescription = dialog.createDefaultSaveDescription(saveNo);
-		}
-	} else {
-		// Native script call
-		gameName = s->_segMan->getString(argv[0]);
-		saveNo = argv[1].toSint16();
-		saveDescription = argv[2].isNull() ? "" : s->_segMan->getString(argv[2]);
-	}
+	const Common::String gameName = s->_segMan->getString(argv[0]);
+	int16 saveNo = argv[1].toSint16();
+	const Common::String saveDescription = argv[2].isNull() ? "" : s->_segMan->getString(argv[2]);
+	const Common::String gameVersion = (argc <= 3 || argv[3].isNull()) ? "" : s->_segMan->getString(argv[3]);
 
 	debugC(kDebugLevelFile, "Game name %s save %d desc %s ver %s", gameName.c_str(), saveNo, saveDescription.c_str(), gameVersion.c_str());
 
@@ -1218,10 +1211,26 @@ reg_t kSaveGame32(EngineState *s, int argc, reg_t *argv) {
 			// Autosave slot 1 is a "new game" save
 			saveNo = kNewGameId;
 		}
-	} else if (!isScummVMSave) {
-		// ScummVM save screen will give a pre-corrected save number, but native
-		// save-load will not
+	} else {
 		saveNo += kSaveIdShift;
+	}
+
+	if (g_sci->getGameId() == GID_LIGHTHOUSE && gameName == "rst") {
+		saveNo = kNewGameId;
+	}
+
+	// Auto-save system used by QFG4
+	if (g_sci->getGameId() == GID_QFG4) {
+		reg_t autoSaveNameId;
+		SciArray &autoSaveName = *s->_segMan->allocateArray(kArrayTypeString, 0, &autoSaveNameId);
+		MessageTuple autoSaveNameTuple(0, 0, 16, 1);
+		s->_msgState->getMessage(0, autoSaveNameTuple, autoSaveNameId);
+
+		if (saveDescription == autoSaveName.toString()) {
+			saveNo = 0;
+		}
+
+		s->_segMan->freeArray(autoSaveNameId);
 	}
 
 	Common::SaveFileManager *saveFileMan = g_sci->getSaveFileManager();
@@ -1252,25 +1261,9 @@ reg_t kSaveGame32(EngineState *s, int argc, reg_t *argv) {
 }
 
 reg_t kRestoreGame32(EngineState *s, int argc, reg_t *argv) {
-	const bool isScummVMRestore = argv[0].isNull();
-	Common::String gameName = "";
+	const Common::String gameName = s->_segMan->getString(argv[0]);
 	int16 saveNo = argv[1].toSint16();
 	const Common::String gameVersion = argv[2].isNull() ? "" : s->_segMan->getString(argv[2]);
-
-	if (isScummVMRestore && saveNo == -1) {
-		// ScummVM call, either from lancher or a patched Game::restore
-		g_sci->_soundCmd->pauseAll(true);
-		GUI::SaveLoadChooser dialog(_("Restore game:"), _("Restore"), false);
-		saveNo = dialog.runModalWithCurrentTarget();
-		g_sci->_soundCmd->pauseAll(false);
-
-		if (saveNo < 0) {
-			// User cancelled restore
-			return s->r_acc;
-		}
-	} else {
-		gameName = s->_segMan->getString(argv[0]);
-	}
 
 	if (gameName == "Autosave" || gameName == "Autosv") {
 		if (saveNo == 0) {
@@ -1279,9 +1272,7 @@ reg_t kRestoreGame32(EngineState *s, int argc, reg_t *argv) {
 			// Autosave slot 1 is a "new game" save
 			saveNo = kNewGameId;
 		}
-	} else if (!isScummVMRestore) {
-		// ScummVM save screen will give a pre-corrected save number, but native
-		// save-load will not
+	} else {
 		saveNo += kSaveIdShift;
 	}
 
@@ -1322,11 +1313,34 @@ reg_t kCheckSaveGame32(EngineState *s, int argc, reg_t *argv) {
 		return NULL_REG;
 	}
 
-	if (save.version < MINIMUM_SAVEGAME_VERSION ||
-		save.version > CURRENT_SAVEGAME_VERSION ||
-		save.gameVersion != gameVersion) {
-
+	if (save.version < MINIMUM_SCI32_SAVEGAME_VERSION) {
+		warning("Save version %d is below minimum SCI32 savegame version %d", save.version, MINIMUM_SCI32_SAVEGAME_VERSION);
 		return NULL_REG;
+	}
+
+	if (save.version > CURRENT_SAVEGAME_VERSION) {
+		warning("Save version %d is above maximum SCI32 savegame version %d", save.version, CURRENT_SAVEGAME_VERSION);
+		return NULL_REG;
+	}
+
+	if (save.gameVersion != gameVersion) {
+		warning("Save game was created for game version %s, but the current game version is %s", save.gameVersion.c_str(), gameVersion.c_str());
+		return NULL_REG;
+	}
+
+	if (save.gameObjectOffset > 0 && save.script0Size > 0) {
+		Resource *script0 = g_sci->getResMan()->findResource(ResourceId(kResourceTypeScript, 0), false);
+		assert(script0);
+
+		if (save.script0Size != script0->size()) {
+			warning("Save game was created for a game with a script 0 size of %u, but the current game script 0 size is %u", save.script0Size, script0->size());
+			return NULL_REG;
+		}
+
+		if (save.gameObjectOffset != g_sci->getGameObject().getOffset()) {
+			warning("Save game was created for a game with the main game object at offset %u, but the current main game object offset is %u", save.gameObjectOffset, g_sci->getGameObject().getOffset());
+			return NULL_REG;
+		}
 	}
 
 	return TRUE_REG;
@@ -1375,6 +1389,10 @@ reg_t kMakeSaveFileName(EngineState *s, int argc, reg_t *argv) {
 	const int16 saveNo = argv[2].toSint16();
 	outFileName.fromString(g_sci->getSavegameName(saveNo + kSaveIdShift));
 	return argv[0];
+}
+
+reg_t kScummVMSaveLoad(EngineState *s, int argc, reg_t *argv) {
+	return g_sci->_guestAdditions->kScummVMSaveLoad(s, argc, argv);
 }
 
 #endif

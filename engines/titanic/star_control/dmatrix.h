@@ -29,7 +29,7 @@
 namespace Titanic {
 
 class FMatrix;
-class CStarControlSub26;
+class CMatrixTransform;
 
 /**
  * Double based matrix class.
@@ -42,14 +42,13 @@ public:
 	DVector _row1;
 	DVector _row2;
 	DVector _row3;
-	FVector _frow1;
-	FVector _frow2;
+	DVector _row4;
 public:
 	static void init();
 	static void deinit();
 public:
 	DMatrix();
-	DMatrix(int mode, const FMatrix *src);
+	DMatrix(int mode, const DVector &src);
 	DMatrix(Axis axis, double amount);
 	DMatrix(const FMatrix &src);
 
@@ -58,10 +57,11 @@ public:
 	 */
 	void setRotationMatrix(Axis axis, double amount);
 
-	void fn1(DMatrix &m);
-	void fn3(CStarControlSub26 *sub26);
+	DMatrix fn1() const;
 
-	const DMatrix *fn4(DMatrix &dest, const DMatrix &m1, const DMatrix &m2);
+	void loadTransform(const CMatrixTransform &src);
+
+	DMatrix fn4(const DMatrix &m);
 };
 
 } // End of namespace Titanic

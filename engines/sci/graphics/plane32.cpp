@@ -149,8 +149,7 @@ void Plane::convertGameRectToPlaneRect() {
 }
 
 void Plane::printDebugInfo(Console *con) const {
-	Common::String name;
-
+	const char *name;
 	if (_object.isNumber()) {
 		name = "-scummvm-";
 	} else {
@@ -159,7 +158,7 @@ void Plane::printDebugInfo(Console *con) const {
 
 	con->debugPrintf("%04x:%04x (%s): type %d, prio %d, ins %u, pic %d, mirror %d, back %d\n",
 		PRINT_REG(_object),
-		name.c_str(),
+		name,
 		_type,
 		_priority,
 		_creationId,
@@ -435,8 +434,7 @@ void Plane::calcLists(Plane &visiblePlane, const PlaneList &planeList, DrawList 
 	DrawList::size_type drawListSizePrimary = drawList.size();
 	const RectList::size_type eraseListCount = eraseList.size();
 
-	// TODO: Figure out which games need which rendering method
-	if (/* TODO: dword_C6288 */ false) {  // "high resolution pictures"
+	if (getSciVersion() == SCI_VERSION_3) {
 		_screenItemList.sort();
 		bool pictureDrawn = false;
 		bool screenItemDrawn = false;

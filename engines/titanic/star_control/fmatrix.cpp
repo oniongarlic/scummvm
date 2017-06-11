@@ -21,6 +21,7 @@
  */
 
 #include "titanic/star_control/fmatrix.h"
+#include "titanic/star_control/dmatrix.h"
 
 namespace Titanic {
 
@@ -39,7 +40,9 @@ FMatrix::FMatrix(const FMatrix &src) {
 }
 
 void FMatrix::copyFrom(const DMatrix &src) {
-	// TODO
+	_row1 = src._row1;
+	_row2 = src._row2;
+	_row3 = src._row3;
 }
 
 void FMatrix::load(SimpleFile *file, int param) {
@@ -78,45 +81,39 @@ void FMatrix::identity() {
 	_row3 = FVector(0.0, 0.0, 1.0);
 }
 
-void FMatrix::set(FVector *row1, FVector *row2, FVector *row3) {
-	_row1 = *row1;
-	_row2 = *row2;
-	_row3 = *row3;
+void FMatrix::set(const FVector &row1, const FVector &row2, const FVector &row3) {
+	_row1 = row1;
+	_row2 = row2;
+	_row3 = row3;
 }
 
-void FMatrix::fn1(const FVector &v) {
-	_row3._x = v._x;
+void FMatrix::set(const DVector &row1, const DVector &row2, const DVector &row3) {
+	_row1 = row1;
+	_row2 = row2;
+	_row3 = row3;
+}
 
-	FVector tempVector;
-	_row3.fn1(&tempVector);
+void FMatrix::set(const FVector &v) {
+	_row3 = v;
+	_row2 = _row3.fn1();
 
-	_row2._x = tempVector._x;
-	_row2._y = tempVector._y;
-	_row2._z = tempVector._z;
-
-	_row3.crossProduct(&tempVector, &_row2);
-	_row1._x = _row2._x;
-	_row1._y = _row2._y;
-	_row1._z = _row2._z;
+	_row1 = _row3.crossProduct(_row2);
 	_row1.normalize();
 
-	_row3.crossProduct(&tempVector, &_row1);
-	_row2._x = _row1._x;
-	_row2._y = _row1._y;
-	_row2._z = _row1._z;
+	_row2 = _row3.crossProduct(_row1);
 	_row2.normalize();
 }
 
 void FMatrix::fn2(const FMatrix &m) {
-	double x1 = _row1._y * m._row2._x + _row1._z * m._row3._x + _row1._x * m._row1._x;
-	double y1 = _row1._x * m._row1._y + m._row2._y * _row1._y + m._row3._y * _row1._z;
-	double z1 = _row1._x * m._row1._z + _row1._y * m._row2._z + _row1._z * m._row3._z;
-	double x2 = m._row1._x * _row2._x + m._row3._x * _row2._z + m._row2._x * _row2._y;
-	double y2 = m._row3._y * _row2._z + m._row1._y * _row2._x + m._row2._y * _row2._y;
-	double z2 = _row2._z * m._row3._z + _row2._x * m._row1._z + _row2._y * m._row2._z;
-	double x3 = m._row1._x * _row3._x + _row3._z * m._row3._x + _row3._y * m._row2._x;
-	double y3 = _row3._y * m._row2._y + _row3._z * m._row3._y + _row3._x * m._row1._y;
-	double z3 = _row3._x * m._row1._z + _row3._y * m._row2._z + _row3._z * m._row3._z;
+	float x1 = _row1._y * m._row2._x + _row1._z * m._row3._x + _row1._x * m._row1._x;
+	float y1 = _row1._x * m._row1._y + m._row2._y * _row1._y + m._row3._y * _row1._z;
+	float z1 = _row1._x * m._row1._z + _row1._y * m._row2._z + _row1._z * m._row3._z;
+	float x2 = m._row1._x * _row2._x + m._row3._x * _row2._z + m._row2._x * _row2._y;
+	float y2 = m._row3._y * _row2._z + m._row1._y * _row2._x + m._row2._y * _row2._y;
+	float z2 = _row2._z * m._row3._z + _row2._x * m._row1._z + _row2._y * m._row2._z;
+	float x3 = m._row1._x * _row3._x + _row3._z * m._row3._x + _row3._y * m._row2._x;
+	float y3 = _row3._y * m._row2._y + _row3._z * m._row3._y + _row3._x * m._row1._y;
+	float z3 = _row3._x * m._row1._z + _row3._y * m._row2._z + _row3._z * m._row3._z;
 
 	_row1 = FVector(x1, y1, z1);
 	_row2 = FVector(x2, y2, z2);
@@ -124,15 +121,15 @@ void FMatrix::fn2(const FMatrix &m) {
 }
 
 void FMatrix::fn3(const FMatrix &m) {
-	double x1 = _row2._x * m._row1._y + m._row1._z * _row3._x + _row1._x * m._row1._x;
-	double y1 = m._row1._x * _row1._y + _row3._y * m._row1._z + _row2._y * m._row1._y;
-	double z1 = m._row1._x * _row1._z + m._row1._y * _row2._z + m._row1._z * _row3._z;
-	double x2 = _row1._x * m._row2._x + _row2._x * m._row2._y + _row3._x * m._row2._z;
-	double y2 = _row3._y * m._row2._z + _row1._y * m._row2._x + _row2._y * m._row2._y;
-	double z2 = m._row2._z * _row3._z + m._row2._x * _row1._z + m._row2._y * _row2._z;
-	double x3 = _row1._x * m._row3._x + m._row3._z * _row3._x + m._row3._y * _row2._x;
-	double y3 = m._row3._y * _row2._y + m._row3._z * _row3._y + m._row3._x * _row1._y;
-	double z3 = m._row3._x * _row1._z + m._row3._y * _row2._z + m._row3._z * _row3._z;
+	float x1 = _row2._x * m._row1._y + m._row1._z * _row3._x + _row1._x * m._row1._x;
+	float y1 = m._row1._x * _row1._y + _row3._y * m._row1._z + _row2._y * m._row1._y;
+	float z1 = m._row1._x * _row1._z + m._row1._y * _row2._z + m._row1._z * _row3._z;
+	float x2 = _row1._x * m._row2._x + _row2._x * m._row2._y + _row3._x * m._row2._z;
+	float y2 = _row3._y * m._row2._z + _row1._y * m._row2._x + _row2._y * m._row2._y;
+	float z2 = m._row2._z * _row3._z + m._row2._x * _row1._z + m._row2._y * _row2._z;
+	float x3 = _row1._x * m._row3._x + m._row3._z * _row3._x + m._row3._y * _row2._x;
+	float y3 = m._row3._y * _row2._y + m._row3._z * _row3._y + m._row3._x * _row1._y;
+	float z3 = m._row3._x * _row1._z + m._row3._y * _row2._z + m._row3._z * _row3._z;
 
 	_row1 = FVector(x1, y1, z1);
 	_row2 = FVector(x2, y2, z2);

@@ -43,7 +43,8 @@
 #include "bladerunner/scene.h"
 #include "bladerunner/scene_objects.h"
 #include "bladerunner/script/init.h"
-#include "bladerunner/script/script.h"
+#include "bladerunner/script/scene.h"
+#include "bladerunner/script/ai.h"
 #include "bladerunner/settings.h"
 #include "bladerunner/shape.h"
 #include "bladerunner/slice_animations.h"
@@ -51,6 +52,7 @@
 #include "bladerunner/text_resource.h"
 #include "bladerunner/vqa_decoder.h"
 #include "bladerunner/waypoints.h"
+#include "bladerunner/zbuffer.h"
 
 #include "common/array.h"
 #include "common/error.h"
@@ -72,7 +74,7 @@ BladeRunnerEngine::BladeRunnerEngine(OSystem *syst)
 	_playerLosesControlCounter = 0;
 
 	_crimesDatabase = nullptr;
-	_script = new Script(this);
+	_sceneScript = new SceneScript(this);
 	_settings = new Settings(this);
 	_lights = new Lights(this);
 	_combat = new Combat(this);
@@ -111,8 +113,7 @@ BladeRunnerEngine::~BladeRunnerEngine() {
 	// _surface1.free();
 	// _surface2.free();
 
-	// delete[] _zBuffer1;
-	// delete[] _zBuffer2;
+	delete _zbuffer;
 
 	delete _itemPickup;
 	delete _obstacles;
@@ -120,7 +121,7 @@ BladeRunnerEngine::~BladeRunnerEngine() {
 	delete _combat;
 	delete _lights;
 	delete _settings;
-	delete _script;
+	delete _sceneScript;
 }
 
 bool BladeRunnerEngine::hasFeature(EngineFeature f) const {
@@ -231,9 +232,8 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 
 	// TODO: Video overlays
 
-	// TODO: Proper ZBuf class
-	_zBuffer1 = new uint16[640 * 480];
-	_zBuffer2 = new uint16[640 * 480];
+	_zbuffer = new ZBuffer();
+	_zbuffer->init(640, 480);
 
 	int actorCount = (int)_gameInfo->getActorCount();
 	assert(actorCount < ACTORS_COUNT);
@@ -268,8 +268,8 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 	if (!_textKIA->open("KIA"))
 		return false;
 
-	_textSpindest = new TextResource(this);
-	if (!_textSpindest->open("SPINDEST"))
+	_textSpinnerDestinations = new TextResource(this);
+	if (!_textSpinnerDestinations->open("SPINDEST"))
 		return false;
 
 	_textVK = new TextResource(this);
@@ -337,7 +337,7 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 	initScript.SCRIPT_Initialize_Game();
 
 	// TODO: Load AI-ACT1.DLL
-	_aiScripts = new AIScripts(this);
+	_aiScripts = new AIScripts(this, actorCount);
 
 	initChapterAndScene();
 
@@ -346,11 +346,17 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 
 void BladeRunnerEngine::initChapterAndScene() {
 	// TODO: Init actors...
-	for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i)
+	for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i) {
 		_aiScripts->Initialize(i);
+	}
 
-	for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i)
-		_actors[i]->changeAnimationMode(0);
+	for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i) {
+		_actors[i]->changeAnimationMode(kAnimationModeIdle);
+	}
+
+	for (int i = 1, end = _gameInfo->getActorCount(); i != end; ++i) { // skip first actor, probably player
+		_actors[i]->movementTrackNext(true);
+	}
 
 	_settings->setChapter(1);
 	_settings->setNewSetAndScene(_gameInfo->getInitialSetId(), _gameInfo->getInitialSceneId());
@@ -404,8 +410,8 @@ void BladeRunnerEngine::shutdown() {
 	delete _textKIA;
 	_textKIA = nullptr;
 
-	delete _textSpindest;
-	_textSpindest = nullptr;
+	delete _textSpinnerDestinations;
+	_textSpinnerDestinations = nullptr;
 
 	delete _textVK;
 	_textVK = nullptr;
@@ -488,14 +494,13 @@ void BladeRunnerEngine::shutdown() {
 		delete _actors[i];
 		_actors[i] = nullptr;
 	}
+	delete _actors[VOICEOVER_ACTOR];
+	_actors[VOICEOVER_ACTOR] = nullptr;
+
 	_playerActor = nullptr;
 
-	// TODO: Delete proper ZBuf class
-	delete[] _zBuffer1;
-	_zBuffer1 = nullptr;
-
-	delete[] _zBuffer2;
-	_zBuffer2 = nullptr;
+	delete _zbuffer;
+	_zbuffer = nullptr;
 
 	delete _gameInfo;
 	_gameInfo = nullptr;
@@ -584,52 +589,43 @@ void BladeRunnerEngine::gameTick() {
 
 		_adq->tick();
 		if (_scene->didPlayerWalkIn()) {
-			_script->PlayerWalkedIn();
+			_sceneScript->PlayerWalkedIn();
 		}
 		// TODO: Gun range announcements
-		// TODO: ZBUF repair dirty rects
+
+		_zbuffer->clean();
 
 		_ambientSounds->tick();
 
 		bool backgroundChanged = false;
-		int frame = _scene->advanceFrame(_surface1, _zBuffer1);
+		int frame = _scene->advanceFrame(_surface1);
 		if (frame >= 0) {
-			_script->SceneFrameAdvanced(frame);
+			_sceneScript->SceneFrameAdvanced(frame);
 			backgroundChanged = true;
 		}
 		(void)backgroundChanged;
 		_surface2.copyFrom(_surface1);
-		memcpy(_zBuffer2, _zBuffer1, 640 * 480 * 2);
-
-#if 0
-		{
-			for (int y = 0; y != 480; ++y) {
-				for (int x = 0; x != 640; ++x) {
-					if (_scene->_regions->getRegionAtXY(x, y) >= 0) {
-						uint16 *p = (uint16*)_surface2.getBasePtr(x, y);
-						*p = 0x7C00;
-					}
-					if (_scene->_exits->getRegionAtXY(x, y) >= 0) {
-						uint16 *p = (uint16*)_surface2.getBasePtr(x, y);
-						*p = 0x7C08;
-					}
-				}
-			}
-		}
-#endif
+		// TODO: remove zbuffer draw
+		//_surface2.copyRectToSurface(_zbuffer->getData(), 1280, 0, 0, 640, 480);
 
 		// TODO: Render overlays
-		// TODO: Tick Actor AI and Timers
 
-		if (_settings->getNewScene() == -1 || _script->_inScriptCounter /* || in_ai */) {
+		//if (!dialogueMenu)
+			actorsUpdate();
+
+		if (_settings->getNewScene() == -1 || _sceneScript->IsInsideScript() || _aiScripts->IsInsideScript()) {
 			_sliceRenderer->setView(*_view);
 
 			// Tick and draw all actors in current set
-			//int setId = _scene->_setId;
+			int setId = _scene->getSetId();
 			for (int i = 0, end = _gameInfo->getActorCount(); i != end; ++i) {
-				//if (_actors[i]->getSetId() == setId) {
-				if (i == 0 || i == 23) { // Currently limited to McCoy and Officer Leroy
-					_actors[i]->tick(backgroundChanged);
+				if (_actors[i]->getSetId() == setId) {
+					if (i == 0 || i == 15 || i == 23) { // Currently limited to McCoy, Runciter and Officer Leroy
+						Common::Rect screenRect;
+						if (_actors[i]->tick(backgroundChanged, &screenRect)) {
+							_zbuffer->mark(screenRect);
+						}
+					}
 				}
 			}
 
@@ -663,37 +659,33 @@ void BladeRunnerEngine::gameTick() {
 					BoundingBox *bbox = &sceneObject->_boundingBox;
 					Vector3 a, b;
 					bbox->getXYZ(&a.x, &a.y, &a.z, &b.x, &b.y, &b.z);
-
-					int color = 0b111111111111111;
-					if (sceneObject->_sceneObjectType == SceneObjectTypeActor) {
-						color = 0b111110000000000;
-					}
-					if (sceneObject->_sceneObjectType == SceneObjectTypeObject) {
-						color = 0b011110111101111;
-			//if (sceneObject->_isObstacle)
-			//	color += 0b100000000000000;
-						if (sceneObject->_isClickable)
-							color = 0b000001111100000;
-			//if (sceneObject->_isTarget)
-			//	color += 0b000000000010000;
-					}
-
-					drawBBox(a, b, _view, &_surface2, color);
-
-			//_surface2.frameRect(sceneObject->_screenRectangle, color);
-
 					Vector3 pos = _view->calculateScreenPosition(0.5 * (a + b));
+					int color;
+
 					switch (sceneObject->_sceneObjectType) {
 					case SceneObjectTypeActor:
+						color = 0b111110000000000;
+						drawBBox(a, b, _view, &_surface2, color);
 						_mainFont->drawColor(_textActorNames->getText(sceneObject->_sceneObjectId - SCENE_OBJECTS_ACTORS_OFFSET), _surface2, pos.x, pos.y, color);
 						break;
 					case SceneObjectTypeItem:
-						_mainFont->drawColor("item", _surface2, pos.x, pos.y, color);
+						char itemText[40];
+						drawBBox(a, b, _view, &_surface2, color);
+						sprintf(itemText, "item %i", sceneObject->_sceneObjectId - SCENE_OBJECTS_ITEMS_OFFSET);
+						_mainFont->drawColor(itemText, _surface2, pos.x, pos.y, color);
 						break;
 					case SceneObjectTypeObject:
+						color = 0b011110111101111;
+						//if (sceneObject->_isObstacle)
+						//	color += 0b100000000000000;
+						if (sceneObject->_isClickable) {
+							color = 0b000001111100000;
+						}
+						drawBBox(a, b, _view, &_surface2, color);
 						_mainFont->drawColor(_scene->objectGetName(sceneObject->_sceneObjectId - SCENE_OBJECTS_OBJECTS_OFFSET), _surface2, pos.x, pos.y, color);
 						break;
 					}
+			_surface2.frameRect(sceneObject->_screenRectangle, color);
 				}
 			}
 
@@ -710,37 +702,85 @@ void BladeRunnerEngine::gameTick() {
 				_surface2.frameRect(region->_rectangle, 0b111111111111111);
 			}
 
+
+			//draw walkboxes
 			for (int i = 0; i < _scene->_set->_walkboxCount; i++) {
 				Walkbox *walkbox = &_scene->_set->_walkboxes[i];
 
 				for (int j = 0; j < walkbox->_vertexCount; j++) {
 					Vector3 start = _view->calculateScreenPosition(walkbox->_vertices[j]);
 					Vector3 end = _view->calculateScreenPosition(walkbox->_vertices[(j + 1) % walkbox->_vertexCount]);
-			//debug("walkbox[%i][%i] =  x=%f y=%f x=%f y=%f", i, j, start.x, start.y, end.x, end.y);
 					_surface2.drawLine(start.x, start.y, end.x, end.y, 0b111111111100000);
 					Vector3 pos = _view->calculateScreenPosition(0.5 * (start + end));
 					_mainFont->drawColor(walkbox->_name, _surface2, pos.x, pos.y, 0b111111111100000);
 				}
-
 			}
 
+			// draw lights
 			for (int i = 0; i < (int)_lights->_lights.size(); i++) {
 				Light *light = _lights->_lights[i];
 				Matrix4x3 m = light->_matrix;
-				Vector3 pos = Vector3(m(0, 3), m(1, 3), m(2, 3));
+				m = invertMatrix(m);
+				//todo do this properly
+				Vector3 posOrigin = m * Vector3(0.0f, 0.0f, 0.0f);
+				float t = posOrigin.y;
+				posOrigin.y = posOrigin.z;
+				posOrigin.z = -t;
+
+				Vector3 posTarget = m * Vector3(0.0f, 0.0f, -100.0f);
+				t = posTarget.y;
+				posTarget.y = posTarget.z;
+				posTarget.z = -t;
+
 				Vector3 size = Vector3(5.0f, 5.0f, 5.0f);
 				int colorR = (light->_color.r * 31.0f);
 				int colorG = (light->_color.g * 31.0f);
 				int colorB = (light->_color.b * 31.0f);
 				int color = (colorR << 10) + (colorG << 5) + colorB;
-				drawBBox(pos - size, pos + size, _view, &_surface2, color);
 
+				drawBBox(posOrigin - size, posOrigin + size, _view, &_surface2, color);
+
+				Vector3 posOriginT = _view->calculateScreenPosition(posOrigin);
+				Vector3 posTargetT = _view->calculateScreenPosition(posTarget);
+				_surface2.drawLine(posOriginT.x, posOriginT.y, posTargetT.x, posTargetT.y, color);
+				_mainFont->drawColor(light->_name, _surface2, posOriginT.x, posOriginT.y, color);
+			}
+
+			//draw waypoints
+			for(int i = 0; i < _waypoints->_count; i++) {
+				Waypoint *waypoint = &_waypoints->_waypoints[i];
+				if(waypoint->_setId != _scene->getSetId())
+					continue;
+				Vector3 pos = waypoint->_position;
+				Vector3 size = Vector3(5.0f, 5.0f, 5.0f);
+				int color = 0b111111111111111;
+				drawBBox(pos - size, pos + size, _view, &_surface2, color);
+				Vector3 spos = _view->calculateScreenPosition(pos);
+				char waypointText[40];
+				sprintf(waypointText, "waypoint %i", i);
+				_mainFont->drawColor(waypointText, _surface2, spos.x, spos.y, color);
 			}
 #endif
 
 			_system->copyRectToScreen((const byte *)_surface2.getBasePtr(0, 0), _surface2.pitch, 0, 0, 640, 480);
 			_system->updateScreen();
 			_system->delayMillis(10);
+		}
+	}
+}
+
+void BladeRunnerEngine::actorsUpdate() {
+	int actorCount = (int)_gameInfo->getActorCount();
+	int setId = _scene->getSetId();
+
+	//TODO: original game updates every non-visible characters by updating only one character in one frame
+	if (setId != 89 || _gameVars[1] != 4 || _gameFlags->query(670) != 1 || !_aiScripts->IsInsideScript()) {
+		for (int i = 0; i < actorCount; i++) {
+			Actor *actor = _actors[i];
+			if (actor->getSetId() == setId) {
+				_aiScripts->Update(i);
+				actor->countdownTimersUpdate();
+			}
 		}
 	}
 }
@@ -777,8 +817,6 @@ void BladeRunnerEngine::handleMouseClick(int x, int y) {
 	int sceneObjectId = _sceneObjects->findByXYZ(&isClickable, &isObstacle, &isTarget, mousePosition.x, mousePosition.y, mousePosition.z, 1, 0, 1);
 	int exitIndex = _scene->_exits->getRegionAtXY(x, y);
 
-	debug("%d %d", sceneObjectId, exitIndex);
-
 	if ((sceneObjectId < 0 || sceneObjectId > 73) && exitIndex >= 0) {
 		handleMouseClickExit(x, y, exitIndex);
 		return;
@@ -810,28 +848,28 @@ void BladeRunnerEngine::handleMouseClick(int x, int y) {
 void BladeRunnerEngine::handleMouseClickExit(int x, int y, int exitIndex) {
 	// clickedOnExit(exitType, x, y);
 	debug("clicked on exit %d %d %d", exitIndex, x, y);
-	_script->ClickedOnExit(exitIndex);
+	_sceneScript->ClickedOnExit(exitIndex);
 }
 
 void BladeRunnerEngine::handleMouseClickRegion(int x, int y, int regionIndex) {
 	debug("clicked on region %d %d %d", regionIndex, x, y);
-	_script->ClickedOn2DRegion(regionIndex);
+	_sceneScript->ClickedOn2DRegion(regionIndex);
 }
 
 void BladeRunnerEngine::handleMouseClick3DObject(int x, int y, int objectId, bool isClickable, bool isTarget) {
 	const char *objectName = _scene->objectGetName(objectId);
 	debug("Clicked on object %s", objectName);
-	_script->ClickedOn3DObject(objectName, false);
+	_sceneScript->ClickedOn3DObject(objectName, false);
 }
 
 void BladeRunnerEngine::handleMouseClickItem(int x, int y, int itemId) {
 	debug("Clicked on item %d", itemId);
-	_script->ClickedOnItem(itemId, false);
+	_sceneScript->ClickedOnItem(itemId, false);
 }
 
 void BladeRunnerEngine::handleMouseClickActor(int x, int y, int actorId) {
 	debug("Clicked on actor %d", actorId);
-	_script->ClickedOnActor(actorId);
+	_sceneScript->ClickedOnActor(actorId);
 }
 
 void BladeRunnerEngine::gameWaitForActive() {

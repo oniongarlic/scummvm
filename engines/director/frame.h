@@ -127,14 +127,14 @@ private:
 	void playTransition(Score *score);
 	void playSoundChannel();
 	void renderSprites(Graphics::ManagedSurface &surface, bool renderTrail);
-	void renderText(Graphics::ManagedSurface &surface, uint16 spriteId, uint16 castId);
-	void renderText(Graphics::ManagedSurface &surface, uint16 spriteId, Common::SeekableSubReadStreamEndian *textStream, Common::Rect *textSize);
+	void renderText(Graphics::ManagedSurface &surface, uint16 spriteId, Common::Rect *textSize);
 	void renderShape(Graphics::ManagedSurface &surface, uint16 spriteId);
-	void renderButton(Graphics::ManagedSurface &surface, uint16 spriteId, uint16 textId);
+	void renderButton(Graphics::ManagedSurface &surface, uint16 spriteId);
 	void readPaletteInfo(Common::SeekableSubReadStreamEndian &stream);
 	void readSprite(Common::SeekableSubReadStreamEndian &stream, uint16 offset, uint16 size);
 	void readMainChannels(Common::SeekableSubReadStreamEndian &stream, uint16 offset, uint16 size);
 	Image::ImageDecoder *getImageFrom(uint16 spriteId);
+	Common::String readTextStream(Common::SeekableSubReadStreamEndian *textStream, TextCast *textCast);
 	void drawBackgndTransSprite(Graphics::ManagedSurface &target, const Graphics::Surface &sprite, Common::Rect &drawRect);
 	void drawMatteSprite(Graphics::ManagedSurface &target, const Graphics::Surface &sprite, Common::Rect &drawRect);
 	void drawGhostSprite(Graphics::ManagedSurface &target, const Graphics::Surface &sprite, Common::Rect &drawRect);

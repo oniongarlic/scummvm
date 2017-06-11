@@ -88,9 +88,10 @@ struct MacTextLine {
 
 class MacText {
 public:
-	MacText(Common::String s, MacWindowManager *wm, const Graphics::Font *font, int fgcolor, int bgcolor,
-				int maxWidth = -1, TextAlign textAlignment = kTextAlignLeft);
-
+	MacText(Common::String s, MacWindowManager *wm, const MacFont *font, int fgcolor, int bgcolor,
+			int maxWidth = -1, TextAlign textAlignment = kTextAlignLeft, int interlinear = 0);
+			// 0 pixels between the lines by default
+	~MacText();
 	void setInterLinear(int interLinear);
 
 	void draw(ManagedSurface *g, int x, int y, int w, int h, int xoff, int yoff);
@@ -113,7 +114,7 @@ private:
 	MacWindowManager *_wm;
 
 	Common::String _str;
-	const Graphics::Font *_font;
+	const MacFont *_macFont;
 	int _fgcolor, _bgcolor;
 
 	int _maxWidth;

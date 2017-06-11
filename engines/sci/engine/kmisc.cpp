@@ -617,7 +617,16 @@ reg_t kPlatform32(EngineState *s, int argc, reg_t *argv) {
 		kGetCDDrive    = 3
 	};
 
-	const Operation operation = argc > 0 ? (Operation)argv[0].toSint16() : kGetPlatform;
+	Operation operation;
+	if (getSciVersion() < SCI_VERSION_2_1_MIDDLE) {
+		if (argc == 0 || argv[0].toSint16() == 0) {
+			operation = kGetPlatform;
+		} else {
+			return NULL_REG;
+		}
+	} else {
+		operation = argc > 0 ? (Operation)argv[0].toSint16() : kGetPlatform;
+	}
 
 	switch (operation) {
 	case kGetPlatform:
@@ -638,10 +647,23 @@ reg_t kPlatform32(EngineState *s, int argc, reg_t *argv) {
 	case kGetColorDepth:
 		return make_reg(0, /* 256 color */ 2);
 	case kGetCDSpeed:
+		// The value `4` comes from Rama DOS resource.cfg installed in DOSBox,
+		// and seems to correspond to the highest expected CD speed value
+		return make_reg(0, 4);
 	case kGetCDDrive:
 	default:
-		return make_reg(0, 0);
+		return NULL_REG;
 	}
+}
+
+reg_t kWebConnect(EngineState *s, int argc, reg_t *argv) {
+	const Common::String baseUrl = "https://web.archive.org/web/1996/";
+	const Common::String gameUrl = argc > 0 ? s->_segMan->getString(argv[0]) : "http://www.sierra.com";
+	return make_reg(0, g_system->openUrl(baseUrl + gameUrl));
+}
+
+reg_t kWinExec(EngineState *s, int argc, reg_t *argv) {
+	return NULL_REG;
 }
 #endif
 

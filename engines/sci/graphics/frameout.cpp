@@ -65,11 +65,8 @@ GfxFrameout::GfxFrameout(SegManager *segMan, GfxPalette32 *palette, GfxTransitio
 	_cursor(cursor),
 	_segMan(segMan),
 	_transitions(transitions),
-	_benchmarkingFinished(false),
-	_throttleFrameOut(true),
 	_throttleState(0),
 	_remapOccurred(false),
-	_frameNowVisible(false),
 	_overdrawThreshold(0),
 	_palMorphIsOn(false) {
 
@@ -117,6 +114,7 @@ void GfxFrameout::run() {
 	CelObj::init();
 	Plane::init();
 	ScreenItem::init();
+	GfxText32::init();
 
 	// NOTE: This happens in SCI::InitPlane in the actual engine,
 	// and is a background fill plane to ensure hidden planes
@@ -126,98 +124,20 @@ void GfxFrameout::run() {
 	_planes.add(initPlane);
 }
 
-// SCI32 actually did not clear anything at all it seems on restore. The scripts actually cleared up
-// planes + screen items right before restoring. And after restoring they sync'd its internal planes list
-// as well.
 void GfxFrameout::clear() {
 	_planes.clear();
 	_visiblePlanes.clear();
 	_showList.clear();
 }
 
-// This is what Game::restore does, only needed when our ScummVM dialogs are patched in
-// It actually does one pass before actual restore deleting screen items + planes
-// And after restore it does another pass adding screen items + planes.
-// Attention: at least Space Quest 6's option plane seems to stay in memory right from the start and is not re-created.
-void GfxFrameout::syncWithScripts(bool addElements) {
-	EngineState *engineState = g_sci->getEngineState();
-	SegManager *segMan = engineState->_segMan;
-
-	// In case original save/restore dialogs are active, don't do anything
-	if (ConfMan.getBool("originalsaveload"))
-		return;
-
-	// Get planes list object
-	reg_t planesListObject = engineState->variables[VAR_GLOBAL][kGlobalVarPlanes];
-	reg_t planesListElements = readSelector(segMan, planesListObject, SELECTOR(elements));
-
-	List *planesList = segMan->lookupList(planesListElements);
-	reg_t planesNodeObject = planesList->first;
-
-	// Go through all elements of planes::elements
-	while (!planesNodeObject.isNull()) {
-		Node *planesNode = segMan->lookupNode(planesNodeObject);
-		reg_t planeObject = planesNode->value;
-
-		if (addElements) {
-			// Add this plane object
-			kernelAddPlane(planeObject);
-		}
-
-		reg_t planeCastsObject = readSelector(segMan, planeObject, SELECTOR(casts));
-		reg_t setListElements = readSelector(segMan, planeCastsObject, SELECTOR(elements));
-
-		// Now go through all elements of plane::casts::elements
-		List *planeCastsList = segMan->lookupList(setListElements);
-		reg_t planeCastsNodeObject = planeCastsList->first;
-
-		while (!planeCastsNodeObject.isNull()) {
-			Node *castsNode = segMan->lookupNode(planeCastsNodeObject);
-			reg_t castsObject = castsNode->value;
-
-			reg_t castsListElements = readSelector(segMan, castsObject, SELECTOR(elements));
-
-			List *castsList = segMan->lookupList(castsListElements);
-			reg_t castNodeObject = castsList->first;
-
-			while (!castNodeObject.isNull()) {
-				Node *castNode = segMan->lookupNode(castNodeObject);
-				reg_t castObject = castNode->value;
-
-				// read selector "-info-" of this object
-				// TODO: Seems to have been changed for SCI3
-				// Do NOT use getInfoSelector in here. SCI3 games did not use infoToa, but an actual selector.
-				// Maybe that selector is just a straight copy, but it needs to get verified/checked.
-				uint16 castInfoSelector = readSelectorValue(segMan, castObject, SELECTOR(_info_));
-
-				if (castInfoSelector & kInfoFlagViewInserted) {
-					if (addElements) {
-						// Flag set, so add this screen item
-						kernelAddScreenItem(castObject);
-					} else {
-						// Flag set, so delete this screen item
-						kernelDeleteScreenItem(castObject);
-					}
-				}
-
-				castNodeObject = castNode->succ;
-			}
-
-			planeCastsNodeObject = castsNode->succ;
-		}
-
-		if (!addElements) {
-			// Delete this plane object
-			kernelDeletePlane(planeObject);
-		}
-
-		planesNodeObject = planesNode->succ;
-	}
-}
-
 bool GfxFrameout::gameIsHiRes() const {
 	// QFG4 is always low resolution
 	if (g_sci->getGameId() == GID_QFG4) {
+		return false;
+	}
+
+	// PQ4 DOS floppy is low resolution only
+	if (g_sci->getGameId() == GID_PQ4 && !g_sci->isCD()) {
 		return false;
 	}
 
@@ -233,28 +153,6 @@ bool GfxFrameout::gameIsHiRes() const {
 	// All other games are either high resolution by default, or have a
 	// user-defined toggle
 	return ConfMan.getBool("enable_high_resolution_graphics");
-}
-
-#pragma mark -
-#pragma mark Benchmarking
-
-bool GfxFrameout::checkForFred(const reg_t object) {
-	const int16 viewId = readSelectorValue(_segMan, object, SELECTOR(view));
-	const SciGameId gameId = g_sci->getGameId();
-
-	if (gameId == GID_QFG4 && viewId == 9999) {
-		return true;
-	}
-
-	if (gameId != GID_QFG4 && viewId == -556) {
-		return true;
-	}
-
-	if (Common::String(_segMan->getObjectName(object)) == "fred") {
-		return true;
-	}
-
-	return false;
 }
 
 #pragma mark -
@@ -309,14 +207,6 @@ void GfxFrameout::deleteScreenItem(ScreenItem &screenItem, const reg_t planeObje
 }
 
 void GfxFrameout::kernelAddScreenItem(const reg_t object) {
-	// The "fred" object is used to test graphics performance;
-	// it is impacted by framerate throttling, so disable the
-	// throttling when this item is on the screen for the
-	// performance check to pass.
-	if (!_benchmarkingFinished && _throttleFrameOut && checkForFred(object)) {
-		_throttleFrameOut = false;
-	}
-
 	const reg_t planeObject = readSelector(_segMan, object, SELECTOR(plane));
 
 	_segMan->getObject(object)->setInfoSelectorFlag(kInfoFlagViewInserted);
@@ -356,15 +246,6 @@ void GfxFrameout::kernelUpdateScreenItem(const reg_t object) {
 }
 
 void GfxFrameout::kernelDeleteScreenItem(const reg_t object) {
-	// The "fred" object is used to test graphics performance;
-	// it is impacted by framerate throttling, so disable the
-	// throttling when this item is on the screen for the
-	// performance check to pass.
-	if (!_benchmarkingFinished && checkForFred(object)) {
-		_benchmarkingFinished = true;
-		_throttleFrameOut = true;
-	}
-
 	_segMan->getObject(object)->clearInfoSelectorFlag(kInfoFlagViewInserted);
 
 	const reg_t planeObject = readSelector(_segMan, object, SELECTOR(plane));
@@ -513,7 +394,7 @@ void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseR
 	// we must poll for mouse events instead, poll here so that the mouse gets
 	// updated with its current position at render time. If we do not do this,
 	// the mouse gets "stuck" during loops that do not make calls to kGetEvent,
-	// like transitions and the benchmarking loop at the start of every game.
+	// like transitions.
 	g_sci->getEventManager()->getSciEvent(SCI_EVENT_PEEK);
 
 	RobotDecoder &robotPlayer = g_sci->_video32->getRobotPlayer();
@@ -549,11 +430,6 @@ void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseR
 
 	_remapOccurred = _palette->updateForFrame();
 
-	// NOTE: SCI engine set this to false on each loop through the
-	// planelist iterator below. Since that is a waste, we only set
-	// it once.
-	_frameNowVisible = false;
-
 	for (PlaneList::size_type i = 0; i < _planes.size(); ++i) {
 		drawEraseList(eraseLists[i], *_planes[i]);
 		drawScreenItemList(screenItemLists[i]);
@@ -563,13 +439,11 @@ void GfxFrameout::frameOut(const bool shouldShowBits, const Common::Rect &eraseR
 		robotPlayer.frameAlmostVisible();
 	}
 
-	_palette->updateHardware(!shouldShowBits);
+	_palette->updateHardware();
 
 	if (shouldShowBits) {
 		showBits();
 	}
-
-	_frameNowVisible = true;
 
 	if (robotIsActive) {
 		robotPlayer.frameNowVisible();
@@ -610,7 +484,6 @@ void GfxFrameout::palMorphFrameOut(const int8 *styleRanges, PlaneShowStyle *show
 	}
 
 	_remapOccurred = _palette->updateForFrame();
-	_frameNowVisible = false;
 
 	for (PlaneList::size_type i = 0; i < _planes.size(); ++i) {
 		drawEraseList(eraseLists[i], *_planes[i]);
@@ -646,8 +519,6 @@ void GfxFrameout::palMorphFrameOut(const int8 *styleRanges, PlaneShowStyle *show
 		showBits();
 	}
 
-	_frameNowVisible = true;
-
 	for (PlaneList::iterator plane = _planes.begin(); plane != _planes.end(); ++plane) {
 		(*plane)->_redrawAllCount = getScreenCount();
 	}
@@ -668,9 +539,6 @@ void GfxFrameout::palMorphFrameOut(const int8 *styleRanges, PlaneShowStyle *show
 	}
 
 	_remapOccurred = _palette->updateForFrame();
-	// NOTE: During this second loop, `_frameNowVisible = false` is
-	// inside the next loop in SCI2.1mid
-	_frameNowVisible = false;
 
 	for (PlaneList::size_type i = 0; i < _planes.size(); ++i) {
 		drawEraseList(eraseLists[i], *_planes[i]);
@@ -679,10 +547,8 @@ void GfxFrameout::palMorphFrameOut(const int8 *styleRanges, PlaneShowStyle *show
 
 	_palette->submit(nextPalette);
 	_palette->updateFFrame();
-	_palette->updateHardware(false);
+	_palette->updateHardware();
 	showBits();
-
-	_frameNowVisible = true;
 }
 
 /**
@@ -1275,19 +1141,17 @@ void GfxFrameout::kernelFrameOut(const bool shouldShowBits) {
 }
 
 void GfxFrameout::throttle() {
-	if (_throttleFrameOut) {
-		uint8 throttleTime;
-		if (_throttleState == 2) {
-			throttleTime = 16;
-			_throttleState = 0;
-		} else {
-			throttleTime = 17;
-			++_throttleState;
-		}
-
-		g_sci->getEngineState()->speedThrottler(throttleTime);
-		g_sci->getEngineState()->_throttleTrigger = true;
+	uint8 throttleTime;
+	if (_throttleState == 2) {
+		throttleTime = 16;
+		_throttleState = 0;
+	} else {
+		throttleTime = 17;
+		++_throttleState;
 	}
+
+	g_sci->getEngineState()->speedThrottler(throttleTime);
+	g_sci->getEngineState()->_throttleTrigger = true;
 }
 
 void GfxFrameout::shakeScreen(int16 numShakes, const ShakeDirection direction) {

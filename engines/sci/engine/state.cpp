@@ -19,14 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
-
 #include "common/system.h"
 
 #include "sci/sci.h"	// for INCLUDE_OLDGFX
 #include "sci/debug.h"	// for g_debug_sleeptime_factor
-#include "sci/event.h"
-
 #include "sci/engine/file.h"
+#include "sci/engine/guest_additions.h"
 #include "sci/engine/kernel.h"
 #include "sci/engine/state.h"
 #include "sci/engine/selector.h"
@@ -84,12 +82,11 @@ void EngineState::reset(bool isRestoring) {
 		_memorySegmentSize = 0;
 		_fileHandles.resize(5);
 		abortScriptProcessing = kAbortNone;
+	} else {
+		g_sci->_guestAdditions->reset();
 	}
 
-	// reset delayed restore game functionality
-	_delayedRestoreGame = false;
-	_delayedRestoreGameId = 0;
-	_delayedRestoreFromLauncher = false;
+	_delayedRestoreGameId = -1;
 
 	executionStackBase = 0;
 	_executionStackPosChanged = false;
@@ -104,7 +101,9 @@ void EngineState::reset(bool isRestoring) {
 
 	gcCountDown = 0;
 
-	_throttleCounter = 0;
+#ifdef ENABLE_SCI32
+	_eventCounter = 0;
+#endif
 	_throttleLastTime = 0;
 	_throttleTrigger = false;
 	_gameIsBenchmarking = false;
@@ -120,7 +119,6 @@ void EngineState::reset(bool isRestoring) {
 	scriptGCInterval = GC_INTERVAL;
 
 	_videoState.reset();
-	_syncedAudioOptions = false;
 }
 
 void EngineState::speedThrottler(uint32 neededSleep) {
@@ -390,26 +388,29 @@ SciCallOrigin EngineState::getCurrentCallOrigin() const {
 	const Script *localScript = _segMan->getScriptIfLoaded(xs->local_segment);
 	int curScriptNr = localScript->getScriptNumber();
 
+	Selector debugSelector = xs->debugSelector;
+	int debugExportId = xs->debugExportId;
+
 	if (xs->debugLocalCallOffset != -1) {
 		// if lastcall was actually a local call search back for a real call
 		Common::List<ExecStack>::const_iterator callIterator = _executionStack.end();
 		while (callIterator != _executionStack.begin()) {
 			callIterator--;
 			const ExecStack &loopCall = *callIterator;
-			if ((loopCall.debugSelector != -1) || (loopCall.debugExportId != -1)) {
-				xs->debugSelector = loopCall.debugSelector;
-				xs->debugExportId = loopCall.debugExportId;
+			if (loopCall.debugSelector != -1 || loopCall.debugExportId != -1) {
+				debugSelector = loopCall.debugSelector;
+				debugExportId = loopCall.debugExportId;
 				break;
 			}
 		}
 	}
 
 	if (xs->type == EXEC_STACK_TYPE_CALL) {
-		if (xs->debugSelector != -1) {
-			curMethodName = g_sci->getKernel()->getSelectorName(xs->debugSelector);
-		} else if (xs->debugExportId != -1) {
+		if (debugSelector != -1) {
+			curMethodName = g_sci->getKernel()->getSelectorName(debugSelector);
+		} else if (debugExportId != -1) {
 			curObjectName = "";
-			curMethodName = Common::String::format("export %d", xs->debugExportId);
+			curMethodName = Common::String::format("export %d", debugExportId);
 		}
 	}
 

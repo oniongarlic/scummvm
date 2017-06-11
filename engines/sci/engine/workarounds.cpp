@@ -257,7 +257,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_CNICK_KQ,       -1,   700,  0,           "gcWindow", "open",                            NULL,    -1, { WORKAROUND_FAKE,   0 } }, // when entering the control menu, like in hoyle 3
 	{ GID_CNICK_KQ,      300,   303,  0,      "theDoubleCube", "<noname520>",                     NULL,     5, { WORKAROUND_FAKE,   0 } }, // while playing backgammon with doubling enabled - bug #6426 (same as the theDoubleCube::make workaround for Hoyle 3)
 	{ GID_CNICK_KQ,      300,   303,  0,      "theDoubleCube", "<noname519>",                     NULL,     9, { WORKAROUND_FAKE,   0 } }, // when accepting a double, while playing backgammon with doubling enabled (same as the theDoubleCube::accept workaround for Hoyle 3)
-	{ GID_CNICK_LAURABOW, -1,     0,  1,          "Character", "say",                             NULL,    -1, { WORKAROUND_FAKE,   0 } }, // Yatch, like in hoyle 3 - temps 504 and 505 - bug #6424
+	{ GID_CNICK_LAURABOW,500,     0,  1,          "<no name>", "<noname446>",                     NULL,    -1, { WORKAROUND_FAKE,   0 } }, // Yacht, like in hoyle 3 - temps 504 and 505 - bug #6424
 	{ GID_CNICK_LAURABOW, -1,   700,  0,                 NULL, "open",                            NULL,    -1, { WORKAROUND_FAKE,   0 } }, // when entering control menu - bug #6423 (same as the gcWindow workaround for Hoyle 3)
 	{ GID_CNICK_LAURABOW,100,   100,  0,                 NULL, "<noname144>",                     NULL,     1, { WORKAROUND_FAKE,   0 } }, // while playing domino - bug #6429 (same as the dominoHand2 workaround for Hoyle 3)
 	{ GID_CNICK_LAURABOW,100,   110,  0,                 NULL, "doit",                            NULL,    -1, { WORKAROUND_FAKE,   0 } }, // when changing the "Dominoes per hand" setting - bug #6430
@@ -270,6 +270,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_FREDDYPHARKAS,  -1,    31,  0,            "quitWin", "open",                            NULL,     5, { WORKAROUND_FAKE, 0xf } }, // is used as priority for game menu
 	{ GID_FREDDYPHARKAS, 540,   540,  0,          "WaverCode", "init",                            NULL,    -1, { WORKAROUND_FAKE,   0 } }, // Gun pratice mini-game - bug #5232
 	{ GID_GK1,            -1, 64950, -1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // sometimes when walk-clicking
+	{ GID_GK1,            -1, 64937, -1,         "GKControls", "dispatchEvent",                   NULL,     6, { WORKAROUND_FAKE,   0 } }, // when using keyboard navigation (tab) in the game settings and hitting 'enter' when over a slider
 	{ GID_GK2,            -1,    11,  0,                   "", "export 10",                       NULL,     3, { WORKAROUND_FAKE,   0 } }, // called when the game starts
 	{ GID_GK2,            -1,    11,  0,                   "", "export 10",                       NULL,     4, { WORKAROUND_FAKE,   0 } }, // called during the game
 	{ GID_HOYLE1,          4,   104,  0,   "GinRummyCardList", "calcRuns",                        NULL,     4, { WORKAROUND_FAKE,   0 } }, // Gin Rummy / right when the game starts
@@ -322,6 +323,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_KQ7,            -1, 64996,  0,               "User", "handleEvent",                     NULL,     1, { WORKAROUND_FAKE,   0 } }, // called when pushing a keyboard key
 	{ GID_KQ7,          2450,  2450,  0,           "exBridge", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // called when walking up to the throne in the cave in chapter 2
 	{ GID_KQ7,          2450,  2450,  0,       "maliciaComes", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // when malicia appears at the southeast exit of the main chamber near the end of chapter 2
+	{ GID_KQ7,          5300,  5302,  0,          "putOnMask", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // in chapter 3, after using the mask on Valanice, click the jackalope hair in inventory - bug Trac#9759
 	{ GID_KQ7,          6060, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // after entering the harp crystal in chapter 5
 	{ GID_LAURABOW,       37,     0,  0,                "CB1", "doit",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // when going up the stairs - bug #5084
 	{ GID_LAURABOW,       -1,   967,  0,             "myIcon", "cycle",                           NULL,     1, { WORKAROUND_FAKE,   0 } }, // having any portrait conversation coming up - initial bug #4971
@@ -330,6 +332,7 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_LAURABOW2,      -1,    90,  1,        "MuseumActor", "init",                            NULL,     6, { WORKAROUND_FAKE,   0 } }, // Random actors in museum - bug #5197
 	{ GID_LAURABOW2,     240,   240,  0,     "sSteveAnimates", "changeState",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // Steve Dorian's idle animation at the docks - bug #5028
 	{ GID_LAURABOW2,      -1,   928,  0,                 NULL, "startText",                       NULL,     0, { WORKAROUND_FAKE,   0 } }, // gets caused by Text+Audio support (see script patcher)
+	{ GID_LIGHTHOUSE,     -1,    17,  0,                 NULL, "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // when operating the joystick in the puzzle to lower the bridge at the entrance to the workshop, or the joystick that moves the robotic arm in the mini-sub
 	{ GID_LONGBOW,        -1,     0,  0,            "Longbow", "restart",                         NULL,     0, { WORKAROUND_FAKE,   0 } }, // When canceling a restart game - bug #5244
 	{ GID_LONGBOW,        -1,   213,  0,              "clear", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When giving an answer using the druid hand sign code in any room
 	{ GID_LONGBOW,        -1,   213,  0,             "letter", "handleEvent", sig_uninitread_longbow_1,   1, { WORKAROUND_FAKE,   0 } }, // When using the druid hand sign code in any room - bug #5035
@@ -342,9 +345,12 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_LSL6,           -1,    85,  0,          "washcloth", "doVerb",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // washcloth in inventory
 	{ GID_LSL6,           -1,   928, -1,           "Narrator", "startText",                       NULL,     0, { WORKAROUND_FAKE,   0 } }, // used by various objects that are even translated in foreign versions, that's why we use the base-class
 	{ GID_LSL6HIRES,      -1,    85,  0,             "LL6Inv", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // when creating a new game
+	{ GID_LSL6HIRES,      -1,    85,  0,          "washcloth", "doVerb",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // when interacting with the wet washcloth in the inventory - Trac#9811
 	{ GID_LSL6HIRES,      -1, 64950,  1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // at least when entering swimming pool area
 	{ GID_LSL6HIRES,      -1, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // during the game
 	{ GID_LSL7,           -1, 64017,  0,             "oFlags", "clear",                           NULL,     0, { WORKAROUND_FAKE,   0 } }, // demo version, when it starts, and whenever the player chooses to go to the "Strip Liar's Dice" mini game
+	{ GID_LSL7,           -1, 64017,  0,        "oActorFlags", "clear",                           NULL,     0, { WORKAROUND_FAKE,   0 } }, // after an NPC walks off the left side of the screen at the Clothing Optional Pool
+	{ GID_LSL7,           -1, 64892,  0,      "oEventHandler", "killAllEventHogs",                NULL,     1, { WORKAROUND_FAKE,   0 } }, // when looking at the swordfish in the kitchen
 	{ GID_MOTHERGOOSE256, -1,     0,  0,                 "MG", "doit",                            NULL,     5, { WORKAROUND_FAKE,   0 } }, // SCI1.1: When moving the cursor all the way to the left during the game - bug #5224
 	{ GID_MOTHERGOOSE256, -1,   992,  0,             "AIPath", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // Happens in the demo and full version. In the demo, it happens when walking two screens from mother goose's house to the north. In the full version, it happens in rooms 7 and 23 - bug #5269
 	{ GID_MOTHERGOOSE256, 90,    90,  0,        "introScript", "changeState",                     NULL,    65, { WORKAROUND_FAKE,   0 } }, // SCI1(CD): At the very end, after the game is completed and restarted - bug #5626
@@ -382,10 +388,12 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_QFG4,           -1,    15, -1,     "charInitScreen", "dispatchEvent",                   NULL,     5, { WORKAROUND_FAKE,   0 } }, // floppy version, when viewing the character screen
 	{ GID_QFG4,           -1, 64917, -1,       "controlPlane", "setBitmap",                       NULL,     3, { WORKAROUND_FAKE,   0 } }, // floppy version, when entering the game menu
 	{ GID_QFG4,           -1, 64917, -1,              "Plane", "setBitmap",                       NULL,     3, { WORKAROUND_FAKE,   0 } }, // floppy version, happens sometimes in fight scenes
+	{ GID_QFG4,          380,    80, -1,           "myButton", "select",                          NULL,     2, { WORKAROUND_FAKE,   1 } }, // CD version, when clicking on a puzzle piece for the keyhole scrambled picture puzzle
 	{ GID_QFG4,          520, 64950,  0,             "fLake2", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // CD version, at the lake, when meeting the Rusalka and attempting to leave
+	{ GID_QFG4,          780, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // CD version, walking down to the monastery basement
 	{ GID_QFG4,          800, 64950,  0,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // CD version, in the room with the spider pillar, when climbing on the pillar
-	{ GID_RAMA,           -1, 64950, -1,   "InterfaceFeature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When clicking on the main game interface
-	{ GID_RAMA,           -1, 64950, -1,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When clicking on main menu buttons
+	{ GID_RAMA,           -1, 64950, -1,                 NULL, "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When clicking on the main game interface, or the main menu buttons, or mousing over things in the main game window
+	{ GID_RAMA,           -1, 64923, -1,              "Inset", "init",                            NULL,     0, { WORKAROUND_FAKE,   0 } }, // When receiving a message on the pocket computer at the start of the game
 	{ GID_SHIVERS,        -1,   952,  0,       "SoundManager", "stop",                            NULL,     2, { WORKAROUND_FAKE,   0 } }, // Just after Sierra logo
 	{ GID_SHIVERS,        -1, 64950,  0,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When clicking on the locked door at the beginning
 	{ GID_SHIVERS,        -1, 64950,  0,               "View", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // When clicking on the gargoyle eye at the beginning
@@ -408,9 +416,12 @@ const SciWorkaroundEntry uninitializedReadWorkarounds[] = {
 	{ GID_SQ6,            -1, 64950, -1,            "Feature", "handleEvent",                     NULL,     0, { WORKAROUND_FAKE,   0 } }, // called when pressing "Start game" in the main menu, when entering the Orion's Belt bar (room 300), and perhaps other places
 	{ GID_SQ6,            -1, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // during the game
 	{ GID_SQ6,           210,   210,  0,       "buttonSecret", "doVerb",                          NULL,     0, { WORKAROUND_FAKE,   0 } }, // after winning the first round of stooge fighter 3
+	{ GID_SQ6,            -1, 64994, -1,               "Game", "restore",                         NULL,     1, { WORKAROUND_FAKE,   0 } }, // When trying to load an invalid save game from the launcher
 	{ GID_TORIN,          -1, 64017,  0,             "oFlags", "clear",                           NULL,     0, { WORKAROUND_FAKE,   0 } }, // entering Torin's home in the French version
 	{ GID_TORIN,       10000, 64029,  0,          "oMessager", "nextMsg",                         NULL,     3, { WORKAROUND_FAKE,   0 } }, // start of chapter one
+	{ GID_TORIN,          -1, 64892,  0,      "oEventHandler", "killAllEventHogs",                NULL,     1, { WORKAROUND_FAKE,   0 } }, // when pressing the hint button when the game is about to transition to a new room (race condition) - Trac#9810
 	{ GID_TORIN,       20100, 64964,  0,              "DPath", "init",                            NULL,     1, { WORKAROUND_FAKE,   0 } }, // going down the cliff at the first screen of chapter 2 (washing area)
+	{ GID_TORIN,       61100, 64888,  0,              "Torin", "autorestore",                     NULL,    11, { WORKAROUND_FAKE,   0 } }, // after attempting to restore a save game saved with the wrong game version
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -554,9 +565,10 @@ const SciWorkaroundEntry kDisposeScript_workarounds[] = {
 	{ GID_LSL2,           -1,    54,  0,               "rm54", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // Amiga: room 55, script tries to kDisposeScript an object (does not happen for DOS) - bug #6818
 	{ GID_MOTHERGOOSEHIRES,37,  337,  0,        "rhymeScript", "changeState",               NULL,     0, { WORKAROUND_IGNORE,    0 } }, // after the rhyme with the king
 	{ GID_QFG1,           -1,    64,  0,               "rm64", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when leaving graveyard, parameter 0 is an object
-	{ GID_SQ4,           150,   151,  0,        "fightScript", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // during fight with Vohaul, parameter 0 is an object
-	{ GID_SQ4,           150,   152,  0,       "driveCloseUp", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when choosing "beam download", parameter 0 is an object
+	{ GID_SQ4,            -1,   151,  0,        "fightScript", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // during fight with Vohaul, parameter 0 is an object, happens in at least room 150
+	{ GID_SQ4,            -1,   152,  0,       "driveCloseUp", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when choosing "beam download", parameter 0 is an object, may happen in room 150 and 900 (900 see bug #9812)
 	{ GID_SQ4,           150,   152,  0,                   "", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // when choosing "beam download"... in Russian version - bug #5573
+	{ GID_SQ4,           900,   152,  0,                   "", "dispose",                   NULL,     0, { WORKAROUND_IGNORE,    0 } }, // same as above, but for "game over" room
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -724,6 +736,7 @@ const SciWorkaroundEntry kIsObject_workarounds[] = {
 //    gameID,           room,script,lvl,          object-name, method-name,    local-call-signature, index,                workaround
 const SciWorkaroundEntry kListAt_workarounds[] = {
 	{ GID_HOYLE5,        100, 64999,  0,           "theHands", "at",                           NULL,     0, { WORKAROUND_FAKE, 0 } }, // After the first hand is dealt in Crazy Eights game in demo, an object is passed instead of a number
+	{ GID_LIGHTHOUSE,     24, 64999,  0,           "LightInv", "at",                           NULL,     0, { WORKAROUND_FAKE, 0 } }, // When taking the car keys from the table at the start of the game
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -747,6 +760,12 @@ const SciWorkaroundEntry kNewWindow_workarounds[] = {
 };
 
 //    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kPalVarySetVary_workarounds[] = {
+	{ GID_KQ7,          4600,  4600,  0,      "sRosDogDeath2", "changeState",               NULL,     0, { WORKAROUND_FAKE, 0 } }, // when dying by letting the dog find you under the house. Trac#9763
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
 const SciWorkaroundEntry kPalVarySetPercent_workarounds[] = {
 	{ GID_GK1,           370,   370,  0,        "graceComeOut", "changeState",              NULL,     0, { WORKAROUND_STILLCALL, 0 } }, // there's an extra parameter in GK1, when changing chapters. This extra parameter seems to be a bug or just unimplemented functionality, as there's no visible change from the original in the chapter change room
 	SCI_WORKAROUNDENTRY_TERMINATOR
@@ -761,6 +780,13 @@ const SciWorkaroundEntry kPalVaryMergeStart_workarounds[] = {
 //    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
 const SciWorkaroundEntry kPlatform32_workarounds[] = {
 	{ GID_HOYLE5,         -1,     0,  0,             "hoyle4", "newRoom",                   NULL,     0, { WORKAROUND_FAKE,      1 } }, // at the start of the game, incorrectly uses SCI16 calling convention for kPlatform
+	SCI_WORKAROUNDENTRY_TERMINATOR
+};
+
+//    gameID,           room,script,lvl,          object-name, method-name, local-call-signature, index,                workaround
+const SciWorkaroundEntry kRandom_workarounds[] = {
+	{ GID_TORIN,       51400, 64928,  0,              "Blink", "init",                      NULL,    -1, { WORKAROUND_FAKE,      0 } }, // at the end of the game, during the cutscene after touching the collar on Lycentia; Trac#9779
+	{ GID_TORIN,       51400, 64928,  0,              "Blink", "cycleDone",                 NULL,    -1, { WORKAROUND_FAKE,      0 } }, // at the end of the game, during the cutscene after touching the collar on Lycentia; Trac#9779
 	SCI_WORKAROUNDENTRY_TERMINATOR
 };
 
@@ -874,7 +900,7 @@ const SciWorkaroundEntry kScrollWindowAdd_workarounds[] = {
 
 SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroundEntry *workaroundList, SciCallOrigin *trackOrigin) {
 	const EngineState *state = g_sci->getEngineState();
-	ExecStack *lastCall = state->xs;
+	const ExecStack *lastCall = state->xs;
 	const SciGameId gameId = g_sci->getGameId();
 
 	*trackOrigin = state->getCurrentCallOrigin();
@@ -929,7 +955,7 @@ SciWorkaroundSolution trackOriginAndFindWorkaround(int index, const SciWorkaroun
 							}
 
 							// now actually check for signature match
-							if (g_sci->getScriptPatcher()->verifySignature(curLocalCallOffset, workaround->localCallSignature, "workaround signature", curScriptPtr, curScriptSize)) {
+							if (g_sci->getScriptPatcher()->verifySignature(curLocalCallOffset, workaround->localCallSignature, "workaround signature", SciSpan<const byte>(curScriptPtr, curScriptSize))) {
 								matched = true;
 							}
 

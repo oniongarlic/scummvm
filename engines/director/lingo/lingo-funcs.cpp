@@ -30,6 +30,7 @@
 #include "director/lingo/lingo.h"
 #include "director/lingo/lingo-gr.h"
 #include "director/sound.h"
+#include "director/util.h"
 
 namespace Director {
 
@@ -180,34 +181,38 @@ void Lingo::func_goto(Datum &frame, Datum &movie) {
 	if (movie.type != VOID) {
 		movie.toString();
 
+		Common::String movieFilename = convertPath(*movie.u.s);
 		Common::String cleanedFilename;
-
-		for (const byte *p = (const byte *)movie.u.s->c_str(); *p; p++)
-			if (*p >= 0x20 && *p <= 0x7f)
-				cleanedFilename += (const char) *p;
 
 		bool fileExists = false;
 
 		if (_vm->getPlatform() == Common::kPlatformMacintosh) {
 			Common::MacResManager resMan;
-			if (resMan.open(*movie.u.s)) {
+
+			for (const byte *p = (const byte *)movieFilename.c_str(); *p; p++)
+				if (*p >= 0x20 && *p <= 0x7f)
+					cleanedFilename += (const char) *p;
+
+			if (resMan.open(movieFilename)) {
 				fileExists = true;
-				cleanedFilename = *movie.u.s;
-			} else if (!movie.u.s->equals(cleanedFilename) && resMan.open(cleanedFilename)) {
+				cleanedFilename = movieFilename;
+			} else if (!movieFilename.equals(cleanedFilename) && resMan.open(cleanedFilename)) {
 				fileExists = true;
 			}
 		} else {
 			Common::File file;
-			if (file.open(*movie.u.s)) {
+			cleanedFilename = movieFilename + ".MMM";
+
+			if (file.open(movieFilename)) {
 				fileExists = true;
-				cleanedFilename = *movie.u.s;
-			} else if (!movie.u.s->equals(cleanedFilename) && file.open(cleanedFilename)) {
+				cleanedFilename = movieFilename;
+			} else if (!movieFilename.equals(cleanedFilename) && file.open(cleanedFilename)) {
 				fileExists = true;
 			}
 		}
 
 		if (!fileExists) {
-			warning("Movie %s does not exist", movie.u.s->c_str());
+			warning("Movie %s does not exist", movieFilename.c_str());
 			return;
 		}
 

@@ -278,7 +278,7 @@ static const SciKernelMapSubEntry kPalVary_subops[] = {
 	{ SIG_SCI16,           5, MAP_CALL(PalVaryChangeTicks),        "i",                    NULL },
 	{ SIG_SCI16,           6, MAP_CALL(PalVaryPauseResume),        "i",                    NULL },
 #ifdef ENABLE_SCI32
-	{ SIG_SCI32,           0, MAP_CALL(PalVarySetVary),            "i(i)(i)(i)(i)",        NULL },
+	{ SIG_SCI32,           0, MAP_CALL(PalVarySetVary),            "i(i)(i)(i)(i)",        kPalVarySetVary_workarounds },
 	{ SIG_SCI32,           1, MAP_CALL(PalVarySetPercent),         "(i)(i)",               kPalVarySetPercent_workarounds },
 	{ SIG_SCI32,           2, MAP_CALL(PalVaryGetPercent),         "",                     NULL },
 	{ SIG_SCI32,           3, MAP_CALL(PalVaryOff),                "",                     NULL },
@@ -306,7 +306,7 @@ static const SciKernelMapSubEntry kPalette_subops[] = {
 	{ SIG_SCI32,          1, MAP_CALL(PaletteSetFromResource32),  "i(i)",                 NULL },
 	{ SIG_SCI32,          2, MAP_CALL(PaletteSetFade),            "iii",                  NULL },
 	{ SIG_SCI32,          3, MAP_CALL(PaletteFindColor32),        "iii",                  NULL },
-	{ SIG_SCI3,           4, MAP_CALL(PaletteSetGamma),           "i",                    NULL },
+	{ SIG_SCI32,          4, MAP_CALL(PaletteSetGamma),           "i",                    NULL },
 #endif
 	SCI_SUBOPENTRY_TERMINATOR
 };
@@ -332,7 +332,7 @@ static const SciKernelMapSubEntry kFileIO_subops[] = {
 	{ SIG_SINCE_SCI21MID, 16, MAP_CALL(FileIOWriteWord),           "ii",                   NULL },
 	{ SIG_SINCE_SCI21MID, 17, "FileIOCheckFreeSpace", kCheckFreeSpace, "i(r)",             NULL },
 	{ SIG_SINCE_SCI21MID, 18, MAP_CALL(FileIOGetCWD),              "r",                    NULL },
-	{ SIG_SINCE_SCI21MID, 19, MAP_CALL(FileIOIsValidDirectory),    "r",                    NULL },
+	{ SIG_SINCE_SCI21MID, 19, MAP_CALL(FileIOIsValidDirectory),    "[ro]",                 NULL },
 #endif
 	SCI_SUBOPENTRY_TERMINATOR
 };
@@ -369,7 +369,7 @@ static const SciKernelMapSubEntry kSave_subops[] = {
 
 //    version,         subId, function-mapping,                    signature,              workarounds
 static const SciKernelMapSubEntry kFont_subops[] = {
-	{ SIG_SINCE_SCI21MID,  0, MAP_CALL(SetFontHeight),             "i",                    NULL },
+	{ SIG_SINCE_SCI21MID,  0, MAP_CALL(PointSize),                 "i",                    NULL },
 	{ SIG_SINCE_SCI21MID,  1, MAP_CALL(SetFontRes),                "ii",                   NULL },
 	SCI_SUBOPENTRY_TERMINATOR
 };
@@ -474,6 +474,7 @@ static const SciKernelMapSubEntry kPlayVMD_subops[] = {
 	{ SIG_SINCE_SCI21,    18, MAP_DUMMY(PlayVMDStopBlobs),         "",                     NULL },
 	{ SIG_SINCE_SCI21,    21, MAP_CALL(PlayVMDSetBlackoutArea),    "iiii",                 NULL },
 	{ SIG_SINCE_SCI21,    23, MAP_CALL(PlayVMDRestrictPalette),    "ii",                   NULL },
+	{ SIG_SCI3,           27, MAP_CALL(PlayVMDSetPlane),           "i(i)",                 NULL },
 	{ SIG_SCI3,           28, MAP_EMPTY(PlayVMDSetPreload),        "i",                    NULL },
 	SCI_SUBOPENTRY_TERMINATOR
 };
@@ -491,6 +492,15 @@ static const SciKernelMapSubEntry kRobot_subops[] = {
 	{ SIG_SINCE_SCI21,    10, MAP_CALL(RobotPause),                "",                     NULL },
 	{ SIG_SINCE_SCI21,    11, MAP_CALL(RobotGetFrameNo),           "",                     NULL },
 	{ SIG_SINCE_SCI21,    12, MAP_CALL(RobotSetPriority),          "i",                    NULL },
+	SCI_SUBOPENTRY_TERMINATOR
+};
+
+//    version,         subId, function-mapping,                    signature,              workarounds
+static const SciKernelMapSubEntry kPlayDuck_subops[] = {
+	{ SIG_SCI3,            1, MAP_CALL(PlayDuckPlay),              "iiiii",                NULL },
+	{ SIG_SCI3,            2, MAP_CALL(PlayDuckSetFrameOut),       "i",                    NULL },
+	{ SIG_SCI3,            5, MAP_CALL(PlayDuckClose),             "",                     NULL },
+	{ SIG_SCI3,            6, MAP_CALL(PlayDuckSetVolume),         "i",                    NULL },
 	SCI_SUBOPENTRY_TERMINATOR
 };
 
@@ -538,7 +548,7 @@ static const SciKernelMapSubEntry kString_subops[] = {
 	{ SIG_THRU_SCI21MID,   8, MAP_CALL(ArrayDuplicate),            "r",                    NULL },
 	{ SIG_THRU_SCI21MID,   9, MAP_CALL(StringGetData),             "[0or]",                NULL },
 	{ SIG_THRU_SCI21MID,  10, MAP_CALL(StringLength),              "r",                    NULL },
-	{ SIG_THRU_SCI21MID,  11, MAP_CALL(StringFormat),              "r(.*)",                NULL },
+	{ SIG_THRU_SCI21MID,  11, MAP_CALL(StringFormat),              "[ro](.*)",             NULL },
 	{ SIG_THRU_SCI21MID,  12, MAP_CALL(StringFormatAt),            "r[ro](.*)",            NULL },
 	{ SIG_THRU_SCI21MID,  13, MAP_CALL(StringToInteger),           "r",                    NULL },
 	{ SIG_THRU_SCI21MID,  14, MAP_CALL(StringTrim),                "ri(i)",                NULL },
@@ -548,8 +558,8 @@ static const SciKernelMapSubEntry kString_subops[] = {
 	{ SIG_THRU_SCI21MID,  18, MAP_CALL(StringReplaceSubstringEx),  "rrrr",                 NULL },
 
 	{ SIG_SINCE_SCI21LATE, 8, MAP_CALL(StringLength),              "r",                    NULL },
-	{ SIG_SINCE_SCI21LATE, 9, MAP_CALL(StringFormat),              "r(.*)",                NULL },
-	{ SIG_SINCE_SCI21LATE,10, MAP_CALL(StringFormatAt),            "rr(.*)",               NULL },
+	{ SIG_SINCE_SCI21LATE, 9, MAP_CALL(StringFormat),              "[ro](.*)",             NULL },
+	{ SIG_SINCE_SCI21LATE,10, MAP_CALL(StringFormatAt),            "r[ro](.*)",            NULL },
 	{ SIG_SINCE_SCI21LATE,11, MAP_CALL(StringToInteger),           "r",                    NULL },
 	{ SIG_SINCE_SCI21LATE,12, MAP_CALL(StringTrim),                "ri(i)",                NULL },
 	{ SIG_SINCE_SCI21LATE,13, MAP_CALL(StringToUpperCase),         "r",                    NULL },
@@ -758,7 +768,7 @@ static SciKernelMapEntry s_kernelMap[] = {
 	{ MAP_CALL(Portrait),          SIG_EVERYWHERE,           "i(.*)",                 NULL,            NULL }, // subop
 	{ MAP_CALL(PrevNode),          SIG_EVERYWHERE,           "n",                     NULL,            NULL },
 	{ MAP_CALL(PriCoord),          SIG_EVERYWHERE,           "i",                     NULL,            NULL },
-	{ MAP_CALL(Random),            SIG_EVERYWHERE,           "(i)(i)",                NULL,            NULL },
+	{ MAP_CALL(Random),            SIG_EVERYWHERE,           "(i)(i)",                NULL,            kRandom_workarounds },
 	{ MAP_CALL(ReadNumber),        SIG_EVERYWHERE,           "r",                     NULL,            kReadNumber_workarounds },
 	{ MAP_CALL(RemapColors),       SIG_SCI11, SIGFOR_ALL,    "i(i)(i)(i)(i)",         NULL,            NULL },
 #ifdef ENABLE_SCI32
@@ -768,12 +778,13 @@ static SciKernelMapEntry s_kernelMap[] = {
 	{ MAP_CALL(RespondsTo),        SIG_EVERYWHERE,           ".i",                    NULL,            NULL },
 	{ MAP_CALL(RestartGame),       SIG_EVERYWHERE,           "",                      NULL,            NULL },
 #ifdef ENABLE_SCI32
-	{ "RestoreGame", kRestoreGame32, SIG_THRU_SCI21EARLY, SIGFOR_ALL, "[r0]i[r0]",    NULL,            NULL },
+	{ "RestoreGame", kRestoreGame32, SIG_THRU_SCI21EARLY, SIGFOR_ALL, "ri[r0]",       NULL,            NULL },
 #endif
 	{ MAP_CALL(RestoreGame),       SIG_EVERYWHERE,           "[r0]i[r0]",             NULL,            NULL },
 	{ MAP_CALL(Said),              SIG_EVERYWHERE,           "[r0]",                  NULL,            NULL },
 #ifdef ENABLE_SCI32
-	{ "SaveGame", kSaveGame32,     SIG_THRU_SCI21EARLY, SIGFOR_ALL, "[r0]i[r0][r0]",  NULL,            NULL },
+	{ "SaveGame", kSaveGame32,     SIG_THRU_SCI21EARLY, SIGFOR_ALL, "ri[r0][r0]",     NULL,            NULL },
+	{ MAP_CALL(ScummVMSaveLoad),   SIG_SCI32, SIGFOR_ALL,    "([iro])([ro0])",        NULL,            NULL },
 #endif
 	{ MAP_CALL(SaveGame),          SIG_SCI16, SIGFOR_ALL,    "[r0]i[r0](r0)",         NULL,            NULL },
 	{ MAP_CALL(ScriptID),          SIG_EVERYWHERE,           "[io](i)",               NULL,            NULL },
@@ -927,7 +938,7 @@ static SciKernelMapEntry s_kernelMap[] = {
 	{ MAP_DUMMY(InvertRect),       SIG_THRU_SCI21EARLY, SIGFOR_ALL, "(.*)",           NULL,            NULL },
 	{ MAP_DUMMY(InputText),        SIG_EVERYWHERE,           "(.*)",                  NULL,            NULL },
 	{ MAP_CALL(TextWidth),         SIG_THRU_SCI21EARLY, SIGFOR_ALL, "ri",             NULL,            NULL },
-	{ MAP_DUMMY(PointSize),        SIG_EVERYWHERE,           "(.*)",                  NULL,            NULL },
+	{ MAP_CALL(PointSize),         SIG_THRU_SCI21EARLY, SIGFOR_ALL, "i",              NULL,            NULL },
 
 	// SCI2.1 Kernel Functions
 	{ "CheckCDisc", kCheckCD,      SIG_SCI21EARLY, SIGFOR_ALL, "(i)",                 NULL,            NULL },
@@ -1008,7 +1019,9 @@ static SciKernelMapEntry s_kernelMap[] = {
 	{ MAP_CALL(MorphOn),            SIG_EVERYWHERE,           "",                     NULL,            NULL },
 
 	// SCI3 Kernel Functions
-	{ MAP_CALL(PlayDuck),           SIG_EVERYWHERE,           "(.*)",                 NULL,            NULL },
+	{ MAP_CALL(PlayDuck),           SIG_SCI3, SIGFOR_ALL,     "(.*)",                 kPlayDuck_subops,NULL },
+	{ MAP_CALL(WebConnect),         SIG_SCI3, SIGFOR_ALL,     "(r)",                  NULL,            NULL },
+	{ MAP_CALL(WinExec),            SIG_SCI3, SIGFOR_ALL,     "r",                    NULL,            NULL },
 #endif
 
 	{ NULL, NULL,                   SIG_EVERYWHERE,           NULL,                   NULL,            NULL }
@@ -1302,8 +1315,8 @@ static const char *const sci2_default_knames[] = {
 	/*0x86*/ "CheckIntegrity",	  // for debugging
 	/*0x87*/ "ObjectIntersect",
 	/*0x88*/ "MarkMemory",	      // for debugging
-	/*0x89*/ "TextWidth",		  // for debugging(?), only in SCI2, not used in any SCI2 game
-	/*0x8a*/ "PointSize",	      // for debugging(?), only in SCI2, not used in any SCI2 game
+	/*0x89*/ "TextWidth",
+	/*0x8a*/ "PointSize",
 
 	/*0x8b*/ "AddLine",
 	/*0x8c*/ "DeleteLine",
@@ -1458,7 +1471,7 @@ static const char *const sci21_default_knames[] = {
 	/*0x7e*/ "Table",
 	/*0x7f*/ "WinHelp",		// Windows only
 	/*0x80*/ "Dummy",
-	/*0x81*/ "Dummy",		// called when changing rooms in most SCI2.1 games (e.g. KQ7, GK2, MUMG deluxe, Phant1)
+	/*0x81*/ "Empty",       // called when clicking the On-line Help button in Phant2 control panel
 	/*0x82*/ "Dummy",
 	/*0x83*/ "PrintDebug",	// debug function, used by Shivers (demo and full)
 	/*0x84*/ "Dummy",
@@ -1490,7 +1503,8 @@ static const char *const sci21_default_knames[] = {
 	/*0x9d*/ "Dummy",
 	/*0x9e*/ "WebConnect",
 	/*0x9f*/ "Dummy",
-	/*0xa0*/ "PlayDuck"
+	/*0xa0*/ "PlayDuck",
+	/*0xa1*/ "WinExec"
 };
 
 #endif
@@ -1567,7 +1581,6 @@ static const opcode_format g_base_opcode_formats[128][4] = {
 	// 7C - 7F / minussgi, minussli, minussti, minusspi
 	{Script_Global}, {Script_Local}, {Script_Temp}, {Script_Param}
 };
-#undef END
 
 } // End of namespace Sci
 

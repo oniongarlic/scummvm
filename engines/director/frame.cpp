@@ -29,6 +29,7 @@
 #include "image/bmp.h"
 
 #include "director/director.h"
+#include "director/cachedmactext.h"
 #include "director/cast.h"
 #include "director/frame.h"
 #include "director/images.h"
@@ -559,7 +560,6 @@ void Frame::renderSprites(Graphics::ManagedSurface &surface, bool renderTrail) {
 				continue;
 
 			CastType castType = kCastTypeNull;
-			Cast *cast = nullptr;
 			if (_vm->getVersion() < 4) {
 				debugC(1, kDebugImages, "Channel: %d type: %d", i, _sprites[i]->_spriteType);
 				switch (_sprites[i]->_spriteType) {
@@ -594,9 +594,9 @@ void Frame::renderSprites(Graphics::ManagedSurface &surface, bool renderTrail) {
 			if (castType == kCastShape) {
 				renderShape(surface, i);
 			} else if (castType == kCastText) {
-				renderText(surface, i, _vm->getVersion() < 4 ? _sprites[i]->_castId + 1024 : cast->children[0].index);
+				renderText(surface, i, NULL);
 			} else if (castType == kCastButton) {
-				renderButton(surface, i, _vm->getVersion() < 4 ? _sprites[i]->_castId + 1024 : cast->children[0].index);
+				renderButton(surface, i);
 			} else {
 				if (!_sprites[i]->_bitmapCast) {
 					warning("No cast ID for sprite %d", i);
@@ -611,7 +611,7 @@ void Frame::renderSprites(Graphics::ManagedSurface &surface, bool renderTrail) {
 				int x = _sprites[i]->_startPoint.x - regX + rectLeft;
 				int y = _sprites[i]->_startPoint.y - regY + rectTop;
 				int height = _sprites[i]->_height;
-				int width = _sprites[i]->_width;
+				int width = _vm->getVersion() > 4 ? _sprites[i]->_bitmapCast->initialRect.width() : _sprites[i]->_width;
 
 				Common::Rect drawRect(x, y, x + width, y + height);
 				addDrawRect(i, drawRect);
@@ -657,7 +657,7 @@ void Frame::renderShape(Graphics::ManagedSurface &surface, uint16 spriteId) {
 	inkBasedBlit(surface, tmpSurface, spriteId, shapeRect);
 }
 
-void Frame::renderButton(Graphics::ManagedSurface &surface, uint16 spriteId, uint16 textId) {
+void Frame::renderButton(Graphics::ManagedSurface &surface, uint16 spriteId) {
 	uint16 castId = _sprites[spriteId]->_castId;
 	ButtonCast *button = _vm->getCurrentScore()->_loadedButtons->getVal(castId);
 
@@ -671,7 +671,7 @@ void Frame::renderButton(Graphics::ManagedSurface &surface, uint16 spriteId, uin
 
 	Common::Rect textRect(0, 0, width, height);
 	// pass the rect of the button into the label.
-	renderText(surface, spriteId, _vm->getMainArchive()->getResource(MKTAG('S', 'T', 'X', 'T'), textId), &textRect);
+	renderText(surface, spriteId, &textRect);
 
 	// TODO: review all cases to confirm if we should use text height.
 	// height = textRect.height();
@@ -726,116 +726,25 @@ void Frame::inkBasedBlit(Graphics::ManagedSurface &targetSurface, const Graphics
 	}
 }
 
-void Frame::renderText(Graphics::ManagedSurface &surface, uint16 spriteId, uint16 castId) {
-	Common::SeekableSubReadStreamEndian *textStream = NULL;
 
-	if (_vm->getCurrentScore()->_movieArchive->hasResource(MKTAG('S', 'T', 'X', 'T'), castId)) {
-		textStream = _vm->getCurrentScore()->_movieArchive->getResource(MKTAG('S', 'T', 'X', 'T'), castId);
-	} else if (_vm->getSharedSTXT() != nullptr) {
-		textStream = _vm->getSharedSTXT()->getVal(spriteId + 1024);
-	}
+void Frame::renderText(Graphics::ManagedSurface &surface, uint16 spriteId, Common::Rect *textSize) {
+	TextCast *textCast = _sprites[spriteId]->_buttonCast != nullptr ? (TextCast*)_sprites[spriteId]->_buttonCast : _sprites[spriteId]->_textCast;
 
-	renderText(surface, spriteId, textStream, NULL);
-}
-
-void Frame::renderText(Graphics::ManagedSurface &surface, uint16 spriteId, Common::SeekableSubReadStreamEndian *textStream, Common::Rect *textSize) {
-	if (textStream == NULL)
-		return;
-
-	uint16 castId = _sprites[spriteId]->_castId;
-	TextCast *textCast = _vm->getCurrentScore()->_loadedText->getVal(castId);
-
-	uint32 unk1 = textStream->readUint32();
-	uint32 strLen = textStream->readUint32();
-	uint32 dataLen = textStream->readUint32();
-	Common::String text;
-
-	for (uint32 i = 0; i < strLen; i++) {
-		byte ch = textStream->readByte();
-		if (ch == 0x0d) {
-			ch = '\n';
-		}
-		text += ch;
-	}
-
-	Common::String ftext;
-
-	debugC(3, kDebugText, "renderText: unk1: %d strLen: %d dataLen: %d textlen: %u", unk1, strLen, dataLen, text.size());
-	if (strLen < 200)
-		debugC(3, kDebugText, "text: '%s'", text.c_str());
-
-	uint16 formattingCount = textStream->readUint16();
-	uint32 prevPos = 0;
-
-	while (formattingCount) {
-		uint32 formatStartOffset = textStream->readUint32();
-		uint16 unk1f = textStream->readUint16();
-		uint16 unk2f = textStream->readUint16();
-
-		textCast->fontId = textStream->readUint16();
-		textCast->textSlant = textStream->readByte();
-		byte unk3f = textStream->readByte();
-		textCast->fontSize = textStream->readUint16();
-
-		textCast->palinfo1 = textStream->readUint16();
-		textCast->palinfo2 = textStream->readUint16();
-		textCast->palinfo3 = textStream->readUint16();
-
-		debugC(3, kDebugText, "renderText: formattingCount: %u, formatStartOffset: %d, unk1: %d unk2: %d, fontId: %d, textSlant: %d",
-				formattingCount, formatStartOffset, unk1f, unk2f, textCast->fontId, textCast->textSlant);
-
-		debugC(3, kDebugText, "        unk3: %d, fontSize: %d, p0: %x p1: %x p2: %x", unk3f, textCast->fontSize,
-				textCast->palinfo1, textCast->palinfo2, textCast->palinfo3);
-
-		assert (prevPos <= formatStartOffset); // If this is triggered, we have to implement sorting
-
-		while (prevPos != formatStartOffset) {
-			char f = text.firstChar();
-			ftext += text.firstChar();
-			text.deleteChar(0);
-
-			if (f == '\001')	// Insert two \001s as a replacement
-				ftext += '\001';
-
-			prevPos++;
-
-			debugCN(4, kDebugText, "%c", f);
-		}
-
-		debugCN(4, kDebugText, "*");
-
-		ftext += Common::String::format("\001\015%c%c%c%c%c%c%c%c%c%c%c%c",
-						(textCast->fontId >> 8) & 0xff, textCast->fontId & 0xff,
-						textCast->textSlant & 0xff, unk3f & 0xff,
-						(textCast->fontSize >> 8) & 0xff, textCast->fontSize & 0xff,
-						(textCast->palinfo1 >> 8) & 0xff, textCast->palinfo1 & 0xff,
-						(textCast->palinfo2 >> 8) & 0xff, textCast->palinfo2 & 0xff,
-						(textCast->palinfo3 >> 8) & 0xff, textCast->palinfo3 & 0xff);
-
-		formattingCount--;
-	}
-
-	ftext += text;
-
-	debugC(4, kDebugText, "%s", text.c_str());
-
-	uint16 boxShadow = (uint16)textCast->boxShadow;
-	uint16 borderSize = (uint16)textCast->borderSize;
-	if (textSize != NULL)
-		borderSize = 0;
-	uint16 padding = (uint16)textCast->gutterSize;
-	uint16 textShadow = (uint16)textCast->textShadow;
-
-	//uint32 rectLeft = textCast->initialRect.left;
-	//uint32 rectTop = textCast->initialRect.top;
 
 	int x = _sprites[spriteId]->_startPoint.x; // +rectLeft;
 	int y = _sprites[spriteId]->_startPoint.y; // +rectTop;
 	int height = textCast->initialRect.height(); //_sprites[spriteId]->_height;
-	int width = textCast->initialRect.width(); //_sprites[spriteId]->_width;
+	int width;
 
-	if (_vm->getVersion() >= 4 && textSize != NULL)
-		width = textCast->initialRect.right;
+	if (_vm->getVersion() >= 4) {
+		if (textSize == NULL)
+			width = textCast->initialRect.right;
+		else {
+			width = textSize->width();
+		}
+	} else {
+		width = textCast->initialRect.width(); //_sprites[spriteId]->_width;
+	}
 
 	if (_vm->getCurrentScore()->_fontMap.contains(textCast->fontId)) {
 		// We need to make sure that the Shared Cast fonts have been loaded in?
@@ -848,35 +757,28 @@ void Frame::renderText(Graphics::ManagedSurface &surface, uint16 spriteId, Commo
 		return;
 	}
 
-	Graphics::MacFont macFont = Graphics::MacFont(textCast->fontId, textCast->fontSize, textCast->textSlant);
+	Graphics::MacFont *macFont = new Graphics::MacFont(textCast->fontId, textCast->fontSize, textCast->textSlant);
 
-	const Graphics::Font *font = _vm->_wm->_fontMan->getFont(macFont);
+	debugC(3, kDebugText, "renderText: x: %d y: %d w: %d h: %d font: '%s'", x, y, width, height, _vm->_wm->_fontMan->getFontName(*macFont));
 
-	debugC(3, kDebugText, "renderText: x: %d y: %d w: %d h: %d font: '%s'", x, y, width, height, _vm->_wm->_fontMan->getFontName(macFont));
+	uint16 boxShadow = (uint16)textCast->boxShadow;
+	uint16 borderSize = (uint16)textCast->borderSize;
+	if (textSize != NULL)
+		borderSize = 0;
+	uint16 padding = (uint16)textCast->gutterSize;
+	uint16 textShadow = (uint16)textCast->textShadow;
 
-	int alignment = (int)textCast->textAlign;
-	if (alignment == -1)
-		alignment = 3;
-	else
-		alignment++;
+	//uint32 rectLeft = textCast->initialRect.left;
+	//uint32 rectTop = textCast->initialRect.top;
 
-	if (_vm->getVersion() >= 4) {
-		if (textSize == NULL)
-			width = textCast->initialRect.right;
-		else {
-			width = textSize->width();
-		}
-	}
-
-	Graphics::MacText mt(ftext, _vm->_wm, font, 0x00, 0xff, width, (Graphics::TextAlign)alignment);
-	mt.setInterLinear(1);
-	mt.render();
-	const Graphics::ManagedSurface *textSurface = mt.getSurface();
+	textCast->cachedMacText->clip(width);
+	textCast->cachedMacText->setWm(_vm->_wm); // TODO this is not a good place to do it
+	const Graphics::ManagedSurface *textSurface = textCast->cachedMacText->getSurface();
 
 	height = textSurface->h;
 	if (textSize != NULL) {
 		// TODO: this offset could be due to incorrect fonts loaded!
-		textSize->bottom = height + mt.getLineCount();
+		textSize->bottom = height + textCast->cachedMacText->getLineCount();
 	}
 
 	uint16 textX = 0, textY = 0;

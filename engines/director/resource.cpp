@@ -20,7 +20,9 @@
  *
  */
 
+#include "common/config-manager.h"
 #include "common/macresman.h"
+
 #include "graphics/macgui/macwindowmanager.h"
 #include "graphics/macgui/macfontmanager.h"
 
@@ -38,7 +40,10 @@ Archive *DirectorEngine::createArchive() {
 		else
 			return new RIFXArchive();
 	} else {
-		return new RIFFArchive();
+		if (getVersion() < 4)
+			return new RIFFArchive();
+		else
+			return new RIFXArchive();
 	}
 }
 
@@ -76,6 +81,7 @@ void DirectorEngine::loadEXE(const Common::String movie) {
 	exeStream->seek(exeStream->readUint32LE());
 
 	switch (getVersion()) {
+	case 2:
 	case 3:
 		loadEXEv3(exeStream);
 		break;
@@ -100,16 +106,51 @@ void DirectorEngine::loadEXEv3(Common::SeekableReadStream *stream) {
 
 	stream->skip(5); // unknown
 
-	stream->readUint32LE(); // Main MMM size
+	uint32 mmmSize = stream->readUint32LE(); // Main MMM size
+
 	Common::String mmmFileName = stream->readPascalString();
 	Common::String directoryName = stream->readPascalString();
 
 	debugC(1, kDebugLoading, "Main MMM: '%s'", mmmFileName.c_str());
 	debugC(1, kDebugLoading, "Directory Name: '%s'", directoryName.c_str());
+	debugC(1, kDebugLoading, "Main mmmSize: %d (0x%x)", mmmSize, mmmSize);
+
+	if (mmmSize) {
+		uint32 riffOffset = stream->pos();
+
+		debugC(1, kDebugLoading, "RIFF offset: %d (%x)", riffOffset, riffOffset);
+
+		if (ConfMan.getBool("dump_scripts")) {
+			Common::DumpFile out;
+			byte *buf = (byte *)malloc(mmmSize);
+			stream->read(buf, mmmSize);
+			stream->seek(riffOffset);
+			Common::String fname = Common::String::format("./dumps/%s", mmmFileName.c_str());
+
+
+			if (!out.open(fname.c_str())) {
+				warning("Can not open dump file %s", fname.c_str());
+				return;
+			}
+
+			out.write(buf, mmmSize);
+
+			out.flush();
+			out.close();
+
+			free(buf);
+		}
+
+
+		_mainArchive = new RIFFArchive();
+
+		if (!_mainArchive->openStream(stream, riffOffset))
+			error("Failed to load RIFF from EXE");
+
+		return;
+	}
 
 	openMainArchive(mmmFileName);
-
-	delete stream;
 }
 
 void DirectorEngine::loadEXEv4(Common::SeekableReadStream *stream) {
@@ -231,8 +272,10 @@ void DirectorEngine::loadSharedCastsFrom(Common::String filename) {
 	if (cast.size() > 0) {
 		debug(0, "****** Loading %d CASt resources", cast.size());
 
-		for (Common::Array<uint16>::iterator iterator = cast.begin(); iterator != cast.end(); ++iterator)
-			_sharedScore->loadCastData(*shardcst->getResource(MKTAG('C','A','S','t'), *iterator), *iterator, NULL);
+		for (Common::Array<uint16>::iterator iterator = cast.begin(); iterator != cast.end(); ++iterator) {
+			Resource res = shardcst->getResourceDetail(MKTAG('C', 'A', 'S', 't'), *iterator);
+			_sharedScore->loadCastData(*shardcst->getResource(MKTAG('C', 'A', 'S', 't'), *iterator), *iterator, &res);
+		}
 	}
 
 	Common::Array<uint16> vwci = shardcst->getResourceIDList(MKTAG('V', 'W', 'C', 'I'));

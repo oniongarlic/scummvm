@@ -571,6 +571,14 @@ Common::SaveFileManager *OSystem_SDL::getSavefileManager() {
 #endif
 }
 
+//Not specified in base class
+Common::String OSystem_SDL::getScreenshotsPath() {
+	Common::String path = ConfMan.get("screenshotpath");
+	if (!path.empty() && !path.hasSuffix("/"))
+		path += "/";
+	return path;
+}
+
 #ifdef USE_OPENGL
 
 const OSystem::GraphicsMode *OSystem_SDL::getSupportedGraphicsModes() const {

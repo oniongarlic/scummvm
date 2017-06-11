@@ -21,6 +21,7 @@
  */
 
 #include "common/system.h"
+#include "common/translation.h"
 
 #include "engines/util.h"
 #include "graphics/cursorman.h"
@@ -32,6 +33,7 @@
 #include "sci/event.h"
 #include "sci/resource.h"
 #include "sci/engine/features.h"
+#include "sci/engine/guest_additions.h"
 #include "sci/engine/savegame.h"
 #include "sci/engine/state.h"
 #include "sci/engine/selector.h"
@@ -69,7 +71,7 @@ static int16 adjustGraphColor(int16 color) {
 }
 
 void showScummVMDialog(const Common::String &message) {
-	GUI::MessageDialog dialog(message, "OK");
+	GUI::MessageDialog dialog(message, _("OK"));
 	dialog.runModal();
 }
 
@@ -397,9 +399,7 @@ reg_t kWait(EngineState *s, int argc, reg_t *argv) {
 
 	s->wait(sleep_time);
 
-	if (s->_delayedRestoreGame) {
-		// delayed restore game from ScummVM menu got triggered
-		gamestate_delayedrestore(s);
+	if (g_sci->_guestAdditions->kWaitHook()) {
 		return NULL_REG;
 	}
 
@@ -982,12 +982,12 @@ reg_t kDrawControl(EngineState *s, int argc, reg_t *argv) {
 		if (!changeDirButton.isNull()) {
 			// check if checkDirButton is still enabled, in that case we are called the first time during that room
 			if (!(readSelectorValue(s->_segMan, changeDirButton, SELECTOR(state)) & SCI_CONTROLS_STYLE_DISABLED)) {
-				showScummVMDialog("Characters saved inside ScummVM are shown "
+				showScummVMDialog(_("Characters saved inside ScummVM are shown "
 						"automatically. Character files saved in the original "
 						"interpreter need to be put inside ScummVM's saved games "
 						"directory and a prefix needs to be added depending on which "
 						"game it was saved in: 'qfg1-' for Quest for Glory 1, 'qfg2-' "
-						"for Quest for Glory 2. Example: 'qfg2-thief.sav'.");
+						"for Quest for Glory 2. Example: 'qfg2-thief.sav'."));
 			}
 		}
 

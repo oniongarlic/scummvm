@@ -28,6 +28,7 @@
 #include "backends/graphics/opengl/pipelines/shader.h"
 #include "backends/graphics/opengl/shader.h"
 
+#include "common/array.h"
 #include "common/textconsole.h"
 #include "common/translation.h"
 #include "common/algorithm.h"
@@ -41,6 +42,10 @@
 #ifdef USE_OSD
 #include "graphics/fontman.h"
 #include "graphics/font.h"
+#endif
+
+#ifdef USE_PNG
+#include "image/png.h"
 #endif
 
 namespace OpenGL {
@@ -402,7 +407,7 @@ void OpenGLGraphicsManager::updateScreen() {
 
 	// Update changes to textures.
 	_gameScreen->updateGLTexture();
-	if (_cursor) {
+	if (_cursorVisible && _cursor) {
 		_cursor->updateGLTexture();
 	}
 	_overlay->updateGLTexture();
@@ -1302,7 +1307,7 @@ const Graphics::Font *OpenGLGraphicsManager::getFontOSD() {
 }
 #endif
 
-void OpenGLGraphicsManager::saveScreenshot(const Common::String &filename) const {
+bool OpenGLGraphicsManager::saveScreenshot(const Common::String &filename) const {
 	const uint width  = _outputScreenWidth;
 	const uint height = _outputScreenHeight;
 
@@ -1311,30 +1316,35 @@ void OpenGLGraphicsManager::saveScreenshot(const Common::String &filename) const
 	// Since we use a 3 byte per pixel mode, we can use width % 4 here, since
 	// it is equal to 4 - (width * 3) % 4. (4 - (width * Bpp) % 4, is the
 	// usual way of computing the padding bytes required).
+	// GL_PACK_ALIGNMENT is 4, so this line padding is required for PNG too
 	const uint linePaddingSize = width % 4;
 	const uint lineSize        = width * 3 + linePaddingSize;
 
-	// Allocate memory for screenshot
-	uint8 *pixels = new uint8[lineSize * height];
+	Common::DumpFile out;
+	if (!out.open(filename)) {
+		return false;
+	}
 
-	// Get pixel data from OpenGL buffer
-	GL_CALL(glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels));
+	Common::Array<uint8> pixels;
+	pixels.resize(lineSize * height);
+	GL_CALL(glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, &pixels.front()));
 
+#ifdef USE_PNG
+	const Graphics::PixelFormat format(3, 8, 8, 8, 0, 16, 8, 0, 0);
+	Graphics::Surface data;
+	data.init(width, height, lineSize, &pixels.front(), format);
+	return Image::writePNG(out, data, true);
+#else
 	// BMP stores as BGR. Since we can't assume that GL_BGR is supported we
 	// will swap the components from the RGB we read to BGR on our own.
 	for (uint y = height; y-- > 0;) {
-		uint8 *line = pixels + y * lineSize;
+		uint8 *line = &pixels.front() + y * lineSize;
 
 		for (uint x = width; x > 0; --x, line += 3) {
 			SWAP(line[0], line[2]);
 		}
 	}
 
-	// Open file
-	Common::DumpFile out;
-	out.open(filename);
-
-	// Write BMP header
 	out.writeByte('B');
 	out.writeByte('M');
 	out.writeUint32LE(height * lineSize + 54);
@@ -1351,12 +1361,10 @@ void OpenGLGraphicsManager::saveScreenshot(const Common::String &filename) const
 	out.writeUint32LE(0);
 	out.writeUint32LE(0);
 	out.writeUint32LE(0);
+	out.write(&pixels.front(), pixels.size());
 
-	// Write pixel data to BMP
-	out.write(pixels, lineSize * height);
-
-	// Free allocated memory
-	delete[] pixels;
+	return true;
+#endif
 }
 
 } // End of namespace OpenGL

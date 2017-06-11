@@ -31,7 +31,7 @@
 #include "bladerunner/items.h"
 #include "bladerunner/settings.h"
 #include "bladerunner/scene_objects.h"
-#include "bladerunner/script/script.h"
+#include "bladerunner/script/scene.h"
 #include "bladerunner/slice_renderer.h"
 
 #include "common/str.h"
@@ -78,11 +78,11 @@ bool Scene::open(int setId, int sceneId, bool isLoadingGame) {
 	_vqaPlayer = new VQAPlayer(_vm);
 
 	Common::String sceneName = _vm->_gameInfo->getSceneName(sceneId);
-	if (!_vm->_script->open(sceneName))
+	if (!_vm->_sceneScript->Open(sceneName))
 		return false;
 
 	if (!isLoadingGame)
-		_vm->_script->InitializeScene();
+		_vm->_sceneScript->InitializeScene();
 
 	Common::String setResourceName = Common::String::format("%s-MIN.SET", sceneName.c_str());
 	if (!_set->open(setResourceName))
@@ -93,7 +93,7 @@ bool Scene::open(int setId, int sceneId, bool isLoadingGame) {
 	if (isLoadingGame) {
 		// TODO: Advance VQA frame
 		if (sceneId >= 73 && sceneId <= 76)
-			_vm->_script->SceneLoaded();
+			_vm->_sceneScript->SceneLoaded();
 		return true;
 	}
 
@@ -105,12 +105,12 @@ bool Scene::open(int setId, int sceneId, bool isLoadingGame) {
 		_defaultLoopSet = true;
 		_specialLoopAtEnd = false;
 	}
-	_vm->_scene->advanceFrame(_vm->_surface1, _vm->_zBuffer1);
+	_vm->_scene->advanceFrame(_vm->_surface1);
 
 	_vm->_playerActor->setAtXYZ(_actorStartPosition, _actorStartFacing);
-	//_vm->_playerActor->setSetId(setId);
+	_vm->_playerActor->setSetId(setId);
 
-	_vm->_script->SceneLoaded();
+	_vm->_sceneScript->SceneLoaded();
 
 	_vm->_sceneObjects->clear();
 
@@ -120,7 +120,7 @@ bool Scene::open(int setId, int sceneId, bool isLoadingGame) {
 		Actor *actor = _vm->_actors[i];
 		if (actor->getSetId() == setId) {
 			_vm->_sceneObjects->addActor(
-				   i,
+				   i + SCENE_OBJECTS_ACTORS_OFFSET,
 				   actor->getBoundingBox(),
 				   actor->getScreenRectangle(),
 				   1,
@@ -137,7 +137,7 @@ bool Scene::open(int setId, int sceneId, bool isLoadingGame) {
 	// TODO: calculate walking obstacles??
 
 	if (_specialLoopMode) {
-		_vm->_script->PlayerWalkedIn();
+		_vm->_sceneScript->PlayerWalkedIn();
 	}
 
 	return true;
@@ -151,7 +151,7 @@ bool Scene::close(bool isLoadingGame) {
 
 	//_vm->_policeMaze->clear(!isLoadingGame);
 	if (isLoadingGame) {
-		_vm->_script->PlayerWalkedOut();
+		_vm->_sceneScript->PlayerWalkedOut();
 	}
 
 	//	if (SceneScript_isLoaded() && !SceneScript_unload()) {
@@ -168,11 +168,11 @@ bool Scene::close(bool isLoadingGame) {
 	return result;
 }
 
-int Scene::advanceFrame(Graphics::Surface &surface, uint16 *&zBuffer) {
+int Scene::advanceFrame(Graphics::Surface &surface) {
 	int frame = _vqaPlayer->update();
 	if (frame >= 0) {
 		surface.copyFrom(*_vqaPlayer->getSurface());
-		memcpy(zBuffer, _vqaPlayer->getZBuffer(), 640 * 480 * 2);
+		_vqaPlayer->updateZBuffer(_vm->_zbuffer);
 		_vqaPlayer->updateView(_vm->_view);
 		_vqaPlayer->updateLights(_vm->_lights);
 	}
@@ -251,14 +251,14 @@ bool Scene::objectGetBoundingBox(int objectId, BoundingBox *boundingBox) {
 void Scene::objectSetIsClickable(int objectId, bool isClickable, bool sceneLoaded) {
 	_set->objectSetIsClickable(objectId, isClickable);
 	if (sceneLoaded) {
-		_vm->_sceneObjects->setIsClickable(objectId + 198, isClickable);
+		_vm->_sceneObjects->setIsClickable(objectId + SCENE_OBJECTS_OBJECTS_OFFSET, isClickable);
 	}
 }
 
 void Scene::objectSetIsObstacle(int objectId, bool isObstacle, bool sceneLoaded, bool updateWalkpath) {
 	_set->objectSetIsObstacle(objectId, isObstacle);
 	if (sceneLoaded) {
-		_vm->_sceneObjects->setIsObstacle(objectId + 198, isObstacle);
+		_vm->_sceneObjects->setIsObstacle(objectId + SCENE_OBJECTS_OBJECTS_OFFSET, isObstacle);
 		if (updateWalkpath) {
 			_vm->_sceneObjects->updateObstacles();
 		}
@@ -270,7 +270,7 @@ void Scene::objectSetIsObstacleAll(bool isObstacle, bool sceneLoaded) {
 	for (i = 0; i < (int)_set->getObjectCount(); i++) {
 		_set->objectSetIsObstacle(i, isObstacle);
 		if (sceneLoaded) {
-			_vm->_sceneObjects->setIsObstacle(i + 198, isObstacle);
+			_vm->_sceneObjects->setIsObstacle(i + SCENE_OBJECTS_OBJECTS_OFFSET, isObstacle);
 		}
 	}
 }
@@ -278,7 +278,7 @@ void Scene::objectSetIsObstacleAll(bool isObstacle, bool sceneLoaded) {
 void Scene::objectSetIsTarget(int objectId, bool isTarget, bool sceneLoaded) {
 	_set->objectSetIsTarget(objectId, isTarget);
 	if (sceneLoaded) {
-		_vm->_sceneObjects->setIsTarget(objectId + 198, isTarget);
+		_vm->_sceneObjects->setIsTarget(objectId + SCENE_OBJECTS_OBJECTS_OFFSET, isTarget);
 	}
 }
 

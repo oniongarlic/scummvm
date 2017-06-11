@@ -38,7 +38,7 @@
 namespace Sci {
 
 SciMusic::SciMusic(SciVersion soundVersion, bool useDigitalSFX)
-	: _soundVersion(soundVersion), _soundOn(true), _masterVolume(0), _globalReverb(0), _useDigitalSFX(useDigitalSFX) {
+	: _soundVersion(soundVersion), _soundOn(true), _masterVolume(15), _globalReverb(0), _useDigitalSFX(useDigitalSFX) {
 
 	// Reserve some space in the playlist, to avoid expensive insertion
 	// operations
@@ -70,10 +70,9 @@ void SciMusic::init() {
 	Common::Platform platform = g_sci->getPlatform();
 	uint32 deviceFlags = MDT_PCSPK | MDT_PCJR | MDT_ADLIB | MDT_MIDI;
 
-	// Default to MIDI in SCI2.1+ games, as many don't have AdLib support.
-	// Also, default to MIDI for Windows versions of SCI1.1 games, as their
+	// Default to MIDI for Windows versions of SCI1.1 games, as their
 	// soundtrack is written for GM.
-	if (getSciVersion() >= SCI_VERSION_2_1_EARLY || g_sci->_features->useAltWinGMSound())
+	if (g_sci->_features->useAltWinGMSound())
 		deviceFlags |= MDT_PREFER_GM;
 
 	// Currently our CMS implementation only supports SCI1(.1)
@@ -345,16 +344,16 @@ void SciMusic::soundInitSnd(MusicEntry *pSnd) {
 	if (track) {
 		// Play digital sample
 		if (track->digitalChannelNr != -1) {
-			byte *channelData = track->channels[track->digitalChannelNr].data;
+			const SciSpan<const byte> &channelData = track->channels[track->digitalChannelNr].data;
 			delete pSnd->pStreamAud;
 			byte flags = Audio::FLAG_UNSIGNED;
 			// Amiga SCI1 games had signed sound data
 			if (_soundVersion >= SCI_VERSION_1_EARLY && g_sci->getPlatform() == Common::kPlatformAmiga)
 				flags = 0;
 			int endPart = track->digitalSampleEnd > 0 ? (track->digitalSampleSize - track->digitalSampleEnd) : 0;
-			pSnd->pStreamAud = Audio::makeRawStream(channelData + track->digitalSampleStart,
-								track->digitalSampleSize - track->digitalSampleStart - endPart,
-								track->digitalSampleRate, flags, DisposeAfterUse::NO);
+			const uint size = track->digitalSampleSize - track->digitalSampleStart - endPart;
+			pSnd->pStreamAud = Audio::makeRawStream(channelData.getUnsafeDataAt(track->digitalSampleStart),
+								size, track->digitalSampleRate, flags, DisposeAfterUse::NO);
 			assert(pSnd->pStreamAud);
 			delete pSnd->pLoopStream;
 			pSnd->pLoopStream = 0;
@@ -485,10 +484,7 @@ void SciMusic::soundPlay(MusicEntry *pSnd) {
 	if (pSnd->isSample) {
 #ifdef ENABLE_SCI32
 		if (_soundVersion >= SCI_VERSION_2_1_EARLY) {
-			g_sci->_audio32->stop(ResourceId(kResourceTypeAudio, pSnd->resourceId), pSnd->soundObj);
-
-			g_sci->_audio32->play(kNoExistingChannel, ResourceId(kResourceTypeAudio, pSnd->resourceId), true, pSnd->loop != 0 && pSnd->loop != 1, pSnd->volume, pSnd->soundObj, false);
-
+			g_sci->_audio32->restart(ResourceId(kResourceTypeAudio, pSnd->resourceId), true, pSnd->loop != 0 && pSnd->loop != 1, pSnd->volume, pSnd->soundObj, false);
 			return;
 		} else
 #endif
@@ -743,6 +739,14 @@ void SciMusic::soundToggle(MusicEntry *pSnd, bool pause) {
 }
 
 uint16 SciMusic::soundGetMasterVolume() {
+	if (ConfMan.getBool("mute")) {
+		// When a game is muted, the master volume is set to zero so that
+		// mute applies to external MIDI devices, but this should not be
+		// communicated to the game as it will cause the UI to be drawn with
+		// the wrong (zero) volume for music
+		return (ConfMan.getInt("music_volume") + 1) * MUSIC_MASTERVOLUME_MAX / Audio::Mixer::kMaxMixerVolume;
+	}
+
 	return _masterVolume;
 }
 

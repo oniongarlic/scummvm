@@ -26,7 +26,6 @@
 #include "common/util.h"                 // for ARRAYSIZE
 #include "common/system.h"               // for g_system
 #include "engine.h"                      // for Engine, g_engine
-#include "engines/util.h"                // for initGraphics
 #include "sci/console.h"                 // for Console
 #include "sci/engine/features.h"         // for GameFeatures
 #include "sci/engine/state.h"            // for EngineState
@@ -50,6 +49,25 @@
 namespace Graphics { struct Surface; }
 
 namespace Sci {
+
+/**
+ * @returns true if the player should quit
+ */
+static bool flushEvents(EventManager *eventMan) {
+	// Flushing all the keyboard and mouse events out of the event manager
+	// keeps events queued from before the start of playback from accidentally
+	// activating a video stop flag
+	for (;;) {
+		const SciEvent event = eventMan->getSciEvent(SCI_EVENT_KEYBOARD | SCI_EVENT_MOUSE_PRESS | SCI_EVENT_MOUSE_RELEASE | SCI_EVENT_HOT_RECTANGLE | SCI_EVENT_QUIT);
+		if (event.type == SCI_EVENT_NONE) {
+			break;
+		} else if (event.type == SCI_EVENT_QUIT) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 #pragma mark SEQPlayer
 
@@ -267,9 +285,8 @@ void AVIPlayer::init() {
 		// have a 24bpp mode but just directed VFW to display videos instead)
 		g_sci->_gfxCursor32->hide();
 
-		const Buffer &currentBuffer = g_sci->_gfxFrameout->getCurrentBuffer();
 		const Graphics::PixelFormat format = _decoder->getPixelFormat();
-		initGraphics(currentBuffer.screenWidth, currentBuffer.screenHeight, g_sci->_gfxFrameout->_isHiRes, &format);
+		g_sci->_gfxFrameout->setPixelFormat(format);
 
 		if (_pixelDouble) {
 			const int16 width = _drawRect.width();
@@ -319,10 +336,8 @@ AVIPlayer::IOStatus AVIPlayer::close() {
 	_scaleBuffer = nullptr;
 
 	if (_decoder->getPixelFormat().bytesPerPixel != 1) {
-		const bool isHiRes = g_sci->_gfxFrameout->_isHiRes;
-		const Buffer &currentBuffer = g_sci->_gfxFrameout->getCurrentBuffer();
 		const Graphics::PixelFormat format = Graphics::PixelFormat::createFormatCLUT8();
-		initGraphics(currentBuffer.screenWidth, currentBuffer.screenHeight, isHiRes, &format);
+		g_sci->_gfxFrameout->setPixelFormat(format);
 		g_sci->_gfxCursor32->unhide();
 	}
 
@@ -441,6 +456,7 @@ void AVIPlayer::renderFrame() const {
 		}
 
 		g_system->updateScreen();
+		g_sci->getSciDebugger()->onFrame();
 	}
 }
 
@@ -516,8 +532,9 @@ VMDPlayer::VMDPlayer(SegManager *segMan, EventManager *eventMan) :
 
 	_startColor(0),
 	_endColor(255),
+#ifdef SCI_VMD_BLACK_PALETTE
 	_blackPalette(false),
-
+#endif
 	_boostPercent(100),
 	_boostStartColor(0),
 	_boostEndColor(255),
@@ -571,12 +588,17 @@ void VMDPlayer::init(const int16 x, const int16 y, const PlayFlags flags, const 
 	_y = y;
 	_doublePixels = flags & kPlayFlagDoublePixels;
 	_blackLines = ConfMan.getBool("enable_black_lined_video") && (flags & kPlayFlagBlackLines);
-	_boostPercent = 100 + (flags & kPlayFlagBoost ? boostPercent : 0);
+	// If ScummVM has been configured to disable black lines on video playback,
+	// the boosts need to be ignored too or else the brightness of the video
+	// will be too high
+	_boostPercent = 100 + (_blackLines && (flags & kPlayFlagBoost) ? boostPercent : 0);
 	_boostStartColor = CLIP<int16>(boostStartColor, 0, 255);
 	_boostEndColor = CLIP<int16>(boostEndColor, 0, 255);
 	_leaveScreenBlack = flags & kPlayFlagLeaveScreenBlack;
 	_leaveLastFrame = flags & kPlayFlagLeaveLastFrame;
+#ifdef SCI_VMD_BLACK_PALETTE
 	_blackPalette = flags & kPlayFlagBlackPalette;
+#endif
 	_stretchVertical = flags & kPlayFlagStretchVertical;
 }
 
@@ -595,7 +617,10 @@ VMDPlayer::IOStatus VMDPlayer::close() {
 		_bundledVmd = nullptr;
 	}
 
-	_segMan->freeBitmap(_screenItem->_celInfo.bitmap);
+	if (_bitmapId != NULL_REG) {
+		_segMan->freeBitmap(_bitmapId);
+		_bitmapId = NULL_REG;
+	}
 
 	if (!_planeIsOwned && _screenItem != nullptr) {
 		g_sci->_gfxFrameout->deleteScreenItem(*_screenItem);
@@ -672,16 +697,8 @@ VMDPlayer::EventFlags VMDPlayer::kernelPlayUntilEvent(const EventFlags flags, co
 }
 
 VMDPlayer::EventFlags VMDPlayer::playUntilEvent(const EventFlags flags) {
-	// Flushing all the keyboard and mouse events out of the event manager
-	// keeps events queued from before the start of playback from accidentally
-	// activating a video stop flag
-	for (;;) {
-		const SciEvent event = _eventMan->getSciEvent(SCI_EVENT_KEYBOARD | SCI_EVENT_MOUSE_PRESS | SCI_EVENT_MOUSE_RELEASE | SCI_EVENT_HOT_RECTANGLE | SCI_EVENT_QUIT);
-		if (event.type == SCI_EVENT_NONE) {
-			break;
-		} else if (event.type == SCI_EVENT_QUIT) {
-			return kEventFlagEnd;
-		}
+	if (flushEvents(_eventMan)) {
+		return kEventFlagEnd;
 	}
 
 	if (flags & kEventFlagReverse) {
@@ -727,8 +744,7 @@ VMDPlayer::EventFlags VMDPlayer::playUntilEvent(const EventFlags flags) {
 		const int16 scriptWidth = g_sci->_gfxFrameout->getCurrentBuffer().scriptWidth;
 		const int16 scriptHeight = g_sci->_gfxFrameout->getCurrentBuffer().scriptHeight;
 
-		reg_t bitmapId;
-		SciBitmap &vmdBitmap = *_segMan->allocateBitmap(&bitmapId, vmdRect.width(), vmdRect.height(), 255, 0, 0, screenWidth, screenHeight, 0, false, false);
+		SciBitmap &vmdBitmap = *_segMan->allocateBitmap(&_bitmapId, vmdRect.width(), vmdRect.height(), 255, 0, 0, screenWidth, screenHeight, 0, false, false);
 		vmdBitmap.getBuffer().fillRect(Common::Rect(vmdRect.width(), vmdRect.height()), 0);
 
 		if (screenWidth != scriptWidth || screenHeight != scriptHeight) {
@@ -736,7 +752,7 @@ VMDPlayer::EventFlags VMDPlayer::playUntilEvent(const EventFlags flags) {
 		}
 
 		CelInfo32 vmdCelInfo;
-		vmdCelInfo.bitmap = bitmapId;
+		vmdCelInfo.bitmap = _bitmapId;
 		_decoder->setSurfaceMemory(vmdBitmap.getPixels(), vmdBitmap.getWidth(), vmdBitmap.getHeight(), 1);
 
 		if (_planeIsOwned) {
@@ -857,25 +873,29 @@ void VMDPlayer::renderFrame() const {
 		for (uint16 i = _endColor; i < 256; ++i) {
 			palette.colors[i].used = false;
 		}
+#if SCI_VMD_BLACK_PALETTE
 		if (_blackPalette) {
 			for (uint16 i = _startColor; i <= _endColor; ++i) {
 				palette.colors[i].r = palette.colors[i].g = palette.colors[i].b = 0;
 				palette.colors[i].used = true;
 			}
-		} else {
+		} else
+#endif
 			fillPalette(palette);
-		}
 
 		g_sci->_gfxPalette32->submit(palette);
 		g_sci->_gfxFrameout->updateScreenItem(*_screenItem);
 		g_sci->_gfxFrameout->frameOut(true);
+		g_sci->getSciDebugger()->onFrame();
 
+#if SCI_VMD_BLACK_PALETTE
 		if (_blackPalette) {
 			fillPalette(palette);
 			g_sci->_gfxPalette32->submit(palette);
 			g_sci->_gfxPalette32->updateForFrame();
 			g_sci->_gfxPalette32->updateHardware();
 		}
+#endif
 	} else {
 		g_sci->_gfxFrameout->updateScreenItem(*_screenItem);
 		g_sci->_gfxFrameout->frameOut(true);
@@ -903,6 +923,15 @@ void VMDPlayer::fillPalette(Palette &palette) const {
 	}
 }
 
+void VMDPlayer::setPlane(const int16 priority, const reg_t planeId) {
+	_priority = priority;
+	if (planeId != NULL_REG) {
+		_plane = g_sci->_gfxFrameout->getPlanes().findByObject(planeId);
+		assert(_plane != nullptr);
+		_planeIsOwned = false;
+	}
+}
+
 #pragma mark -
 #pragma mark VMDPlayer - Palette
 
@@ -912,6 +941,232 @@ void VMDPlayer::restrictPalette(const uint8 startColor, const int16 endColor) {
 	// but works in the original engine as the storage size is 4 bytes
 	// and used values are clamped to 0-255
 	_endColor = MIN<int16>(255, endColor);
+}
+
+#pragma mark -
+#pragma mark DuckPlayer
+
+DuckPlayer::DuckPlayer(SegManager *segMan, EventManager *eventMan) :
+	_eventMan(eventMan),
+	_decoder(new Video::AVIDecoder(Audio::Mixer::kSFXSoundType)),
+	_plane(nullptr),
+	_status(kDuckClosed),
+	_drawRect(),
+	_volume(Audio::Mixer::kMaxChannelVolume),
+	_doFrameOut(false),
+	_pixelDouble(false),
+	_scaleBuffer(nullptr) {}
+
+DuckPlayer::~DuckPlayer() {
+	close();
+	delete _decoder;
+}
+
+void DuckPlayer::open(const GuiResourceId resourceId, const int displayMode, const int16 x, const int16 y) {
+	if (_status != kDuckClosed) {
+		error("Attempted to play %u.duk, but another video was loaded", resourceId);
+	}
+
+	const Common::String fileName = Common::String::format("%u.duk", resourceId);
+	if (!_decoder->loadFile(fileName)) {
+		error("Can't open %s", fileName.c_str());
+	}
+
+	_decoder->setVolume(_volume);
+	_pixelDouble = displayMode != 0;
+
+	const int16 scale = _pixelDouble ? 2 : 1;
+	// SSCI seems to incorrectly calculate the draw rect by scaling the origin
+	// in addition to the width/height for the BR point
+	_drawRect = Common::Rect(x, y,
+							 x + _decoder->getWidth() * scale,
+							 y + _decoder->getHeight() * scale);
+
+	g_sci->_gfxCursor32->hide();
+
+	if (_doFrameOut) {
+		_plane = new Plane(_drawRect, kPlanePicColored);
+		g_sci->_gfxFrameout->addPlane(*_plane);
+		g_sci->_gfxFrameout->frameOut(true);
+	}
+
+	const Graphics::PixelFormat format = _decoder->getPixelFormat();
+
+	if (_pixelDouble) {
+		assert(_scaleBuffer == nullptr);
+		_scaleBuffer = new byte[_drawRect.width() * _drawRect.height() * format.bytesPerPixel];
+	}
+
+	g_sci->_gfxFrameout->setPixelFormat(format);
+
+	_status = kDuckOpen;
+}
+
+void DuckPlayer::play(const int lastFrameNo) {
+	flushEvents(_eventMan);
+
+	if (_status != kDuckPlaying) {
+		_status = kDuckPlaying;
+		_decoder->start();
+	}
+
+	while (!g_engine->shouldQuit()) {
+		if (_decoder->endOfVideo() || (lastFrameNo != -1 && _decoder->getCurFrame() >= lastFrameNo)) {
+			break;
+		}
+
+		g_sci->sleep(_decoder->getTimeToNextFrame());
+		while (_decoder->needsUpdate()) {
+			renderFrame();
+		}
+
+		SciEvent event = _eventMan->getSciEvent(SCI_EVENT_MOUSE_PRESS | SCI_EVENT_PEEK);
+		if (event.type == SCI_EVENT_MOUSE_PRESS) {
+			flushEvents(_eventMan);
+			break;
+		}
+
+		event = _eventMan->getSciEvent(SCI_EVENT_KEYBOARD | SCI_EVENT_PEEK);
+		if (event.type == SCI_EVENT_KEYBOARD) {
+			bool stop = false;
+			while ((event = _eventMan->getSciEvent(SCI_EVENT_KEYBOARD)),
+				   event.type != SCI_EVENT_NONE) {
+				if (event.character == SCI_KEY_ESC) {
+					stop = true;
+					break;
+				}
+			}
+
+			if (stop) {
+				flushEvents(_eventMan);
+				break;
+			}
+		}
+	}
+}
+
+void DuckPlayer::close() {
+	if (_status == kDuckClosed) {
+		return;
+	}
+
+	_decoder->close();
+
+	const Graphics::PixelFormat format = Graphics::PixelFormat::createFormatCLUT8();
+	g_sci->_gfxFrameout->setPixelFormat(format);
+
+	g_sci->_gfxCursor32->unhide();
+
+	if (_doFrameOut) {
+		g_sci->_gfxFrameout->deletePlane(*_plane);
+		g_sci->_gfxFrameout->frameOut(true);
+		_plane = nullptr;
+	}
+
+	_pixelDouble = false;
+	delete[] _scaleBuffer;
+	_scaleBuffer = nullptr;
+
+	_status = kDuckClosed;
+}
+
+static inline uint16 interpolate(const Graphics::PixelFormat &format, const uint16 p1, const uint16 p2) {
+	uint8 r1, g1, b1, r2, g2, b2;
+	format.colorToRGB(p1, r1, g1, b1);
+	format.colorToRGB(p2, r2, g2, b2);
+	return format.RGBToColor((r1 + r2) >> 1, (g1 + g2) >> 1, (b1 + b2) >> 1);
+}
+
+void DuckPlayer::renderFrame() const {
+	const Graphics::Surface *surface = _decoder->decodeNextFrame();
+
+	// Audio-only or non-updated frame
+	if (surface == nullptr) {
+		return;
+	}
+
+	assert(surface->format.bytesPerPixel == 2);
+
+	if (_pixelDouble) {
+		const uint16 *source = (const uint16 *)surface->getPixels();
+		const Graphics::PixelFormat &format = surface->format;
+		uint16 *target = (uint16 *)_scaleBuffer;
+
+#ifndef SCI_DUCK_NO_INTERPOLATION
+		// divide by 2 gets pixel pitch instead of byte pitch for source
+		const uint16 sourcePitch = surface->pitch >> 1;
+#endif
+
+		const uint16 targetPitch = surface->pitch;
+		const bool blackLined = ConfMan.getBool("enable_black_lined_video");
+		for (int y = 0; y < surface->h - 1; ++y) {
+			for (int x = 0; x < surface->w - 1; ++x) {
+#ifndef SCI_DUCK_NO_INTERPOLATION
+				const uint16 a = source[0];
+				const uint16 b = source[1];
+				const uint16 c = source[sourcePitch];
+				const uint16 d = source[sourcePitch + 1];
+
+				target[0] = a;
+				target[1] = interpolate(format, a, b);
+#else
+				const uint16 value = *source;
+				target[0] = value;
+				target[1] = value;
+#endif
+				if (!blackLined) {
+#ifndef SCI_DUCK_NO_INTERPOLATION
+					target[targetPitch] = interpolate(format, a, c);
+					target[targetPitch + 1] = interpolate(format, target[1], interpolate(format, c, d));
+#else
+					target[targetPitch] = value;
+					target[targetPitch + 1] = value;
+#endif
+				}
+
+				target += 2;
+				++source;
+			}
+
+			const uint16 value = *source++;
+			target[0] = value;
+			target[1] = value;
+			if (!blackLined) {
+				target[targetPitch] = value;
+				target[targetPitch + 1] = value;
+			}
+			target += 2;
+
+			if (blackLined) {
+				memset(target, 0, targetPitch * format.bytesPerPixel);
+			}
+
+			target += targetPitch;
+		}
+
+		for (int x = 0; x < surface->w; ++x) {
+			const uint16 lastValue = *source++;
+			target[0] = lastValue;
+			target[1] = lastValue;
+
+			if (!blackLined) {
+				target[targetPitch] = lastValue;
+				target[targetPitch + 1] = lastValue;
+				target += 2;
+			}
+		}
+
+		if (blackLined) {
+			memset(target, 0, targetPitch);
+		}
+
+		g_system->copyRectToScreen(_scaleBuffer, surface->pitch * 2, _drawRect.left, _drawRect.top, _drawRect.width(), _drawRect.height());
+	} else {
+		g_system->copyRectToScreen(surface->getPixels(), surface->pitch, _drawRect.left, _drawRect.top, surface->w, surface->h);
+	}
+
+	g_system->updateScreen();
+	g_sci->getSciDebugger()->onFrame();
 }
 
 } // End of namespace Sci
