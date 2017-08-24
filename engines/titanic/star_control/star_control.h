@@ -36,6 +36,7 @@ class CStarControl : public CGameObject {
 	bool MouseMoveMsg(CMouseMoveMsg *msg);
 	bool KeyCharMsg(CKeyCharMsg *msg);
 	bool FrameMsg(CFrameMsg *msg);
+	bool MovementMsg(CMovementMsg *msg);
 private:
 	bool _enabled;
 	CStarField _starField;
@@ -78,6 +79,11 @@ public:
 	bool isSolved() const;
 
 	/**
+	 * Return true if the starfield puzzle was skipped
+	 */
+	bool isSkipped() const;
+
+	/**
 	 * Forces the starfield to be solved
 	 */
 	void forceSolved();
@@ -91,6 +97,11 @@ public:
 	 * Called when a star destination is set
 	 */
 	void starDestinationSet();
+
+	/**
+	 * Updates the camerea for the star view
+	 */
+	void updateCamera() { _view.updateCamera(); }
 };
 
 } // End of namespace Titanic

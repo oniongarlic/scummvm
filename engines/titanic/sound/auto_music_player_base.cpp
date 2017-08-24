@@ -32,7 +32,7 @@ BEGIN_MESSAGE_MAP(CAutoMusicPlayerBase, CGameObject)
 END_MESSAGE_MAP()
 
 CAutoMusicPlayerBase::CAutoMusicPlayerBase() : CGameObject(),
-	_initialMute(true), _isRepeated(false), _volumeMode(-1), _transition(1) {
+	_initialMute(true), _isRepeated(false), _volumeMode(VOL_NORMAL), _transition(1) {
 }
 void CAutoMusicPlayerBase::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(1, indent);
@@ -50,7 +50,7 @@ void CAutoMusicPlayerBase::load(SimpleFile *file) {
 	_filename = file->readString();
 	_initialMute = file->readNumber();
 	_isRepeated = file->readNumber();
-	_volumeMode = file->readNumber();
+	_volumeMode = (VolumeMode)file->readNumber();
 	_transition = file->readNumber();
 
 	CGameObject::load(file);
@@ -70,7 +70,8 @@ bool CAutoMusicPlayerBase::TimerMsg(CTimerMsg *msg) {
 
 bool CAutoMusicPlayerBase::LoadSuccessMsg(CLoadSuccessMsg *msg) {
 	if (_isRepeated)
-		playGlobalSound(_filename, _volumeMode, _initialMute, true, 0);
+		playGlobalSound(_filename, _volumeMode, _initialMute, true, 0,
+			Audio::Mixer::kMusicSoundType);
 
 	return true;
 }
@@ -86,13 +87,15 @@ bool CAutoMusicPlayerBase::ChangeMusicMsg(CChangeMusicMsg *msg) {
 
 		if (_isRepeated) {
 			stopGlobalSound(_transition, -1);
-			playGlobalSound(_filename, _volumeMode, _initialMute, true, 0);
+			playGlobalSound(_filename, _volumeMode, _initialMute, true, 0,
+				Audio::Mixer::kMusicSoundType);
 		}
 	}
 
 	if (!_isRepeated && msg->_flags == 2) {
 		_isRepeated = true;
-		playGlobalSound(_filename, _volumeMode, _initialMute, true, 0);
+		playGlobalSound(_filename, _volumeMode, _initialMute, true, 0,
+			Audio::Mixer::kMusicSoundType);
 	}
 
 	return true;

@@ -62,7 +62,7 @@ void CPellerator::load(SimpleFile *file) {
 
 bool CPellerator::StatusChangeMsg(CStatusChangeMsg *msg) {
 	setVisible(true);
-	playGlobalSound("z#74.wav", -2, true, true, 0);
+	playGlobalSound("z#74.wav", VOL_QUIET, true, true, 0);
 	int classNum = getPassengerClass();
 	int newDest = msg->_newStatus;
 
@@ -155,7 +155,7 @@ bool CPellerator::StatusChangeMsg(CStatusChangeMsg *msg) {
 				case 5:
 					playMovie(315, 323, 0);
 					for (int idx = 0; idx < 7; ++idx)
-						playMovie(229, 304, 0);
+						playMovie(299, 304, 0);
 					for (int idx = 0; idx < 12; ++idx)
 						playMovie(245, 255, 0);
 					for (int idx = 0; idx < 3; ++idx)
@@ -229,7 +229,7 @@ bool CPellerator::StatusChangeMsg(CStatusChangeMsg *msg) {
 				}
 			}
 		} else {
-			for (--_destination; _destination > newDest; --_destination) {
+			for (--_destination; _destination >= newDest; --_destination) {
 				switch (_destination) {
 				case 0:
 				case 1:
@@ -297,8 +297,11 @@ bool CPellerator::EnterRoomMsg(CEnterRoomMsg *msg) {
 	int oldVal = _destination;
 
 	if (name.empty()) {
-		_destination = 4;
-		oldVal = 4;
+		// WORKAROUND: Called when loading a savegame, the original reset the
+		// destination to '4' resulting in potentially longer travel times.
+		// Since the destination is saved as part of savegames anyway, I'm
+		// changing this to leave it unchanged
+		oldVal = _destination;
 	} else if (name == "PromenadeDeck") {
 		_destination = 0;
 	} else if (name == "MusicRoomLobby") {

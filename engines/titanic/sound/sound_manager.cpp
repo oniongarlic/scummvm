@@ -33,13 +33,13 @@ CSoundManager::CSoundManager() : _musicPercent(75.0), _speechPercent(75.0),
 	_masterPercent(75.0), _parrotPercent(75.0), _handleCtr(1) {
 }
 
-uint CSoundManager::getModeVolume(int mode) {
+uint CSoundManager::getModeVolume(VolumeMode mode) {
 	switch (mode) {
-	case -1:
+	case VOL_NORMAL:
 		return (uint)_masterPercent;
-	case -2:
+	case VOL_QUIET:
 		return (uint)(_masterPercent * 30 / 100);
-	case -3:
+	case VOL_VERY_QUIET:
 		return (uint)(_masterPercent * 15 / 100);
 	default:
 		return 0;
@@ -120,7 +120,7 @@ QSoundManager::~QSoundManager() {
 }
 
 CWaveFile *QSoundManager::loadSound(const CString &name) {
-	CWaveFile *waveFile = new CWaveFile();
+	CWaveFile *waveFile = new CWaveFile(_mixer);
 
 	// Try to load the specified sound
 	if (!waveFile->loadSound(name)) {
@@ -132,7 +132,7 @@ CWaveFile *QSoundManager::loadSound(const CString &name) {
 }
 
 CWaveFile *QSoundManager::loadSpeech(CDialogueFile *dialogueFile, int speechId) {
-	CWaveFile *waveFile = new CWaveFile();
+	CWaveFile *waveFile = new CWaveFile(_mixer);
 
 	// Try to load the specified sound
 	if (!waveFile->loadSpeech(dialogueFile, speechId)) {
@@ -144,7 +144,7 @@ CWaveFile *QSoundManager::loadSpeech(CDialogueFile *dialogueFile, int speechId) 
 }
 
 CWaveFile *QSoundManager::loadMusic(const CString &name) {
-	CWaveFile *waveFile = new CWaveFile();
+	CWaveFile *waveFile = new CWaveFile(_mixer);
 
 	// Try to load the specified sound
 	if (!waveFile->loadMusic(name)) {
@@ -156,7 +156,7 @@ CWaveFile *QSoundManager::loadMusic(const CString &name) {
 }
 
 CWaveFile *QSoundManager::loadMusic(CAudioBuffer *buffer, DisposeAfterUse::Flag disposeAfterUse) {
-	CWaveFile *waveFile = new CWaveFile();
+	CWaveFile *waveFile = new CWaveFile(_mixer);
 
 	// Try to load the specified audio buffer
 	if (!waveFile->loadMusic(buffer, disposeAfterUse)) {
@@ -288,7 +288,7 @@ void QSoundManager::setVolume(int handle, uint volume, uint seconds) {
 			_channelsVolume[slot._channel] = volume;
 			updateVolume(slot._channel, seconds * 1000);
 
-			if (volume) {
+			if (!volume) {
 				uint ticks = g_vm->_events->getTicksCount() + seconds * 1000;
 				if (!slot._ticks || ticks >= slot._ticks)
 					slot._ticks = ticks;

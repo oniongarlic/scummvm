@@ -27,6 +27,7 @@
 #include "common/stream.h"
 #include "titanic/core/named_item.h"
 #include "titanic/sound/proximity.h"
+#include "titanic/sound/sound_manager.h"
 #include "titanic/support/mouse_cursor.h"
 #include "titanic/support/credit_text.h"
 #include "titanic/support/movie_range_info.h"
@@ -229,8 +230,8 @@ protected:
 	 * @param balance		Sound balance (not actually used by original)
 	 * @param repeated		If true, sound will repeat indefinitely
 	 */
-	int queueSound(const CString &name, uint priorHandle, uint volume = 100,
-		int balance = 0, bool repeated = false);
+	int queueSound(const CString &name, uint priorHandle, uint volume = 100, int balance = 0,
+		bool repeated = false, Audio::Mixer::SoundType soundType = Audio::Mixer::kPlainSoundType);
 
 	/**
 	 * Stop a sound
@@ -261,7 +262,7 @@ protected:
 	 * @param handleIndex	Slot 0 to 3 in the shared sound handle list to store the sound's handle
 	 * @param soundType		Specifies whether the sound is a sound effect or music
 	 */
-	void playGlobalSound(const CString &resName, int mode, bool initialMute, bool repeated,
+	void playGlobalSound(const CString &resName, VolumeMode mode, bool initialMute, bool repeated,
 		int handleIndex, Audio::Mixer::SoundType soundType = Audio::Mixer::kMusicSoundType);
 
 	/**
@@ -277,7 +278,7 @@ protected:
 	 * @param seconds		Number of seconds to transition to new volume
 	 * @param handleIndex	Index of global sound to update. If -1, all global sounds are updated
 	 */
-	void setGlobalSoundVolume(int mode, uint seconds, int handleIndex);
+	void setGlobalSoundVolume(VolumeMode mode, uint seconds, int handleIndex);
 
 	/**
 	 * Stops sound channel 3 or 0
@@ -328,7 +329,7 @@ protected:
 	/**
 	 * Compare the name of the parent room to the item to a passed string
 	 */
-	int compareRoomNameTo(const CString &name);
+	bool compareRoomNameTo(const CString &name);
 
 	/**
 	 * Gets the first object under the system MailMan
@@ -392,8 +393,9 @@ protected:
 
 	/**
 	 * Play a cutscene
+	 * @returns		True if the cutscene was not interrupted
 	 */
-	void playCutscene(uint startFrame, uint endFrame);
+	bool playCutscene(uint startFrame, uint endFrame);
 
 	/**
 	 * Play a clip randomly from a passed list of names
@@ -576,9 +578,9 @@ public:
 	virtual Rect getBounds() const;
 
 	/**
-	 * Called when the view changes
+	 * Free up any surface the object used
 	 */
-	virtual void viewChange();
+	virtual void freeSurface();
 
 	/**
 	 * Allows the item to draw itself
@@ -605,6 +607,15 @@ public:
 	 * with extra checking of object flags status
 	 */
 	bool checkPoint(const Point &pt, bool ignoreSurface = false, bool visibleOnly = false);
+
+	/**
+	 * Returns a point that falls within the object. Used for simulating
+	 * mouse clicks for movement when arrow keys are pressed
+	 * @param quadrant	Quadrant (edge) to return point for
+	 * @param pt		Return point
+	 * @returns			True if a point was found
+	 */
+	bool findPoint(Quadrant quadrant, Point &pt);
 
 	/**
 	 * Set the position of the object
@@ -779,6 +790,11 @@ public:
 	 */
 	CTextCursor *getTextCursor() const;
 
+	/**
+	 * Get the movement, if any, the cursor represents
+	 */
+	Movement getMovement() const;
+
 	/*--- CGameManager Methods ---*/
 
 	/**
@@ -932,6 +948,16 @@ public:
 	 * Show the PET
 	 */
 	void petShow();
+
+	/**
+	 * Increment the number of PET area (tab) locks
+	 */
+	void petIncAreaLocks();
+
+	/**
+	 * Decrement the number of PET area (tab) locks
+	 */
+	void petDecAreaLocks();
 
 	/**
 	 * Shows the text cursor in the current section, if applicable

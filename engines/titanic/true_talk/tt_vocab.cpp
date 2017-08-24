@@ -34,7 +34,7 @@ namespace Titanic {
 
 TTvocab::TTvocab(int val): _headP(nullptr), _tailP(nullptr),
 		_word(nullptr), _vocabMode(val) {
-	load("STVOCAB.TXT");
+	load("STVOCAB");
 }
 
 TTvocab::~TTvocab() {
@@ -231,6 +231,27 @@ TTword *TTvocab::getPrimeWord(TTstring &str, TTword **srcWord) const {
 TTword *TTvocab::getSuffixedWord(TTstring &str) const {
 	TTstring tempStr(str);
 	TTword *word = nullptr;
+
+	if (g_vm->isGerman()) {
+		static const char *const SUFFIXES[11] = {
+			"est", "em", "en", "er", "es", "et", "st",
+			"s", "e", "n", "t"
+		};
+
+		for (int idx = 0; idx < 11; ++idx) {
+			if (tempStr.hasSuffix(SUFFIXES[idx])) {
+				tempStr.deleteSuffix(strlen(SUFFIXES[idx]));
+				word = getPrimeWord(tempStr);
+				if (word)
+					break;
+				tempStr = str;
+			}
+		}
+
+		if (word)
+			word->setSynStr(str);
+		return word;
+	}
 
 	if (tempStr.hasSuffix("s")) {
 		tempStr.deleteSuffix(1);

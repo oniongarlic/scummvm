@@ -109,6 +109,46 @@ void Script::printLine(int offset) {
 		}
 }
 
+Common::String Script::preprocessInputText(Common::String inputText) {
+	if (inputText.empty())
+		return inputText;
+
+	// "take " and "pick up " are mapped to "get " before script
+	// execution, so scripts see them as "get ", but only if there's
+	// a trailing space
+	inputText.toLowercase();
+
+	if (inputText.hasPrefix("take "))
+		return Common::String("get ") + (inputText.c_str() + strlen("take "));
+
+	if (inputText.hasPrefix("pick up "))
+		return Common::String("get ") + (inputText.c_str() + strlen("pick up "));
+
+	if (inputText.hasPrefix("put on "))
+		return Common::String("wear ") + (inputText.c_str() + strlen("put on "));
+
+	// exact aliases:
+	if (inputText.size() == 1) {
+		if (inputText.equals("n"))
+			return "north";
+
+		if (inputText.equals("e"))
+			return "east";
+
+		if (inputText.equals("s"))
+			return "south";
+
+		if (inputText.equals("w"))
+			return "west";
+	}
+
+	if (inputText.equals("wait")) {
+		return "rest";
+	}
+
+	return inputText;
+}
+
 bool Script::execute(World *world, int loopCount, Common::String *inputText, Designed *inputClick, WageEngine *engine) {
 	_world = world;
 	_loopCount = loopCount;
@@ -118,8 +158,11 @@ bool Script::execute(World *world, int loopCount, Common::String *inputText, Des
 	_handled = false;
 	Common::String input;
 
-	if (inputText)
-		input = *inputText;
+	if (inputText) {
+		input = preprocessInputText(*_inputText);
+		debug(2, "Input was: '%s' is '%s'", _inputText->c_str(), input.c_str());
+		_inputText = new Common::String(input);
+	}
 
 	_data->seek(12);
 	while (_data->pos() < _data->size()) {
@@ -201,29 +244,23 @@ bool Script::execute(World *world, int loopCount, Common::String *inputText, Des
 			_handled = _engine->handleMoveCommand(SOUTH, "south");
 		} else if (input.contains("west")) {
 			_handled = _engine->handleMoveCommand(WEST, "west");
-		} else if (input.hasPrefix("take ")) {
-			_handled = _engine->handleTakeCommand(&input.c_str()[5]);
 		} else if (input.hasPrefix("get ")) {
 			_handled = _engine->handleTakeCommand(&input.c_str()[4]);
-		} else if (input.hasPrefix("pick up ")) {
-			_handled = _engine->handleTakeCommand(&input.c_str()[8]);
 		} else if (input.hasPrefix("drop ")) {
 			_handled = _engine->handleDropCommand(&input.c_str()[5]);
 		} else if (input.hasPrefix("aim ")) {
 			_handled = _engine->handleAimCommand(&input.c_str()[4]);
 		} else if (input.hasPrefix("wear ")) {
 			_handled = _engine->handleWearCommand(&input.c_str()[5]);
-		} else if (input.hasPrefix("put on ")) {
-			_handled = _engine->handleWearCommand(&input.c_str()[7]);
 		} else if (input.hasPrefix("offer ")) {
 			_handled = _engine->handleOfferCommand(&input.c_str()[6]);
 		} else if (input.contains("look")) {
 			_handled = _engine->handleLookCommand();
-		} else if (input.contains("inventory")) {
+		} else if (input.contains("inven")) {
 			_handled = _engine->handleInventoryCommand();
 		} else if (input.contains("status")) {
 			_handled = _engine->handleStatusCommand();
-		} else if (input.contains("rest") || input.equals("wait")) {
+		} else if (input.contains("rest")) {
 			_handled = _engine->handleRestCommand();
 		} else if (_engine->getOffer() != NULL && input.contains("accept")) {
 			_handled = _engine->handleAcceptCommand();
@@ -424,7 +461,7 @@ Script::Operand *Script::readStringOperand() {
 			*str += c;
 		else
 			break;
-		if (c < '0' || c > '9')
+		if ((c < '0' || c > '9') && !(c == '-' && str->empty()))
 			allDigits = false;
 	}
 	_data->seek(-1, SEEK_CUR);
@@ -616,6 +653,7 @@ struct Comparator {
 	{ '<', OBJ, SCENE, kCompLtObjScene },
 	{ '<', CHR, CHR, kCompEqChrChr }, // Same logic as =
 	{ '<', SCENE, SCENE, kCompEqSceneScene },
+	{ '<', CHR, SCENE, kCompGtChrScene }, // Same logic as >
 
 	{ '>', NUMBER, NUMBER, kCompGtNumNum },
 	{ '>', TEXT_INPUT, STRING, kCompLtTextInputString }, // Same logic as <
@@ -1123,12 +1161,19 @@ void Script::convertToText() {
 			break;
 
 		if (c < 0x80) {
-			if (c < 0x20)
-				error("convertToText: Unknown code 0x%02x at %d", c, _data->pos());
+			if (c < 0x20) {
+				warning("convertToText: Unknown code 0x%02x at %d", c, _data->pos());
+				c = ' ';
+			}
 
 			do {
 				scr->line += c;
 				c = _data->readByte();
+
+				if (c < 0x20) {
+					warning("convertToText: Unknown code 0x%02x at %d", c, _data->pos());
+					c = ' ';
+				}
 			} while (c < 0x80);
 
 			_data->seek(-1, SEEK_CUR);

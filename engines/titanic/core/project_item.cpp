@@ -35,13 +35,25 @@
 namespace Titanic {
 
 #define CURRENT_SAVEGAME_VERSION 1
-#define MAX_SAVEGAME_SLOTS 99
 #define MINIMUM_SAVEGAME_VERSION 1
 
 static const char *const SAVEGAME_STR = "TNIC";
 #define SAVEGAME_STR_SIZE 4
 
 EMPTY_MESSAGE_MAP(CProjectItem, CFileItem);
+
+/*------------------------------------------------------------------------*/
+
+void TitanicSavegameHeader::clear() {
+	_version = 0;
+	_saveName = "";
+	_thumbnail = nullptr;
+	_year = _month = _day = 0;
+	_hour = _minute = 0;
+	_totalFrames = 0;
+}
+
+/*------------------------------------------------------------------------*/
 
 void CFileListItem::save(SimpleFile *file, int indent) {
 	file->writeNumberLine(0, indent);
@@ -102,7 +114,7 @@ void CProjectItem::load(SimpleFile *file) {
 	case 1:
 		file->readBuffer();
 		_nextRoomNumber = file->readNumber();
-		// Deliberate fall-through
+		// Intentional fall-through
 
 	case 0:
 		// Load the list of files
@@ -116,16 +128,16 @@ void CProjectItem::load(SimpleFile *file) {
 	case 6:
 		file->readBuffer();
 		_nextObjectNumber = file->readNumber();
-		// Deliberate fall-through
+		// Intentional fall-through
 
 	case 5:
 		file->readBuffer();
 		_nextMessageNumber = file->readNumber();
-		// Deliberate fall-through
+		// Intentional fall-through
 
 	case 4:
 		file->readBuffer();
-		// Deliberate fall-through
+		// Intentional fall-through
 
 	case 2:
 	case 3:
@@ -177,6 +189,7 @@ void CProjectItem::loadGame(int slotId) {
 	TitanicSavegameHeader header;
 	readSavegameHeader(&file, header);
 	delete header._thumbnail;
+	g_vm->_events->setTotalPlayTicks(header._totalFrames);
 
 	// Load the contents in
 	CProjectItem *newProject = loadData(&file);
@@ -463,7 +476,7 @@ SaveStateList CProjectItem::getSavegameList(const Common::String &target) {
 		const char *ext = strrchr(file->c_str(), '.');
 		int slot = ext ? atoi(ext + 1) : -1;
 
-		if (slot >= 0 && slot < MAX_SAVEGAME_SLOTS) {
+		if (slot >= 0 && slot <= MAX_SAVES) {
 			Common::InSaveFile *in = g_system->getSavefileManager()->openForLoading(*file);
 
 			if (in) {
@@ -487,6 +500,7 @@ SaveStateList CProjectItem::getSavegameList(const Common::String &target) {
 bool CProjectItem::readSavegameHeader(SimpleFile *file, TitanicSavegameHeader &header) {
 	char saveIdentBuffer[SAVEGAME_STR_SIZE + 1];
 	header._thumbnail = nullptr;
+	header._totalFrames = 0;
 
 	// Validate the header Id
 	file->unsafeRead(saveIdentBuffer, SAVEGAME_STR_SIZE + 1);
@@ -545,7 +559,7 @@ void CProjectItem::writeSavegameHeader(SimpleFile *file, TitanicSavegameHeader &
 	file->writeUint16LE(td.tm_mday);
 	file->writeUint16LE(td.tm_hour);
 	file->writeUint16LE(td.tm_min);
-	file->writeUint32LE(g_vm->_events->getFrameCounter());
+	file->writeUint32LE(g_vm->_events->getTotalPlayTicks());
 }
 
 Graphics::Surface *CProjectItem::createThumbnail() {
@@ -553,6 +567,62 @@ Graphics::Surface *CProjectItem::createThumbnail() {
 
 	::createThumbnailFromScreen(thumb);
 	return thumb;
+}
+
+CViewItem *CProjectItem::parseView(const CString &viewString) {
+	int firstIndex = viewString.indexOf('.');
+	int lastIndex = viewString.lastIndexOf('.');
+	CString roomName, nodeName, viewName;
+
+	if (firstIndex == -1) {
+		roomName = viewString;
+	}
+	else {
+		roomName = viewString.left(firstIndex);
+
+		if (lastIndex > firstIndex) {
+			nodeName = viewString.mid(firstIndex + 1, lastIndex - firstIndex - 1);
+			viewName = viewString.mid(lastIndex + 1);
+		}
+		else {
+			nodeName = viewString.mid(firstIndex + 1);
+		}
+	}
+
+	CGameManager *gameManager = getGameManager();
+	if (!gameManager)
+		return nullptr;
+
+	CRoomItem *room = gameManager->getRoom();
+	CProjectItem *project = room->getRoot();
+
+	// Ensure we have the specified room
+	if (project) {
+		if (room->getName().compareToIgnoreCase(roomName)) {
+			// Scan for the correct room
+			for (room = project->findFirstRoom();
+			room && room->getName().compareToIgnoreCase(roomName);
+				room = project->findNextRoom(room));
+		}
+	}
+	if (!room)
+		return nullptr;
+
+	// Find the designated node within the room
+	CNodeItem *node = dynamic_cast<CNodeItem *>(room->findChildInstanceOf(CNodeItem::_type));
+	while (node && node->getName().compareToIgnoreCase(nodeName))
+		node = dynamic_cast<CNodeItem *>(room->findNextInstanceOf(CNodeItem::_type, node));
+	if (!node)
+		return nullptr;
+
+	CViewItem *view = dynamic_cast<CViewItem *>(node->findChildInstanceOf(CViewItem::_type));
+	while (view && view->getName().compareToIgnoreCase(viewName))
+		view = dynamic_cast<CViewItem *>(node->findNextInstanceOf(CViewItem::_type, view));
+	if (!view)
+		return nullptr;
+
+	// Find the view, so return it
+	return view;
 }
 
 } // End of namespace Titanic

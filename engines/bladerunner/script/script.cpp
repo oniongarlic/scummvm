@@ -32,6 +32,7 @@
 #include "bladerunner/audio_speech.h"
 #include "bladerunner/crimes_database.h"
 #include "bladerunner/combat.h"
+#include "bladerunner/dialogue_menu.h"
 #include "bladerunner/gameflags.h"
 #include "bladerunner/gameinfo.h"
 #include "bladerunner/items.h"
@@ -43,6 +44,7 @@
 #include "bladerunner/scene_objects.h"
 #include "bladerunner/slice_animations.h"
 #include "bladerunner/slice_renderer.h"
+#include "bladerunner/spinner.h"
 #include "bladerunner/text_resource.h"
 #include "bladerunner/vector.h"
 #include "bladerunner/waypoints.h"
@@ -895,47 +897,44 @@ void ScriptBase::Setup_Scene_Information(float actorX, float actorY, float actor
 }
 
 bool ScriptBase::Dialogue_Menu_Appear(int x, int y) {
-	//TODO
-	warning("Dialogue_Menu_Appear(%d, %d)", x, y);
+	if (!_vm->_dialogueMenu->isVisible()) {
+		return _vm->_dialogueMenu->show();
+	}
 	return false;
 }
 
 bool ScriptBase::Dialogue_Menu_Disappear() {
-	//TODO
-	warning("Dialogue_Menu_Disappear()");
+	if (_vm->_dialogueMenu->isVisible()) {
+		return _vm->_dialogueMenu->hide();
+	}
 	return false;
 }
 
 bool ScriptBase::Dialogue_Menu_Clear_List() {
-	//TODO
-	warning("Dialogue_Menu_Clear_List()");
+	_vm->_dialogueMenu->clearList();
 	return false;
 }
 
 bool ScriptBase::Dialogue_Menu_Add_To_List(int answer) {
-	//TODO
-	warning("Dialogue_Menu_Add_To_List(%d)", answer);
+	_vm->_dialogueMenu->addToList(answer, 0, 5, 5, 5);
 	return false;
 }
 
 bool ScriptBase::Dialogue_Menu_Add_DONE_To_List(int answerValue) {
-	//TODO
-	warning("Dialogue_Menu_Add_DONE_To_List(%d)", answerValue);
+	_vm->_dialogueMenu->addToList(answerValue, 1, 0, 0, 0);
 	return false;
 }
 
-// Dialogue_Menu_Add_To_List_Never_Repeat_Once_Selected
+bool ScriptBase::Dialogue_Menu_Add_To_List_Never_Repeat_Once_Selected(int answer) {
+	return _vm->_dialogueMenu->addToListNeverRepeatOnceSelected(answer, 5, 5, 5);
+}
 
 bool ScriptBase::DM_Add_To_List(int answer, int a2, int a3, int a4) {
-	//TODO
-	warning("DM_Add_To_List(%d, %d, %d, %d)", answer, a2, a3, a4);
-	return false;
+	return _vm->_dialogueMenu->addToList(answer, 0, a2, a3, a4);
 }
 
 bool ScriptBase::DM_Add_To_List_Never_Repeat_Once_Selected(int answer, int a2, int a3, int a4) {
-	//TODO
-	warning("DM_Add_To_List_Never_Repeat_Once_Selected(%d, %d, %d, %d)", answer, a2, a3, a4);
-	return false;
+	return _vm->_dialogueMenu->addToListNeverRepeatOnceSelected(answer, a2, a3, a4);
 }
 
 void ScriptBase::Dialogue_Menu_Remove_From_List(int answer) {
@@ -945,14 +944,11 @@ void ScriptBase::Dialogue_Menu_Remove_From_List(int answer) {
 
 int ScriptBase::Dialogue_Menu_Query_Input() {
 	//TODO
-	warning("Dialogue_Menu_Query_Input()");
-	return 0;
+	return _vm->_dialogueMenu->queryInput();
 }
 
 int ScriptBase::Dialogue_Menu_Query_List_Size() {
-	//TODO
-	warning("Dialogue_Menu_Query_List_Size()");
-	return 0;
+	return _vm->_dialogueMenu->listSize();
 }
 
 void ScriptBase::Scene_Exit_Add_2D_Exit(int index, int left, int top, int right, int down, int type) {
@@ -1071,21 +1067,14 @@ bool ScriptBase::SDB_Add_Other_Clue(int suspectId, int clueId) {
 }
 
 void ScriptBase::Spinner_Set_Selectable_Destination_Flag(int a1, int a2) {
-	//TODO
-	warning("Spinner_Set_Selectable_Destination_Flag(%d, %d)", a1, a2);
+	_vm->_spinner->setSelectableDestinationFlag(a1, a2);
 }
 
 // ScriptBase::Spinner_Query_Selectable_Destination_Flag
 
 int ScriptBase::Spinner_Interface_Choose_Dest(int a1, int a2) {
-	//TODO
-	warning("Spinner_Interface_Choose_Dest(%d, %d)", a1, a2);
-	return -1;
+	return _vm->_spinner->interfaceChooseDest(a1, a2);
 }
-
-// ScriptBase::Spinner_Set_Selectable_Destination_Flag
-// ScriptBase::Spinner_Query_Selectable_Destination_Flag
-// ScriptBase::Spinner_Interface_Choose_Dest
 
 void ScriptBase::ESPER_Flag_To_Activate() {
 	//TODO

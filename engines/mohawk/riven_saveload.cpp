@@ -22,7 +22,9 @@
 
 #include "mohawk/resource.h"
 #include "mohawk/riven.h"
+#include "mohawk/riven_card.h"
 #include "mohawk/riven_saveload.h"
+#include "mohawk/riven_stack.h"
 
 #include "common/system.h"
 #include "graphics/thumbnail.h"
@@ -178,9 +180,9 @@ Common::Error RivenSaveLoad::loadGame(const int slot) {
 	delete vers;
 	if ((saveGameVersion == kCDSaveGameVersion && (_vm->getFeatures() & GF_DVD))
 		|| (saveGameVersion == kDVDSaveGameVersion && !(_vm->getFeatures() & GF_DVD))) {
-		warning("Incompatible saved game versions. No support for this yet");
+		warning("Unable to load: Saved game created using an incompatible game version - CD vs DVD");
 		delete mhk;
-		return Common::Error(Common::kUnknownError, "Incompatible save version");
+		return Common::Error(Common::kUnknownError, "Saved game created using an incompatible game version - CD vs DVD");
 	}
 
 	// Now, we'll read in the variable values.
@@ -240,6 +242,8 @@ Common::Error RivenSaveLoad::loadGame(const int slot) {
 		else
 			var = rawVariables[i];
 	}
+
+	_vm->_gfx->setTransitionMode((RivenTransitionMode) _vm->_vars["transitionmode"]);
 
 	_vm->changeToStack(_vm->_vars["CurrentStackID"]);
 	_vm->changeToCard(_vm->_vars["CurrentCardID"]);
@@ -400,10 +404,6 @@ Common::Error RivenSaveLoad::saveGame(const int slot, const Common::String &desc
 	// more common way of outputting resources to an archive.
 
 	Common::String filename = buildSaveFilename(slot);
-
-	// Convert class variables to variable numbers
-	_vm->_vars["currentstackid"] = _vm->getCurStack();
-	_vm->_vars["currentcardid"] = _vm->getCurCard();
 
 	Common::OutSaveFile *saveFile = _saveFileMan->openForSaving(filename);
 	if (!saveFile)

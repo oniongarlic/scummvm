@@ -72,6 +72,14 @@ enum TitanicDebugChannels {
 
 #define MAX_SAVES 99
 
+#define SOUND(enName, deName) (g_vm->isGerman() ? deName : enName)
+
+// If enabled, fixes an original bug where dispensed chickens weren't
+// meant to be hot unless the Yellow fuse was left in the Fusebox.
+// This is being left disabled for now, since most walkthroughs for
+// the game redundantly suggest removing the fuse, which is wrong
+//#define FIX_DISPENSOR_TEMPATURE
+
 struct TitanicGameDescription;
 class TitanicEngine;
 
@@ -80,7 +88,7 @@ private:
 	/**
 	 * Handles basic initialization
 	 */
-	void initialize();
+	bool initialize();
 
 	/**
 	 * Handles game deinitialization
@@ -119,7 +127,6 @@ public:
 	CExeResources _exeResources;
 	StringArray _itemNames;
 	StringArray _itemDescriptions;
-	CString _itemObjects[TOTAL_ITEMS];
 	StringArray _itemIds;
 	StringArray _roomNames;
 	Strings _strings;
@@ -149,8 +156,14 @@ public:
 	 */
 	virtual Common::Error saveGameState(int slot, const Common::String &desc);
 
+	/**
+	 * Gets the game features
+	 */
 	uint32 getFeatures() const;
-	bool isDemo() const;
+
+	/**
+	 * Returns the language for the game
+	 */
 	Common::Language getLanguage() const;
 
 	/**
@@ -179,6 +192,21 @@ public:
 	 * and if it exists, returns it's description
 	 */
 	CString getSavegameName(int slot);
+
+	/**
+	 * Displays an error message in a GUI dialog
+	 */
+	void GUIError(const char *msg, ...) GCC_PRINTF(2, 3);
+
+	/**
+	 * Shows the ScummVM GMM save dialog
+	 */
+	void showScummVMSaveDialog();
+
+	/**
+	 * Shows the ScummVM GMM load dialog
+	 */
+	void showScummVMRestoreDialog();
 };
 
 extern TitanicEngine *g_vm;

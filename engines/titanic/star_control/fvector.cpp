@@ -31,7 +31,7 @@ namespace Titanic {
 FVector::FVector(const DVector &src) : _x(src._x), _y(src._y), _z(src._z) {
 }
 
-FVector FVector::fn1() const {
+FVector FVector::swapComponents() const {
 	return FVector(
 		(ABS(_x - _y) < 0.00001 && ABS(_y - _z) < 0.00001 &&
 			ABS(_x - _z) < 0.00001) ? -_y : _y,
@@ -48,19 +48,27 @@ FVector FVector::crossProduct(const FVector &src) const {
 	);
 }
 
-float FVector::normalize() {
-	float hyp = sqrt(_x * _x + _y * _y + _z * _z);
-	assert(hyp);
+bool FVector::normalize(float & hyp) {
+	hyp = sqrt(_x * _x + _y * _y + _z * _z);
+	if (hyp==0) {
+		return false;
+	}
 
 	_x *= 1.0 / hyp;
 	_y *= 1.0 / hyp;
 	_z *= 1.0 / hyp;
-	return hyp;
+	return true;
 }
 
 FVector FVector::addAndNormalize(const FVector &v) const {
 	FVector tempV(_x + v._x, _y + v._y, _z + v._z);
-	tempV.normalize();
+
+	float unusedScale = 0.0;
+	if (!tempV.normalize(unusedScale)) {
+		// Do the normalization, put the scale amount in unusedScale,
+		// but if it is unsuccessful, crash
+		assert(unusedScale);
+	}
 
 	return tempV;
 }
@@ -73,7 +81,7 @@ float FVector::getDistance(const FVector &src) const {
 	return sqrt(xd * xd + yd * yd + zd * zd);
 }
 
-FVector FVector::fn5(const FPose &pose) const {
+FVector FVector::MatProdRowVect(const FPose &pose) const {
 	FVector v;
 	v._x = pose._row2._x * _y + pose._row3._x * _z + pose._row1._x * _x + pose._vector._x;
 	v._y = pose._row2._y * _y + pose._row3._y * _z + pose._row1._y * _x + pose._vector._y;

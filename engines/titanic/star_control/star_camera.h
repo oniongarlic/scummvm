@@ -23,15 +23,19 @@
 #ifndef TITANIC_STAR_CAMERA_H
 #define TITANIC_STAR_CAMERA_H
 
-#include "titanic/support/simple_file.h"
 #include "titanic/star_control/fmatrix.h"
-#include "titanic/star_control/fpoint.h"
 #include "titanic/star_control/base_stars.h"
 #include "titanic/star_control/viewport.h"
-#include "titanic/star_control/camera_mover.h"
-#include "titanic/star_control/error_code.h"
 
 namespace Titanic {
+
+class CCameraMover;
+class CErrorCode;
+class CNavigationInfo;
+class FPoint;
+class SimpleFile;
+
+enum StarLockState { ZERO_LOCKED=0, ONE_LOCKED=1, TWO_LOCKED=2, THREE_LOCKED=3 };
 
 /**
  * Implements a reference point from which the starmap can be viewed
@@ -41,7 +45,7 @@ private:
 	static FMatrix *_priorOrientation;
 	static FMatrix *_newOrientation;
 private:
-	int _matrixRow;
+	StarLockState _starLockState;
 	FMatrix _matrix;
 	CCameraMover *_mover;
 	CViewport _viewport;
@@ -60,7 +64,7 @@ private:
 	/**
 	 * Return whether the handler is locked
 	 */
-	bool isLocked() { return _mover->isLocked(); }
+	bool isLocked();
 public:
 	static void init();
 	static void deinit();
@@ -102,14 +106,14 @@ public:
 	virtual void updatePosition(CErrorCode *errorCode);
 
 	/**
-	 * Increases movement speed
+	 * Increases movement speed in forward direction
 	 */
-	virtual void increaseSpeed();
+	virtual void increaseForwardSpeed();
 
 	/**
-	 * Decreases movement speed
+	 * Increases movement speed in backward direction
 	 */
-	virtual void decreaseSpeed();
+	virtual void increaseBackwardSpeed();
 
 	/**
 	 * Increase to full speed
@@ -155,16 +159,24 @@ public:
 	 */
 	virtual void setViewportAngle(const FPoint &angles);
 
-	virtual int getMatrixRow() const { return _matrixRow; }
+	/**
+	 * How many stars are currently locked onto
+	 */
+	virtual StarLockState getStarLockState() const { return _starLockState; }
 
 	/**
-	 * Adds the row for a locked in marker
+	 * Adds the row for a locked in marker/star
 	 * @remarks		This can't be a pass-by-reference, since adding
 	 * the vector for the star destroys the calling star vector
 	 */
-	virtual bool addMatrixRow(const FVector v);
+	virtual bool addLockedStar(const FVector v);
 
-	virtual bool removeMatrixRow();
+	/**
+	 * Removes the most recent locked in marker/star
+	 * @remarks		This can't be a pass-by-reference, since adding
+	 * the vector for the star destroys the calling star vector
+	 */
+	virtual bool removeLockedStar();
 	virtual void proc36(double *v1, double *v2, double *v3, double *v4);
 
 	/**
@@ -195,17 +207,17 @@ public:
 	/**
 	 * Lock in the first matched star marker
 	 */
-	void lockMarker1(FVector v1, FVector v2, FVector v3);
+	bool lockMarker1(FVector v1, FVector v2, FVector v3);
 	
 	/**
 	 * Lock in the second matched star marker
 	 */
-	void lockMarker2(CViewport *viewport, const FVector &v);
+	bool lockMarker2(CViewport *viewport, const FVector &v);
 
 	/**
 	 * Lock in the third and final matched star marker
 	 */
-	void lockMarker3(CViewport *viewport, const FVector &v);
+	bool lockMarker3(CViewport *viewport, const FVector &v);
 };
 
 } // End of namespace Titanic

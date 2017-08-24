@@ -23,18 +23,17 @@
 #ifndef TITANIC_STAR_VIEW_H
 #define TITANIC_STAR_VIEW_H
 
-#include "titanic/support/simple_file.h"
-#include "titanic/support/video_surface.h"
 #include "titanic/star_control/star_camera.h"
 #include "titanic/star_control/viewport.h"
 #include "titanic/star_control/surface_fader.h"
-#include "titanic/star_control/error_code.h"
-#include "titanic/star_control/fvector.h"
 
 namespace Titanic {
 
+class CErrorCode;
 class CStarControl;
 class CStarField;
+class CVideoSurface;
+class FVector;
 
 class CStarView {
 private:
@@ -50,7 +49,6 @@ private:
 	bool _field218;
 	bool _showingPhoto;
 private:
-	bool fn1();
 	void fn18(CStarCamera *camera);
 	void fn19(int v);
 
@@ -93,6 +91,11 @@ public:
 	 * Allows the item to draw itself
 	 */
 	void draw(CScreenManager *screenManager);
+
+	/**
+	 * Updates the camera, allowing for movement
+	 */
+	bool updateCamera();
 
 	/**
 	 * Handles mouse down messages

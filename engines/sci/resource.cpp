@@ -645,7 +645,7 @@ int ResourceManager::addAppropriateSources() {
 		if (mapFiles.empty() || files.empty())
 			return 0;
 
-		if (Common::File::exists("resaud.001")) {
+		if (Common::File::exists("ressci.001")) {
 			_multiDiscAudio = true;
 		}
 
@@ -678,7 +678,7 @@ int ResourceManager::addAppropriateSources() {
 		// SCI2.1 resource patches
 		if (Common::File::exists("resmap.pat") && Common::File::exists("ressci.pat")) {
 			// We add this resource with a map which surely won't exist
-			addSource(new VolumeResourceSource("ressci.pat", addExternalMap("resmap.pat", 100), 100));
+			addSource(new VolumeResourceSource("ressci.pat", addExternalMap("resmap.pat", kResPatVolumeNumber), kResPatVolumeNumber));
 		}
 	}
 #else
@@ -732,7 +732,7 @@ int ResourceManager::addAppropriateSourcesForDetection(const Common::FSList &fsl
 #ifdef ENABLE_SCI32
 		// SCI2.1 resource patches
 		if (filename.contains("resmap.pat"))
-			sci21PatchMap = addExternalMap(file, 100);
+			sci21PatchMap = addExternalMap(file, kResPatVolumeNumber);
 
 		if (filename.contains("ressci.pat"))
 			sci21PatchRes = file;
@@ -744,7 +744,7 @@ int ResourceManager::addAppropriateSourcesForDetection(const Common::FSList &fsl
 
 #ifdef ENABLE_SCI32
 	if (sci21PatchMap && sci21PatchRes)
-		addSource(new VolumeResourceSource(sci21PatchRes->getName(), sci21PatchMap, 100, sci21PatchRes));
+		addSource(new VolumeResourceSource(sci21PatchRes->getName(), sci21PatchMap, kResPatVolumeNumber, sci21PatchRes));
 #endif
 
 	// Now find all the resource.0?? files
@@ -1423,6 +1423,30 @@ ResVersion ResourceManager::detectVolVersion() {
 	return kResVersionUnknown;
 }
 
+bool ResourceManager::isBlacklistedPatch(const ResourceId &resId) const {
+	switch (g_sci->getGameId()) {
+	case GID_SHIVERS:
+		// The SFX resource map patch in the Shivers interactive demo has
+		// broken offsets for some sounds; ignore it so that the correct map
+		// from RESSCI.000 will be used instead.
+		return g_sci->isDemo() &&
+			resId.getType() == kResourceTypeMap &&
+			resId.getNumber() == 65535;
+	case GID_PHANTASMAGORIA:
+		// The GOG release of Phantasmagoria 1 merges all resources into a
+		// single-disc bundle, but they also include the 65535.MAP & 37.MAP
+		// patch files from original game's CD 1, which (of course) do not
+		// contain the entries for audio from later CDs. So, just ignore these
+		// map patches since the correct maps will be found in the RESSCI.000
+		// file. This also helps eliminate user error when copying files from
+		// the original CDs.
+		return resId.getType() == kResourceTypeMap &&
+			(resId.getNumber() == 65535 || resId.getNumber() == 37);
+	default:
+		return false;
+	}
+}
+
 // version-agnostic patch application
 void ResourceManager::processPatch(ResourceSource *source, ResourceType resourceType, uint16 resourceNr, uint32 tuple) {
 	Common::SeekableReadStream *fileStream = 0;
@@ -1430,12 +1454,8 @@ void ResourceManager::processPatch(ResourceSource *source, ResourceType resource
 	ResourceId resId = ResourceId(resourceType, resourceNr, tuple);
 	ResourceType checkForType = resourceType;
 
-	// HACK: The SFX resource map patch in the Shivers interactive demo has
-	// broken offsets for some sounds; ignore it so that the correct map from
-	// RESSCI.000 will be used instead
-	if (g_sci->getGameId() == GID_SHIVERS && g_sci->isDemo() &&
-		resourceType == kResourceTypeMap && resourceNr == 65535) {
-
+	if (isBlacklistedPatch(resId)) {
+		debug("Skipping blacklisted patch file %s", source->getLocationName().c_str());
 		delete source;
 		return;
 	}
@@ -1877,12 +1897,6 @@ int ResourceManager::readResourceMapSCI1(ResourceSource *map) {
 				// if we use the first entries in the resource file, half of the
 				// game will be English and umlauts will also be missing :P
 				if (resource->_source->getSourceType() == kSourceVolume) {
-					// Maps are read during the scanning process (below), so
-					// need to be treated as unallocated in order for the new
-					// data from this volume to be picked up and used
-					if (resId.getType() == kResourceTypeMap) {
-						resource->_status = kResStatusNoMalloc;
-					}
 					updateResource(resId, source, fileOffset, 0, map->getLocationName());
 				}
 			}
@@ -1899,7 +1913,13 @@ int ResourceManager::readResourceMapSCI1(ResourceSource *map) {
 				addSource(audioMap);
 
 				Common::String volumeName;
-				if (resId.getNumber() == 65535) {
+				if (mapVolumeNr == kResPatVolumeNumber) {
+					if (resId.getNumber() == 65535) {
+						volumeName = "RESSCI.PAT";
+					} else {
+						volumeName = "RESAUD.001";
+					}
+				} else if (resId.getNumber() == 65535) {
 					volumeName = Common::String::format("RESSFX.%03d", mapVolumeNr);
 				} else {
 					volumeName = Common::String::format("RESAUD.%03d", mapVolumeNr);

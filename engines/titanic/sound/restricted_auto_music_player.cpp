@@ -57,7 +57,7 @@ bool CRestrictedAutoMusicPlayer::EnterRoomMsg(CEnterRoomMsg *msg) {
 		return false;
 
 	CString roomName = msg->_oldRoom->getName();
-	if (_oldRoomName.compareToIgnoreCase(roomName)) {
+	if (!_oldRoomName.compareToIgnoreCase(roomName)) {
 		_isRepeated = true;
 		return false;
 	} else {
@@ -68,7 +68,7 @@ bool CRestrictedAutoMusicPlayer::EnterRoomMsg(CEnterRoomMsg *msg) {
 bool CRestrictedAutoMusicPlayer::LeaveRoomMsg(CLeaveRoomMsg *msg) {
 	CString roomName = msg->_newRoom->getName();
 
-	if (petCheckNode(_newNodeName) || _newRoomName.compareToIgnoreCase(roomName)) {
+	if (petCheckNode(_newNodeName) || !_newRoomName.compareToIgnoreCase(roomName)) {
 		_isRepeated = false;
 		return true;
 	} else {

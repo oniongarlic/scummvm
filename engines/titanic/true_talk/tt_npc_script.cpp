@@ -115,8 +115,8 @@ void TTnpcData::resetFlags() {
 
 void TTnpcData::copyData() {
 	if (_array[20]) {
-		Common::copy_backward(&_array[16], &_array[136], &_array[24]);
-		Common::fill(&_array[20], &_array[28], 0);
+		Common::copy_backward(&_array[16], &_array[128], &_array[136]);
+		Common::fill(&_array[16], &_array[24], 0);
 	}
 }
 
@@ -777,11 +777,11 @@ int TTnpcScript::processEntries(const TTsentenceEntries *entries, uint entryCoun
 
 bool TTnpcScript::defaultProcess(const TTroomScript *roomScript, const TTsentence *sentence) {
 	uint remainder;
-	TTtreeResult results[32];
+	TTtreeResult treeResult[32];
 	const TTstring &line = sentence->_normalizedLine;
 
 	uint tagId = g_vm->_trueTalkManager->_quotes.find(line.c_str());
-	int val = g_vm->_trueTalkManager->_quotesTree.search(line.c_str(), TREE_1, results, tagId, &remainder);
+	int val = g_vm->_trueTalkManager->_quotesTree.search(line.c_str(), TREE_1, &treeResult[0], tagId, &remainder);
 
 	if (val > 0) {
 		if (!handleQuote(roomScript, sentence, val, tagId, remainder))

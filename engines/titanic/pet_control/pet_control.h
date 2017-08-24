@@ -148,9 +148,9 @@ public:
 	virtual Rect getBounds() const;
 
 	/**
-	 * Setups the sections within the PET
+	 * Resets the PET, including all the sections within it
 	 */
-	void setup();
+	void reset();
 
 	/**
 	 * Called after loading a game has finished
@@ -499,11 +499,18 @@ public:
 		return _rooms.getWellEntry();
 	}
 
-	void setRooms1CC(int v) {
-		_rooms.set1CC(v);
+	/**
+	 * Sets the sub-level an SGT or 2nd class room is on
+	 */
+	void setRoomsSublevel(int level) {
+		_rooms.setSublevel(level);
 	}
-	int getRooms1CC() const {
-		return _rooms.get1CC();
+
+	/**
+	 * Gets the current sub-level for a stateroom
+	 */
+	int getRoomsSublevel() const {
+		return _rooms.getSublevel();
 	}
 
 	/**

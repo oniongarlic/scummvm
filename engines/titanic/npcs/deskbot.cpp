@@ -123,7 +123,6 @@ bool CDeskbot::MovieEndMsg(CMovieEndMsg *msg) {
 		}
 
 		_npcFlags &= ~NPCFLAG_MOVING;
-		flag = true;
 	}
 
 	if (_npcFlags & NPCFLAG_MOVE_LOOP) {
@@ -287,6 +286,7 @@ bool CDeskbot::TrueTalkNotifySpeechEndedMsg(CTrueTalkNotifySpeechEndedMsg *msg) 
 	case 41789:
 		_npcFlags |= NPCFLAG_MOVE_FINISH;
 		turnOff.execute(this);
+		break;
 
 	case 41686:
 		_npcFlags |= NPCFLAG_MOVE_LEFT;

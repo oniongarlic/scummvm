@@ -32,7 +32,7 @@
 namespace Titanic {
 
 CMainGameWindow::CMainGameWindow(TitanicEngine *vm): _vm(vm),
-		_priorLeftDownTime(0), _priorMiddleDownTime(0), _priorRightDownTime(0) {
+		_priorLeftDownTime(0), _priorMiddleDownTime(0) {
 	_gameView = nullptr;
 	_gameManager = nullptr;
 	_project = nullptr;
@@ -117,7 +117,7 @@ int CMainGameWindow::selectSavegame() {
 	bool hasSavegames = false;
 
 	// Loop through save slots to find any existing save slots
-	for (int idx = 0; idx < MAX_SAVES; ++idx) {
+	for (int idx = 0; idx <= MAX_SAVES; ++idx) {
 		CString saveName = g_vm->getSavegameName(idx);
 		if (!saveName.empty()) {
 			dialog.addSavegame(idx, saveName);
@@ -158,7 +158,11 @@ void CMainGameWindow::draw() {
 			_project->loadGame(_pendingLoadSlot);
 			_pendingLoadSlot = -1;
 
-			// Deliberate fall-through to draw loaded game
+			_gameManager->markAllDirty();
+			scrManager->setSurfaceBounds(SURFACE_PRIMARY, Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+
+			// Intentional fall-through
+			// to draw loaded game
 
 		case GSMODE_INTERACTIVE:
 		case GSMODE_CUTSCENE:
@@ -195,7 +199,7 @@ void CMainGameWindow::drawView() {
 }
 
 void CMainGameWindow::drawViewContents(CScreenManager *screenManager) {
-	// Get a reference to the reference, validating that it's present
+	// Get a reference to the room, validating that it's present
 	if (!screenManager)
 		return;
 	CViewItem *view = _gameManager->getView();
@@ -316,26 +320,6 @@ void CMainGameWindow::middleButtonDoubleClick(const Point &mousePos) {
 	HANDLE_MESSAGE(middleButtonDoubleClick)
 }
 
-void CMainGameWindow::rightButtonDown(const Point &mousePos) {
-	if (!isMouseControlEnabled())
-		return;
-
-	if ((_vm->_events->getTicksCount() - _priorRightDownTime) < DOUBLE_CLICK_TIME) {
-		_priorRightDownTime = 0;
-		rightButtonDoubleClick(mousePos);
-	} else {
-		_priorRightDownTime = _vm->_events->getTicksCount();
-		HANDLE_MESSAGE(rightButtonDown)
-	}
-}
-
-void CMainGameWindow::rightButtonUp(const Point &mousePos) {
-	if (!isMouseControlEnabled())
-		return;
-
-	HANDLE_MESSAGE(rightButtonUp)
-}
-
 void CMainGameWindow::mouseWheel(const Point &mousePos, bool wheelUp) {
 	if (!isMouseControlEnabled())
 		return;
@@ -344,25 +328,34 @@ void CMainGameWindow::mouseWheel(const Point &mousePos, bool wheelUp) {
 	mouseChanged();
 }
 
-void CMainGameWindow::rightButtonDoubleClick(const Point &mousePos) {
-	if (!isMouseControlEnabled())
-		return;
-
-	HANDLE_MESSAGE(rightButtonDoubleClick)
-}
-
 void CMainGameWindow::keyDown(Common::KeyState keyState) {
 	if (keyState.keycode == Common::KEYCODE_d && (keyState.flags & Common::KBD_CTRL)) {
 		// Attach to the debugger
 		_vm->_debugger->attach();
 		_vm->_debugger->onFrame();
-	}
 
-	if (_inputAllowed)
+	} else if (keyState.keycode == Common::KEYCODE_c && (keyState.flags & Common::KBD_CTRL)) {
+		// Cheat action
+		if (_project && g_vm->canLoadGameStateCurrently()) {
+			CViewItem *newView = _project->parseView("Cheat Room.Node 1.Cheat Rooms View");
+			_gameManager->_gameState.changeView(newView, nullptr);
+		}
+
+	} else if (keyState.keycode == Common::KEYCODE_F5) {
+		// Show the GMM save dialog
+		g_vm->showScummVMSaveDialog();
+	} else if (keyState.keycode == Common::KEYCODE_F7) {
+		// Show the GMM load dialog
+		g_vm->showScummVMRestoreDialog();
+	} else if (_inputAllowed) {
 		_gameManager->_inputTranslator.keyDown(keyState);
+	}
 }
 
 bool CMainGameWindow::isMouseControlEnabled() const {
+	if (!_gameManager)
+		return false;
+
 	CScreenManager *screenMan = CScreenManager::_screenManagerPtr;
 	if (!screenMan || !screenMan->_mouseCursor)
 		return true;

@@ -21,6 +21,8 @@
  */
 
 #include "titanic/star_control/unmarked_auto_mover.h"
+#include "titanic/star_control/error_code.h"
+#include "common/array.h"
 #include "common/textconsole.h"
 
 namespace Titanic {
@@ -40,7 +42,7 @@ void CUnmarkedAutoMover::setPath(const FVector &srcV, const FVector &destV, cons
 	if (_distance > 8000.0) {
 		_active = true;
 		_field34 = 1;
-		proc6(120, 4, _distance - 8000.0);
+		calcSpeeds(120, 4, _distance - 8000.0);
 	}
 
 	FVector row3 = orientation._row3;
@@ -96,7 +98,13 @@ int CUnmarkedAutoMover::proc5(CErrorCode &errorCode, FVector &pos, FMatrix &orie
 
 	v2 = orientation._row3;
 	v3 = _destPos - pos;
-	v3.normalize();
+
+	float unusedScale = 0.0;
+	if (!v3.normalize(unusedScale)) {
+		// Do the normalization, put the scale amount in unusedScale,
+		// but if it is unsuccessful, crash
+		assert(unusedScale);
+	}
 
 	double val = orientation._row3._x * v3._x + orientation._row3._y * v3._y + orientation._row3._z * v3._z;
 	bool flag = false;
@@ -141,7 +149,7 @@ int CUnmarkedAutoMover::proc5(CErrorCode &errorCode, FVector &pos, FMatrix &orie
 	}
 
 	if (_field48 >= 0) {
-		double speedVal = _speeds[31 - _field48];
+		double speedVal = _speeds[nMoverTransitions - 1 - _field48];
 		v1._y = v2._y * speedVal;
 		v1._z = v2._z * speedVal;
 		v1._x = v2._x * speedVal;

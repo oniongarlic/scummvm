@@ -21,37 +21,47 @@
  */
 
 #include "titanic/star_control/dvector.h"
-#include "titanic/star_control/dmatrix.h"
+#include "titanic/star_control/daffine.h"
 #include "common/algorithm.h"
 
 namespace Titanic {
 
-double DVector::normalize() {
-	double hyp = sqrt(_x * _x + _y * _y + _z * _z);
-	assert(hyp);
+bool DVector::normalize(double & hyp) {
+	hyp = sqrt(_x * _x + _y * _y + _z * _z);
+	if (hyp==0) {
+		return false;
+	}
 
 	_x *= 1.0 / hyp;
 	_y *= 1.0 / hyp;
 	_z *= 1.0 / hyp;
-	return hyp;
+	return true;
 }
 
 double DVector::getDistance(const DVector &src) {
 	return sqrt((src._x - _x) * (src._x - _x) + (src._y - _y) * (src._y - _y) + (src._z - _z) * (src._z - _z));
 }
 
-DVector DVector::fn1(const DMatrix &m) {
+DVector DVector::dAffMatrixProdVec(const DAffine &m) {
 	DVector dest;
-	dest._x = m._row3._x * _z + m._row2._x * _y + m._row1._x * _x + m._row4._x;
-	dest._y = m._row2._y * _y + m._row3._y * _z + m._row1._y * _x + m._row4._y;
-	dest._z = m._row3._z * _z + m._row2._z * _y + m._row1._z * _x + m._row4._z;
+	dest._x = m._col1._x * _x
+		+ m._col2._x * _y + m._col3._x * _z
+		+ m._col4._x;
+
+	dest._y = m._col1._y * _x
+		+ m._col2._y * _y + m._col3._y * _z
+		+ m._col4._y;
+
+	dest._z = m._col1._z * _x
+		+ m._col2._z * _y + m._col3._z * _z
+		+ m._col4._z;
+
 	return dest;
 }
 
-void DVector::fn2(double angle) {
-	const double FACTOR = 2 * M_PI / 360.0;
-	double sinVal = sin(angle * FACTOR);
-	double cosVal = cos(angle * FACTOR);
+void DVector::rotVectAxisY(double angleDeg) {
+	double sinVal = sin(angleDeg * Deg2Rad);
+	double cosVal = cos(angleDeg * Deg2Rad);
 	double x = cosVal * _x - sinVal * _z;
 	double z = cosVal * _z + sinVal * _x;
 
@@ -59,52 +69,46 @@ void DVector::fn2(double angle) {
 	_z = z;
 }
 
-DVector DVector::fn3() const {
+DVector DVector::getAnglesAsVect() const {
 	DVector vector = *this;
 	DVector dest;
-	dest._x = vector.normalize();
-	dest._y = acos(vector._y);
 
-	if (ABS(vector._z) < 0.00001) {
-		if (vector._x < 0.0) {
-			dest._z = 2 * M_PI - (M_PI / 2.0);
-		} else {
-			dest._z = M_PI / 2.0;
-		}
-	} else {
-		dest._z = atan(vector._x / vector._z);
-		if (vector._x < 0.0)
-			dest._z += 2 * M_PI;
+	if (!vector.normalize(dest._x)) {
+		// Makes this vector have magnitude=1, put the scale amount in dest._x,
+		// but if it is unsuccessful, crash
+		assert(dest._x);
 	}
+
+	dest._y = acos(vector._y);	// radian distance/angle that this vector's y component is from the +y axis,
+								// result is restricted to [0,pi]
+	dest._z = atan2(vector._x,vector._z); // result is restricted to [-pi,pi]
 
 	return dest;
 }
 
-DMatrix DVector::fn4(const DVector &v) {
-	const double FACTOR = 180.0 / M_PI;
-	DMatrix matrix1, matrix2, matrix3, matrix4;
+DAffine DVector::getFrameTransform(const DVector &v) {
+	DAffine matrix1, matrix2, matrix3, matrix4;
 
-	DVector vector1 = fn3();
-	matrix1.setRotationMatrix(X_AXIS, vector1._y * FACTOR);
-	matrix2.setRotationMatrix(Y_AXIS, -(vector1._z * FACTOR));
-	matrix3 = matrix1.fn4(matrix2);
-	matrix4 = matrix3.fn1();
+	DVector vector1 = getAnglesAsVect();
+	matrix1.setRotationMatrix(X_AXIS, vector1._y * Rad2Deg);
+	matrix2.setRotationMatrix(Y_AXIS, vector1._z * Rad2Deg);
+	matrix3 = matrix1.compose(matrix2);
+	matrix4 = matrix3.inverseTransform();
 
-	vector1 = v.fn3();
-	matrix1.setRotationMatrix(X_AXIS, vector1._y * FACTOR);
-	matrix2.setRotationMatrix(Y_AXIS, -(vector1._z * FACTOR));
-	matrix3 = matrix1.fn4(matrix2);
+	vector1 = v.getAnglesAsVect();
+	matrix1.setRotationMatrix(X_AXIS, vector1._y * Rad2Deg);
+	matrix2.setRotationMatrix(Y_AXIS, vector1._z * Rad2Deg);
+	matrix3 = matrix1.compose(matrix2);
 
-	return matrix4.fn4(matrix3);
+	return matrix4.compose(matrix3);
 }
 
-DMatrix DVector::fn5() const {
-	const double FACTOR = 180.0 / M_PI;
-	DVector v1 = fn3();
-	DMatrix m1, m2;
-	m1.setRotationMatrix(X_AXIS, v1._y * FACTOR);
-	m2.setRotationMatrix(Y_AXIS, -(v1._z * FACTOR));
-	return m1.fn4(m2);
+DAffine DVector::rotXY() const {
+	DVector v1 = getAnglesAsVect();
+	DAffine m1, m2;
+	m1.setRotationMatrix(X_AXIS, v1._y * Rad2Deg);
+	m2.setRotationMatrix(Y_AXIS, v1._z * Rad2Deg);
+	return m1.compose(m2);
 }
 
 } // End of namespace Titanic

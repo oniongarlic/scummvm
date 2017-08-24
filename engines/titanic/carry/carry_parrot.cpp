@@ -86,7 +86,7 @@ bool CCarryParrot::TimerMsg(CTimerMsg *msg) {
 }
 
 bool CCarryParrot::IsParrotPresentMsg(CIsParrotPresentMsg *msg) {
-	msg->_value = true;
+	msg->_isPresent = true;
 	return true;
 }
 
@@ -169,7 +169,8 @@ bool CCarryParrot::PassOnDragStartMsg(CPassOnDragStartMsg *msg) {
 		startTalking(npc, 0x446BF);
 
 	_canTake = false;
-	playSound("z#475.wav");
+	CProximity prox(Audio::Mixer::kSpeechSoundType);
+	playSound("z#475.wav", prox);
 	moveUnder(findRoom());
 	CParrot::_state = PARROT_ESCAPED;
 

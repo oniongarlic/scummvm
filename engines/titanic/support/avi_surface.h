@@ -43,10 +43,9 @@ enum MovieFlag {
 
 class AVIDecoder : public Video::AVIDecoder {
 public:
-	AVIDecoder(Audio::Mixer::SoundType soundType = Audio::Mixer::kPlainSoundType) :
-		Video::AVIDecoder(soundType) {}
-	AVIDecoder(const Common::Rational &frameRateOverride, Audio::Mixer::SoundType soundType = Audio::Mixer::kPlainSoundType) :
-		Video::AVIDecoder(frameRateOverride, soundType) {}
+	AVIDecoder() {}
+	AVIDecoder(const Common::Rational &frameRateOverride) :
+		Video::AVIDecoder(frameRateOverride) {}
 
 	/**
 	 * Returns the number of video tracks the decoder has
@@ -57,6 +56,13 @@ public:
 	 * Returns the specified video track
 	 */
 	Video::AVIDecoder::AVIVideoTrack &getVideoTrack(uint idx);
+
+	/**
+	 * Returns the transparency video track, if present
+	 */
+	AVIVideoTrack *getTransparencyTrack() {
+		return static_cast<AVIVideoTrack *>(_transparencyTrack.track);
+	}
 };
 
 class AVISurface {
@@ -67,7 +73,7 @@ private:
 	int _streamCount;
 	Graphics::ManagedSurface *_movieFrameSurface[2];
 	Graphics::ManagedSurface *_framePixels;
-	bool _isReversed;
+	double _frameRate;
 	int _currentFrame, _priorFrame;
 	uint32 _priorFrameTime;
 	Common::String _movieName;
@@ -98,18 +104,12 @@ protected:
 	bool startAtFrame(int frameNumber);
 
 	/**
-	 * Sets whether the movie is playing in reverse
-	 */
-	void setReversed(bool isReversed);
-
-	/**
 	 * Seeks to a given frame number in the video
 	 */
 	virtual void seekToFrame(uint frameNumber);
 public:
 	CSoundManager *_soundManager;
 	bool _hasAudio;
-	double _frameRate;
 public:
 	AVISurface(const CResourceKey &key);
 	virtual ~AVISurface();
@@ -215,13 +215,19 @@ public:
 
 	/**
 	 * Plays an interruptable cutscene
+	 * @returns		True if the cutscene was not interrupted
 	 */
-	void playCutscene(const Rect &r, uint startFrame, uint endFrame);
+	bool playCutscene(const Rect &r, uint startFrame, uint endFrame);
 
 	/**
 	 * Returns the pixel depth of the movie in bits
 	 */
 	uint getBitDepth() const;
+
+	/**
+	 * Returns true if the movie is to play backwards
+	 */
+	bool isReversed() const { return _frameRate < 0.0; }
 };
 
 } // End of namespace Titanic

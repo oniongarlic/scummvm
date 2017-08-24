@@ -24,10 +24,13 @@ namespace Mohawk {
 
 #define GAMEOPTION_PLAY_MYST_FLYBY         GUIO_GAMEOPTIONS1
 
-#define GUI_OPTIONS_MYST                   GUIO3(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOMIDI)
-#define GUI_OPTIONS_MYST_ME                GUIO4(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOMIDI, GAMEOPTION_PLAY_MYST_FLYBY)
+#define GUI_OPTIONS_MYST                   GUIO4(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOMIDI)
+#define GUI_OPTIONS_MYST_ME                GUIO5(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOMIDI, GAMEOPTION_PLAY_MYST_FLYBY)
 #define GUI_OPTIONS_MYST_DEMO              GUIO4(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOMIDI, GUIO_NOLAUNCHLOAD)
-#define GUI_OPTIONS_MYST_MAKING_OF         GUIO4(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOMIDI, GUIO_NOLAUNCHLOAD)
+#define GUI_OPTIONS_MYST_MAKING_OF         GUIO5(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOMIDI, GUIO_NOLAUNCHLOAD)
+
+#define GUI_OPTIONS_RIVEN                  GUIO4(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOMIDI)
+#define GUI_OPTIONS_RIVEN_DEMO             GUIO5(GUIO_NOASPECT, GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOMIDI, GUIO_NOLAUNCHLOAD)
 
 static const MohawkGameDescription gameDescriptions[] = {
 	// Myst
@@ -310,8 +313,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "71145fdecbd68a0cfc292c2fbddf8e08"),
 			Common::EN_ANY,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -328,8 +331,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "d8ccae34a0e3c709135a73f449b783be"),
 			Common::EN_ANY,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -346,8 +349,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "249e8c995d191b03ee94c892c0eac775"),
 			Common::ES_ESP,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -358,18 +361,18 @@ static const MohawkGameDescription gameDescriptions[] = {
 	// Version 1.0 (5CD), 1.02 (DVD, From "Myst: La Trilogie")
 	// From gamin
 	{
-			{
-					"riven",
-					"",
-					AD_ENTRY1("a_Data.MHK", "aff2a384aaa9a0e0ec51010f708c5c04"),
-					Common::FR_FRA,
-					Common::kPlatformWindows,
-					ADGF_UNSTABLE,
-					GUIO1(GUIO_NOASPECT)
-			},
-			GType_RIVEN,
-			0,
-			0,
+		{
+			"riven",
+			"",
+			AD_ENTRY1("a_Data.MHK", "aff2a384aaa9a0e0ec51010f708c5c04"),
+			Common::FR_FRA,
+			Common::kPlatformWindows,
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
+		},
+		GType_RIVEN,
+		0,
+		0,
 	},
 
 	// Riven: The Sequel to Myst
@@ -382,8 +385,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "0e21e89df7788f32056b6521abf2e81a"),
 			Common::IT_ITA,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -399,8 +402,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1s("a_Data.MHK", "2a840ed74fe5dc3a388bced674d379d5", 12024358),
 			Common::RU_RUS,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -416,8 +419,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "59bd2e3ccbae2f1faa1b23a18dc316eb"),
 			Common::RU_RUS,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -435,8 +438,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1s("a_Data.MHK", "3a2b4764979dc007a0e6ded64e4b7889", 10014314),
 			Common::JA_JPN,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -453,8 +456,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "08fcaa5d5a2a01d7a5a6960f497212fe"),
 			Common::EN_ANY,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		GF_DVD,
@@ -471,11 +474,11 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "a5fe1c91a6033eb6ee54b287578b74b9"),
 			Common::DE_DEU,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
-		GF_DVD,
+		0,
 		0,
 	},
 
@@ -489,16 +492,16 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "733a710cf5f848b441ec72d988ab8a3d"),
 			Common::PL_POL,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
-		GF_DVD,
+		0,
 		0,
 	},
 
 	// Riven: The Sequel to Myst
-	// Version 1.1 (DVD), Russan, Fargus
+	// Version 1.1 (DVD), Russian, Fargus
 	{
 		{
 			"riven",
@@ -506,8 +509,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "b5f40e6e6b843bf3abea291faa0911f4"),
 			Common::RU_RUS,
 			Common::kPlatformWindows,
-			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			ADGF_TESTING,
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		GF_DVD,
@@ -524,8 +527,8 @@ static const MohawkGameDescription gameDescriptions[] = {
 			AD_ENTRY1("a_Data.MHK", "bae6b03bd8d6eb350d35fd13f0e3139f"),
 			Common::EN_ANY,
 			Common::kPlatformWindows,
-			ADGF_DEMO | ADGF_UNSTABLE,
-			GUIO2(GUIO_NOASPECT, GUIO_NOLAUNCHLOAD)
+			ADGF_DEMO | ADGF_TESTING,
+			GUI_OPTIONS_RIVEN_DEMO
 		},
 		GType_RIVEN,
 		GF_DEMO,
@@ -2837,7 +2840,7 @@ static const MohawkGameDescription fallbackDescs[] = {
 			Common::UNK_LANG,
 			Common::kPlatformWindows,
 			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		0,
@@ -2852,7 +2855,7 @@ static const MohawkGameDescription fallbackDescs[] = {
 			Common::UNK_LANG,
 			Common::kPlatformWindows,
 			ADGF_UNSTABLE,
-			GUIO1(GUIO_NOASPECT)
+			GUI_OPTIONS_RIVEN
 		},
 		GType_RIVEN,
 		GF_DVD,

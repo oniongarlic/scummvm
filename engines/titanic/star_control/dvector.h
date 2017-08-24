@@ -27,7 +27,10 @@
 
 namespace Titanic {
 
-class DMatrix;
+const double Rad2Deg = 180.0 / M_PI;
+const double Deg2Rad = 1.0 / Rad2Deg;
+
+class DAffine;
 
 /**
  * Double based vector class.
@@ -41,18 +44,52 @@ public:
 	DVector(double x, double y, double z) : _x(x), _y(y), _z(z) {}
 	DVector(const FVector &v) : _x(v._x), _y(v._y), _z(v._z) {}
 
-	double normalize();
+	/**
+	 * Attempts to normalizes the vector so the length from origin equals 1.0
+	 * Return value is whether or not it was successful in normalizing
+	 * First argument is scale value that normalizes the vector
+	 * TODO: split this function into 2. One that calculates the normalization
+	 * and another that does the normalization. The 2nd would assert if a 
+	 * normalization of one was requested. This is cleaner than the current 
+	 * implementation.
+	 */
+	bool normalize(double &);
 
 	/**
 	 * Returns the distance between this vector and the passed one
 	 */
 	double getDistance(const DVector &src);
 
-	DVector fn1(const DMatrix &m);
-	void fn2(double angle);
-	DVector fn3() const;
-	DMatrix fn4(const DVector &v);
-	DMatrix fn5() const;
+	/**
+	 * Returns the matrix product with this vector and 
+	 * also does a z translations. Doesn't change this vector
+	 */
+	DVector dAffMatrixProdVec(const DAffine &m);
+
+	/**
+	 * Rotate this vector about the Y axis
+	 */
+	void rotVectAxisY(double angleDeg);
+
+	/**
+	 * Returns a vector, v, that represents a magnitude, and two angles in radians
+	 * 1. Scale this vector to be unit magnitude and store scale in x component of v
+	 * 2. X rotation angle from +y axis of this vector is put in y component of v
+	 * 3. z component output of v is the 4-quadrant angle that z makes with x (Y axis rotation)
+	 */
+	DVector getAnglesAsVect() const;
+
+	/**
+	 * Returns a matrix that contains the frame rotation based on this vector and 
+	 * a vector rotation based on input vector v
+	 */
+	DAffine getFrameTransform(const DVector &v);
+
+	/**
+	 * Returns a affine matrix that does a x then a y axis frame rotation
+	 * based on the orientation of this vector
+	 */
+	DAffine rotXY() const;
 
 	/**
 	 * Returns true if the passed vector equals this one

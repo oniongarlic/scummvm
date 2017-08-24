@@ -46,6 +46,64 @@
 
 namespace Sci {
 
+class MutableLoopAudioStream : public Audio::AudioStream {
+public:
+	MutableLoopAudioStream(Audio::RewindableAudioStream *stream, const bool loop_, const DisposeAfterUse::Flag dispose = DisposeAfterUse::YES) :
+		_stream(stream, dispose),
+		_loop(loop_) {}
+
+	virtual int readBuffer(int16 *buffer, int numSamples) override {
+		int totalSamplesRead = 0;
+		int samplesRead;
+		do {
+			if (_loop && _stream->endOfStream()) {
+				_stream->rewind();
+			}
+
+			samplesRead = _stream->readBuffer(buffer, numSamples);
+			totalSamplesRead += samplesRead;
+			numSamples -= samplesRead;
+		} while (samplesRead > 0 && _loop && numSamples > 0);
+		return totalSamplesRead;
+	}
+
+	virtual bool isStereo() const override {
+		return _stream->isStereo();
+	}
+
+	virtual int getRate() const override {
+		return _stream->getRate();
+	}
+
+	virtual bool endOfData() const override {
+		return !_loop && _stream->endOfData();
+	}
+
+	virtual bool endOfStream() const override {
+		return !_loop && _stream->endOfStream();
+	}
+
+	bool &loop() {
+		return _loop;
+	}
+
+	bool loop() const {
+		return _loop;
+	}
+
+	virtual Audio::Timestamp getLength() const {
+		Audio::SeekableAudioStream *stream = dynamic_cast<Audio::SeekableAudioStream *>(_stream.get());
+		if (stream == nullptr) {
+			error("Cannot get length from a non-seekable stream");
+		}
+		return stream->getLength();
+	}
+
+private:
+	Common::DisposablePtr<Audio::RewindableAudioStream> _stream;
+	bool _loop;
+};
+
 bool detectSolAudio(Common::SeekableReadStream &stream) {
 	const size_t initialPosition = stream.pos();
 
@@ -114,7 +172,9 @@ Audio32::Audio32(ResourceManager *resMan) :
 	_monitoredBufferSize(0),
 	_numMonitoredSamples(0) {
 
-	if (getSciVersion() < SCI_VERSION_3) {
+	if (getSciVersion() < SCI_VERSION_2_1_EARLY) {
+		_channels.resize(10);
+	} else if (getSciVersion() < SCI_VERSION_3) {
 		_channels.resize(5);
 	} else {
 		_channels.resize(8);
@@ -136,43 +196,39 @@ Audio32::~Audio32() {
 #pragma mark -
 #pragma mark AudioStream implementation
 
-int Audio32::writeAudioInternal(Audio::AudioStream *const sourceStream, Audio::RateConverter *const converter, Audio::st_sample_t *targetBuffer, const int numSamples, const Audio::st_volume_t leftVolume, const Audio::st_volume_t rightVolume, const bool loop) {
-	int samplesToRead = numSamples;
+int Audio32::writeAudioInternal(Audio::AudioStream *const sourceStream, Audio::RateConverter *const converter, Audio::st_sample_t *targetBuffer, const int numSamples, const Audio::st_volume_t leftVolume, const Audio::st_volume_t rightVolume) {
+	const int samplePairsToRead = numSamples >> 1;
+	const int samplePairsWritten = converter->flow(*sourceStream, targetBuffer, samplePairsToRead, leftVolume, rightVolume);
+	return samplePairsWritten << 1;
+}
 
-	// The parent rate converter will request N * 2
-	// samples from this `readBuffer` call, because
-	// we tell it that we send stereo output, but
-	// the source stream we're mixing in may be
-	// mono, in which case we need to request half
-	// as many samples from the mono stream and let
-	// the converter double them for stereo output
-	samplesToRead >>= 1;
-
-	int samplesWritten = 0;
-
-	do {
-		if (loop && sourceStream->endOfStream()) {
-			Audio::RewindableAudioStream *rewindableStream = dynamic_cast<Audio::RewindableAudioStream *>(sourceStream);
-			if (rewindableStream == nullptr) {
-				error("[Audio32::writeAudioInternal]: Unable to cast stream");
-			}
-			rewindableStream->rewind();
+int16 Audio32::getNumChannelsToMix() const {
+	Common::StackLock lock(_mutex);
+	int16 numChannels = 0;
+	for (int16 channelIndex = 0; channelIndex < _numActiveChannels; ++channelIndex) {
+		const AudioChannel &channel = getChannel(channelIndex);
+		if (channelShouldMix(channel)) {
+			++numChannels;
 		}
+	}
+	return numChannels;
+}
 
-		const int loopSamplesWritten = converter->flow(*sourceStream, targetBuffer, samplesToRead, leftVolume, rightVolume);
+bool Audio32::channelShouldMix(const AudioChannel &channel) const {
+	if (channel.pausedAtTick ||
+		(channel.robot && (_robotAudioPaused || channel.stream->endOfStream()))) {
 
-		if (loopSamplesWritten == 0) {
-			break;
+		return false;
+	}
+
+	if (channel.fadeStartTick) {
+		const uint32 fadeElapsed = g_sci->getTickCount() - channel.fadeStartTick;
+		if (fadeElapsed > channel.fadeDuration && channel.stopChannelOnFade) {
+			return false;
 		}
+	}
 
-		samplesToRead -= loopSamplesWritten;
-		samplesWritten += loopSamplesWritten;
-		targetBuffer += loopSamplesWritten << (sourceStream->isStereo() ? 0 : 1);
-	} while (loop && samplesToRead > 0);
-
-	samplesWritten <<= 1;
-
-	return samplesWritten;
+	return true;
 }
 
 // In earlier versions of SCI32 engine, audio mixing is
@@ -203,7 +259,7 @@ int Audio32::writeAudioInternal(Audio::AudioStream *const sourceStream, Audio::R
 // completely fill the audio buffer, the functionality of
 // all these original functions is combined here and
 // simplified.
-int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
+int Audio32::readBuffer(Audio::st_sample_t *const buffer, const int numSamples) {
 	Common::StackLock lock(_mutex);
 
 	if (_pausedAtTick != 0 || _numActiveChannels == 0) {
@@ -215,7 +271,6 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 	// the same time we need to be able to clear out any
 	// finished channels on a regular basis
 	_inAudioThread = true;
-
 	freeUnusedChannels();
 
 	const bool playOnlyMonitoredChannel = getSciVersion() != SCI_VERSION_3 && _monitoredChannelIndex != -1;
@@ -227,47 +282,49 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 	// callback.
 	memset(buffer, 0, numSamples * sizeof(Audio::st_sample_t));
 
-	// This emulates the attenuated mixing mode of SSCI
-	// engine, which reduces the volume of the target
-	// buffer when each new channel is mixed in.
-	// Instead of manipulating the content of the target
-	// buffer when mixing (which would either require
-	// modification of RateConverter or an expensive second
-	// pass against the entire target buffer), we just
-	// scale the volume for each channel in advance, with
-	// the earliest (lowest) channel having the highest
-	// amount of attenuation (lowest volume).
-	uint8 attenuationAmount;
-	uint8 attenuationStepAmount;
+	// This emulates the attenuated mixing mode of SSCI engine, which reduces
+	// the volume of the target buffer when each new channel is mixed in.
+	// Instead of manipulating the content of the target buffer when mixing
+	// (which would either require modification of RateConverter or an expensive
+	// second pass against the entire target buffer), we just scale the volume
+	// for each channel in advance, with the earliest (lowest) channel having
+	// the highest amount of attenuation (lowest volume).
+	int8 attenuationAmount;
+	int8 attenuationStepAmount;
 	if (_useModifiedAttenuation) {
-		// channel | divisor
-		//       0 | 0  (>> 0)
-		//       1 | 4  (>> 2)
-		//       2 | 8...
-		attenuationAmount = _numActiveChannels * 2;
+		// Divides samples in target buffer by 4, and samples in source buffer
+		// by 0, when adding each channel to the output buffer.
+		// 1 channel:  0 >>0
+		// 2 channels: 0 >>2, 1 >>0
+		// 3 channels: 0 >>4, 1 >>2, 2 >>0
+		// 4 channels: 0 >>6, 1 >>4, 2 >>2, 3 >>0 ...
+		// Attenuation amounts are shift values.
+		attenuationAmount = (getNumChannelsToMix() - 1) * 2;
 		attenuationStepAmount = 2;
 	} else {
-		// channel | divisor
-		//       0 | 2  (>> 1)
-		//       1 | 4  (>> 2)
-		//       2 | 6...
-		if (!playOnlyMonitoredChannel && _numActiveChannels > 1) {
-			attenuationAmount = _numActiveChannels + 1;
-			attenuationStepAmount = 1;
-		} else {
-			attenuationAmount = 0;
-			attenuationStepAmount = 0;
-		}
+		// Divides samples in both target & source buffers by 2 when adding each
+		// channel to the output buffer.
+		// 1 channel:  0 >>0
+		// 2 channels: 0 >>1, 1 >>1
+		// 3 channels: 0 >>2, 1 >>2, 2 >>1
+		// 4 channels: 0 >>3, 1 >>3, 2 >>2, 3 >>1 ...
+		// Attenuation amounts are shift values.
+		attenuationAmount = getNumChannelsToMix() - 1;
+		attenuationStepAmount = 1;
 	}
 
 	int maxSamplesWritten = 0;
+	bool firstChannelWritten = false;
 
 	for (int16 channelIndex = 0; channelIndex < _numActiveChannels; ++channelIndex) {
-		attenuationAmount -= attenuationStepAmount;
-
 		const AudioChannel &channel = getChannel(channelIndex);
 
 		if (channel.pausedAtTick || (channel.robot && _robotAudioPaused)) {
+			continue;
+		}
+
+		if (channel.robot && channel.stream->endOfStream()) {
+			stop(channelIndex--);
 			continue;
 		}
 
@@ -278,22 +335,25 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 			continue;
 		}
 
-		if (channel.robot) {
-			if (channel.stream->endOfStream()) {
-				stop(channelIndex--);
-			} else {
-				const int channelSamplesWritten = writeAudioInternal(channel.stream, channel.converter, buffer, numSamples, kMaxVolume, kMaxVolume, channel.loop);
-				if (channelSamplesWritten > maxSamplesWritten) {
-					maxSamplesWritten = channelSamplesWritten;
-				}
-			}
-			continue;
-		}
-
 		Audio::st_volume_t leftVolume, rightVolume;
 
 		if (channel.pan == -1 || !isStereo()) {
-			leftVolume = rightVolume = channel.volume * Audio::Mixer::kMaxChannelVolume / kMaxVolume;
+			int volume = channel.volume;
+			if (getSciVersion() == SCI_VERSION_2) {
+				// NOTE: In SSCI, audio is decompressed into a temporary
+				// buffer, then the samples in that buffer are looped over,
+				// shifting each sample right 3, 2, or 1 bits to reduce the
+				// volume.
+				if (volume > 0 && volume <= 42) {
+					volume = 15;
+				} else if (volume > 42 && volume <= 84) {
+					volume = 31;
+				} else if (volume > 84 && volume < kMaxVolume) {
+					volume = 63;
+				}
+			}
+
+			leftVolume = rightVolume = volume * Audio::Mixer::kMaxChannelVolume / kMaxVolume;
 		} else {
 			// TODO: This should match the SCI3 algorithm,
 			// which seems to halve the volume of each
@@ -303,8 +363,14 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 		}
 
 		if (!playOnlyMonitoredChannel && _attenuatedMixing) {
+			assert(attenuationAmount >= 0);
 			leftVolume >>= attenuationAmount;
 			rightVolume >>= attenuationAmount;
+			if (!_useModifiedAttenuation && !firstChannelWritten) {
+				firstChannelWritten = true;
+			} else {
+				attenuationAmount -= attenuationStepAmount;
+			}
 		}
 
 		if (channelIndex == _monitoredChannelIndex) {
@@ -316,7 +382,7 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 
 			memset(_monitoredBuffer, 0, _monitoredBufferSize);
 
-			_numMonitoredSamples = writeAudioInternal(channel.stream, channel.converter, _monitoredBuffer, numSamples, leftVolume, rightVolume, channel.loop);
+			_numMonitoredSamples = writeAudioInternal(channel.stream, channel.converter, _monitoredBuffer, numSamples, leftVolume, rightVolume);
 
 			Audio::st_sample_t *sourceBuffer = _monitoredBuffer;
 			Audio::st_sample_t *targetBuffer = buffer;
@@ -328,7 +394,7 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 			if (_numMonitoredSamples > maxSamplesWritten) {
 				maxSamplesWritten = _numMonitoredSamples;
 			}
-		} else if (!channel.stream->endOfStream() || channel.loop) {
+		} else if (!channel.stream->endOfStream()) {
 			if (playOnlyMonitoredChannel) {
 				// Audio that is not on the monitored channel is silent
 				// when the monitored channel is active, but the stream still
@@ -339,7 +405,7 @@ int Audio32::readBuffer(Audio::st_sample_t *buffer, const int numSamples) {
 				leftVolume = rightVolume = 0;
 			}
 
-			const int channelSamplesWritten = writeAudioInternal(channel.stream, channel.converter, buffer, numSamples, leftVolume, rightVolume, channel.loop);
+			const int channelSamplesWritten = writeAudioInternal(channel.stream, channel.converter, buffer, numSamples, leftVolume, rightVolume);
 			if (channelSamplesWritten > maxSamplesWritten) {
 				maxSamplesWritten = channelSamplesWritten;
 			}
@@ -451,18 +517,10 @@ void Audio32::lockResource(const ResourceId resourceId, const bool lock) {
 
 void Audio32::freeUnusedChannels() {
 	Common::StackLock lock(_mutex);
-	for (int channelIndex = 0; channelIndex < _numActiveChannels; ++channelIndex) {
+	for (int16 channelIndex = 0; channelIndex < _numActiveChannels; ++channelIndex) {
 		const AudioChannel &channel = getChannel(channelIndex);
 		if (!channel.robot && channel.stream->endOfStream()) {
-			if (channel.loop) {
-				Audio::SeekableAudioStream *stream = dynamic_cast<Audio::SeekableAudioStream *>(channel.stream);
-				if (stream == nullptr) {
-					error("[Audio32::freeUnusedChannels]: Unable to cast stream for resource %s", channel.id.toString().c_str());
-				}
-				stream->rewind();
-			} else {
-				stop(channelIndex--);
-			}
+			stop(channelIndex--);
 		}
 	}
 
@@ -499,8 +557,6 @@ void Audio32::freeChannel(const int16 channelIndex) {
 		channel.resource = nullptr;
 		delete channel.stream;
 		channel.stream = nullptr;
-		delete channel.resourceStream;
-		channel.resourceStream = nullptr;
 	}
 
 	delete channel.converter;
@@ -593,7 +649,6 @@ bool Audio32::playRobotAudio(const RobotAudioStream::RobotAudioPacket &packet) {
 	if (isNewChannel) {
 		channel.id = ResourceId();
 		channel.resource = nullptr;
-		channel.loop = false;
 		channel.robot = true;
 		channel.fadeStartTick = 0;
 		channel.pausedAtTick = 0;
@@ -663,7 +718,7 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 
 	if (channelIndex != kNoExistingChannel) {
 		AudioChannel &channel = getChannel(channelIndex);
-		Audio::SeekableAudioStream *stream = dynamic_cast<Audio::SeekableAudioStream *>(channel.stream);
+		MutableLoopAudioStream *stream = dynamic_cast<MutableLoopAudioStream *>(channel.stream);
 		if (stream == nullptr) {
 			error("[Audio32::play]: Unable to cast stream for resource %s", resourceId.toString().c_str());
 		}
@@ -721,6 +776,7 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 	// probably rewriting a bunch of the resource manager.
 	Resource *resource = _resMan->findResource(resourceId, true);
 	if (resource == nullptr) {
+		warning("[Audio32::play]: %s could not be found", resourceId.toString().c_str());
 		return 0;
 	}
 
@@ -729,7 +785,6 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 	AudioChannel &channel = getChannel(channelIndex);
 	channel.id = resourceId;
 	channel.resource = resource;
-	channel.loop = loop;
 	channel.robot = false;
 	channel.fadeStartTick = 0;
 	channel.soundNode = soundNode;
@@ -741,12 +796,14 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 		_monitoredChannelIndex = channelIndex;
 	}
 
-	Common::SeekableReadStream *dataStream = channel.resourceStream = resource->makeStream();
+	Common::SeekableReadStream *dataStream = resource->makeStream();
+
+	Audio::RewindableAudioStream *audioStream;
 
 	if (detectSolAudio(*dataStream)) {
-		channel.stream = makeSOLStream(dataStream, DisposeAfterUse::NO);
+		audioStream = makeSOLStream(dataStream, DisposeAfterUse::YES);
 	} else if (detectWaveAudio(*dataStream)) {
-		channel.stream = Audio::makeWAVStream(dataStream, DisposeAfterUse::NO);
+		audioStream = Audio::makeWAVStream(dataStream, DisposeAfterUse::YES);
 	} else {
 		byte flags = Audio::FLAG_LITTLE_ENDIAN;
 		if (_globalBitDepth == 16) {
@@ -759,9 +816,10 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 			flags |= Audio::FLAG_STEREO;
 		}
 
-		channel.stream = Audio::makeRawStream(dataStream, _globalSampleRate, flags, DisposeAfterUse::NO);
+		audioStream = Audio::makeRawStream(dataStream, _globalSampleRate, flags, DisposeAfterUse::YES);
 	}
 
+	channel.stream = new MutableLoopAudioStream(audioStream, loop);
 	channel.converter = Audio::makeRateConverter(channel.stream->getRate(), getRate(), channel.stream->isStereo(), false);
 
 	// NOTE: SCI engine sets up a decompression buffer here for the audio
@@ -772,7 +830,7 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 	// use audio streams, and allocate and fill the monitoring buffer
 	// when reading audio data from the stream.
 
-	Audio::SeekableAudioStream *stream = dynamic_cast<Audio::SeekableAudioStream *>(channel.stream);
+	MutableLoopAudioStream *stream = dynamic_cast<MutableLoopAudioStream *>(channel.stream);
 	if (stream == nullptr) {
 		error("[Audio32::play]: Unable to cast stream for resource %s", resourceId.toString().c_str());
 	}
@@ -784,6 +842,9 @@ uint16 Audio32::play(int16 channelIndex, const ResourceId resourceId, const bool
 	channel.startedAtTick = now;
 
 	if (_numActiveChannels == 1) {
+		if (_pausedAtTick) {
+			_pausedAtTick = now;
+		}
 		_startedAtTick = now;
 	}
 
@@ -810,18 +871,29 @@ bool Audio32::resume(const int16 channelIndex) {
 			AudioChannel &channel = getChannel(i);
 			if (!channel.pausedAtTick) {
 				channel.startedAtTick += now - _pausedAtTick;
+				if (channel.startedAtTick > now) {
+					warning("%s is being resumed in the future", channel.id.toString().c_str());
+				}
 			}
 		}
 
 		_startedAtTick += now - _pausedAtTick;
+		if (_startedAtTick > now) {
+			warning("Audio32 is being resumed in the future");
+		}
 		_pausedAtTick = 0;
 		return true;
 	} else if (channelIndex == kRobotChannel) {
 		for (int i = 0; i < _numActiveChannels; ++i) {
 			AudioChannel &channel = getChannel(i);
 			if (channel.robot) {
-				channel.startedAtTick += now - channel.pausedAtTick;
-				channel.pausedAtTick = 0;
+				if (channel.pausedAtTick) {
+					channel.startedAtTick += now - channel.pausedAtTick;
+					if (channel.startedAtTick > now) {
+						warning("Robot audio is being resumed in the future");
+					}
+					channel.pausedAtTick = 0;
+				}
 				return true;
 			}
 		}
@@ -829,6 +901,9 @@ bool Audio32::resume(const int16 channelIndex) {
 		AudioChannel &channel = getChannel(channelIndex);
 		if (channel.pausedAtTick) {
 			channel.startedAtTick += now - channel.pausedAtTick;
+			if (channel.startedAtTick > now) {
+				warning("%s is being resumed in the future", channel.id.toString().c_str());
+			}
 			channel.pausedAtTick = 0;
 			return true;
 		}
@@ -953,7 +1028,10 @@ void Audio32::setLoop(const int16 channelIndex, const bool loop) {
 	}
 
 	AudioChannel &channel = getChannel(channelIndex);
-	channel.loop = loop;
+
+	MutableLoopAudioStream *stream = dynamic_cast<MutableLoopAudioStream *>(channel.stream);
+	assert(stream);
+	stream->loop() = loop;
 }
 
 #pragma mark -
@@ -1218,6 +1296,7 @@ void Audio32::printAudioList(Console *con) const {
 	Common::StackLock lock(_mutex);
 	for (int i = 0; i < _numActiveChannels; ++i) {
 		const AudioChannel &channel = _channels[i];
+		const MutableLoopAudioStream *stream = dynamic_cast<MutableLoopAudioStream *>(channel.stream);
 		con->debugPrintf("  %d[%04x:%04x]: %s, started at %d, pos %d/%d, vol %d, pan %d%s%s\n",
 						 i,
 						 PRINT_REG(channel.soundNode),
@@ -1227,7 +1306,7 @@ void Audio32::printAudioList(Console *con) const {
 						 channel.duration,
 						 channel.volume,
 						 channel.pan,
-						 channel.loop ? ", looping" : "",
+						 stream && stream->loop() ? ", looping" : "",
 						 channel.pausedAtTick ? ", paused" : "");
 		if (channel.fadeStartTick) {
 			con->debugPrintf("                fade: vol %d -> %d, started at %d, pos %d/%d%s\n",

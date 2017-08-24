@@ -672,7 +672,7 @@ bool Actor::draw(Common::Rect *screenRect) {
 
 	// TODO: Handle SHORTY mode
 
-	_vm->_sliceRenderer->drawInWorld(_animationId, _animationFrame, drawPosition, drawAngle, drawScale, _vm->_surface2, _vm->_zbuffer->getData());
+	_vm->_sliceRenderer->drawInWorld(_animationId, _animationFrame, drawPosition, drawAngle, drawScale, _vm->_surfaceGame, _vm->_zbuffer->getData());
 	_vm->_sliceRenderer->getScreenRectangle(screenRect, _animationId, _animationFrame, drawPosition, drawAngle, drawScale);
 
 	return !screenRect->isEmpty();
@@ -1062,7 +1062,11 @@ void Actor::addClueToDatabase(int clueId, int weight, bool clueAcquired, bool un
 }
 
 void Actor::acquireClue(int clueId, bool unknownFlag, int fromActorId) {
+	bool hasAlready = hasClue(clueId);
 	_clues->acquire(clueId, unknownFlag, fromActorId);
+	if (!hasAlready) {
+		_vm->_aiScripts->ReceivedClue(_id, clueId, fromActorId);
+	}
 }
 
 void Actor::loseClue(int clueId) {

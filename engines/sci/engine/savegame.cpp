@@ -280,9 +280,10 @@ void SegManager::saveLoadWithSerializer(Common::Serializer &s) {
 				ObjMap &objects = scr->getObjectMap();
 				for (ObjMap::iterator it = objects.begin(); it != objects.end(); ++it) {
 					reg_t addr = it->_value.getPos();
-					Object *obj = scr->scriptObjInit(addr, false);
-
-					if (pass == 2) {
+					if (pass == 1) {
+						scr->scriptObjInit(addr, false);
+					} else {
+						Object *obj = scr->getObject(addr.getOffset());
 						// When a game disposes a script with kDisposeScript,
 						// the script is marked as deleted and its lockers are
 						// set to 0, which makes the GC stop using the script
@@ -435,10 +436,7 @@ void EngineState::saveLoadWithSerializer(Common::Serializer &s) {
 		g_sci->_gfxPalette32->saveLoadWithSerializer(s);
 		g_sci->_gfxRemap32->saveLoadWithSerializer(s);
 		g_sci->_gfxCursor32->saveLoadWithSerializer(s);
-		// TODO: SCI2 should be using Audio32 too, but is not yet.
-		if (g_sci->_audio32) {
-			g_sci->_audio32->saveLoadWithSerializer(s);
-		}
+		g_sci->_audio32->saveLoadWithSerializer(s);
 		g_sci->_video32->saveLoadWithSerializer(s);
 	} else
 #endif
@@ -714,10 +712,10 @@ void SoundCommandParser::reconstructPlayList() {
 		initSoundResource(entry);
 
 #ifdef ENABLE_SCI32
-		if (_soundVersion >= SCI_VERSION_2_1_EARLY && entry->isSample) {
+		if (_soundVersion >= SCI_VERSION_2 && entry->isSample) {
 			const reg_t &soundObj = entry->soundObj;
 
-			if ((int)readSelectorValue(_segMan, soundObj, SELECTOR(loop)) != -1 &&
+			if (readSelectorValue(_segMan, soundObj, SELECTOR(loop)) == 0xFFFF &&
 				readSelector(_segMan, soundObj, SELECTOR(handle)) != NULL_REG) {
 
 				writeSelector(_segMan, soundObj, SELECTOR(handle), NULL_REG);

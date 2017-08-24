@@ -22,6 +22,7 @@
 
 #include "titanic/game/transport/lift.h"
 #include "titanic/pet_control/pet_control.h"
+#include "titanic/moves/multi_move.h"
 #include "titanic/titanic.h"
 
 namespace Titanic {
@@ -189,23 +190,23 @@ bool CLift::StatusChangeMsg(CStatusChangeMsg *msg) {
 bool CLift::MovieEndMsg(CMovieEndMsg *msg) {
 	switch (msg->_endFrame) {
 	case 108:
-		setGlobalSoundVolume(-4, 1, 2);
-		setGlobalSoundVolume(-2, 1, 1);
+		setGlobalSoundVolume(VOL_MUTE, 1, 0);
+		setGlobalSoundVolume(VOL_QUIET, 1, 1);
 		break;
 
 	case 190:
-		setGlobalSoundVolume(-4, 1, 1);
-		setGlobalSoundVolume(-2, 1, 2);
+		setGlobalSoundVolume(VOL_MUTE, 1, 1);
+		setGlobalSoundVolume(VOL_QUIET, 1, 2);
 		break;
 
 	case 407:
-		setGlobalSoundVolume(-4, 1, 0);
-		setGlobalSoundVolume(-2, 1, 1);
+		setGlobalSoundVolume(VOL_MUTE, 1, 2);
+		setGlobalSoundVolume(VOL_QUIET, 1, 1);
 		break;
 
 	case 489:
-		setGlobalSoundVolume(-4, 1, 1);
-		setGlobalSoundVolume(-2, 1, 0);
+		setGlobalSoundVolume(VOL_MUTE, 1, 1);
+		setGlobalSoundVolume(VOL_QUIET, 1, 0);
 		break;
 
 	default: {
@@ -251,17 +252,17 @@ bool CLift::EnterRoomMsg(CEnterRoomMsg *msg) {
 		}
 
 		if (floorNum < 20) {
-			playGlobalSound("z#520.wav", -2, true, true, 0);
-			playGlobalSound("z#519.wav", -4, false, true, 1);
-			playGlobalSound("z#518.wav", -4, false, true, 2);
+			playGlobalSound("z#520.wav", VOL_QUIET, true, true, 0);
+			playGlobalSound("z#519.wav", VOL_MUTE, false, true, 1);
+			playGlobalSound("z#518.wav", VOL_MUTE, false, true, 2);
 		} else if (floorNum < 28) {
-			playGlobalSound("z#520.wav", -4, false, true, 0);
-			playGlobalSound("z#519.wav", -2, true, true, 1);
-			playGlobalSound("z#518.wav", -4, false, true, 2);
+			playGlobalSound("z#520.wav", VOL_MUTE, false, true, 0);
+			playGlobalSound("z#519.wav", VOL_QUIET, true, true, 1);
+			playGlobalSound("z#518.wav", VOL_MUTE, false, true, 2);
 		} else {
-			playGlobalSound("z#520.wav", -4, false, true, 0);
-			playGlobalSound("z#519.wav", -4, false, true, 1);
-			playGlobalSound("z#518.wav", -2, true, true, 2);
+			playGlobalSound("z#520.wav", VOL_MUTE, false, true, 0);
+			playGlobalSound("z#519.wav", VOL_MUTE, false, true, 1);
+			playGlobalSound("z#518.wav", VOL_QUIET, true, true, 2);
 		}
 	}
 
@@ -289,6 +290,17 @@ bool CLift::ActMsg(CActMsg *msg) {
 		actMsg1.execute("RPanInLiftW");
 		CActMsg actMsg2("Lift.Node 2.S");
 		actMsg2.execute("LPanInLiftW");
+
+		// WORKAROUND: In the original, when Lift 4's head is removed, the other
+		// view directions use Node 2. These "removed" views have links, but their
+		// movement cursors weren't correctly set. This fixes them
+		CNamedItem *node2 = findRoom()->findByName("Node 2");
+		static_cast<CMultiMove *>(node2->findByName("LMultiLiftPan"))->_cursorId = CURSOR_MOVE_LEFT;
+		static_cast<CLinkItem *>(node2->findByName("_PANR,2,N,E"))->_cursorId = CURSOR_MOVE_RIGHT;
+		static_cast<CLinkItem *>(node2->findByName("_PANL,2,E,N"))->_cursorId = CURSOR_MOVE_LEFT;
+		static_cast<CLinkItem *>(node2->findByName("_PANR,2,E,S"))->_cursorId = CURSOR_MOVE_RIGHT;
+		static_cast<CLinkItem *>(node2->findByName("_PANL,2,S,E"))->_cursorId = CURSOR_MOVE_LEFT;
+		static_cast<CMultiMove *>(node2->findByName("RMultiLiftPan"))->_cursorId = CURSOR_MOVE_RIGHT;
 	} else if (msg->_action == "AddWrongHead") {
 		_hasHead = true;
 		_hasCorrectHead = false;

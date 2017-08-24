@@ -65,7 +65,7 @@ bool CParrotNutEater::ReplaceBowlAndNutsMsg(CReplaceBowlAndNutsMsg *msg) {
 }
 
 bool CParrotNutEater::NutPuzzleMsg(CNutPuzzleMsg *msg) {
-	if (msg->_value == "Jiggle") {
+	if (msg->_action == "Jiggle") {
 		setVisible(true);
 		playMovie(MOVIE_NOTIFY_OBJECT | MOVIE_WAIT_FOR_FINISH);
 		movieEvent(68);
@@ -81,12 +81,14 @@ bool CParrotNutEater::NutPuzzleMsg(CNutPuzzleMsg *msg) {
 }
 
 bool CParrotNutEater::MovieFrameMsg(CMovieFrameMsg *msg) {
+	CProximity prox(Audio::Mixer::kSpeechSoundType);
+
 	switch (msg->_frameNumber) {
 	case 68:
-		playSound("z#214.wav");
+		playSound("z#214.wav", prox);
 		break;
 	case 132:
-		playSound("z#216.wav");
+		playSound("z#216.wav", prox);
 		break;
 	default:
 		break;
