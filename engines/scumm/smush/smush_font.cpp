@@ -27,6 +27,8 @@
 
 #include "scumm/smush/smush_font.h"
 
+#include <string.h>
+
 namespace Scumm {
 
 SmushFont::SmushFont(ScummEngine *vm, const char *filename, bool use_original_colors, bool new_colors) :

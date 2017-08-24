@@ -35,6 +35,8 @@
 
 #include "sword25/gfx/image/art.h"
 
+#include <cmath>
+
 namespace Sword25 {
 
 /**
